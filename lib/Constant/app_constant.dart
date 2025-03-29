@@ -1,9 +1,9 @@
 class AppConstants {
   // Icons
-  static const String appLogo = 'assets/icons/app_logo.png';
+  static const String splashIcon = 'assets/Icons/splash_Icon.png';
 
   //Text
-  static const String title = 'S';
+  static const String title = 'Chess4Cash';
   static const String heading = 'Welcome to ShopKrrr';
 
   //Categories images
