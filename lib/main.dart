@@ -1,8 +1,24 @@
+import 'package:chess_cash/Providers/AuthProvider/AuthProvider.dart';
 import 'package:chess_cash/splash_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+      options: const FirebaseOptions(
+          apiKey: 'AIzaSyCWiSHMmORX9SBCusBQjL2bOkszlYt3IlE',
+          appId: '1:1023134763353:android:8b822128cf38dd947de448',
+          messagingSenderId: '1023134763353',
+          projectId: 'chess4cash-37f67'));
+  runApp(
+    MultiProvider(
+      providers: providers(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -11,6 +27,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Chess4Cash',
       theme: ThemeData(
         brightness: Brightness.dark,
@@ -49,4 +66,10 @@ class MyApp extends StatelessWidget {
       home: const SplashScreen(),
     );
   }
+}
+
+List<SingleChildWidget> providers() {
+  return [
+    ChangeNotifierProvider(create: (context) => AuthProvider()),
+  ];
 }
