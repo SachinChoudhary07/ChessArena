@@ -1,5 +1,7 @@
 import 'package:chess_cash/Constant/app_constant.dart';
+import 'package:chess_cash/Widgets/bottomNavBar.dart';
 import 'package:chess_cash/Widgets/customToast.dart';
+import 'package:chess_cash/services/navigation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -75,6 +77,7 @@ class AuthProvider with ChangeNotifier {
       await _setLoginState(true);
       setLoading(false);
       CustomToast.show(AppConstants.loginSuccess, bgColor: Colors.green);
+      push(context, BottomNavBar());
       notifyListeners();
     } on FirebaseAuthException catch (e) {
       setLoading(false);
@@ -126,6 +129,7 @@ class AuthProvider with ChangeNotifier {
       await _setLoginState(true);
       setLoading(false);
       CustomToast.show(AppConstants.loginSuccess, bgColor: Colors.green);
+      push(context, BottomNavBar());
       notifyListeners();
     } catch (e) {
       setLoading(false);
