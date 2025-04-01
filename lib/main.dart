@@ -1,5 +1,6 @@
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Providers/AuthProvider/AuthProvider.dart';
+import 'package:chess_cash/Providers/ProfileProvider/ProfileProvider.dart';
 import 'package:chess_cash/splash_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -76,5 +77,6 @@ class MyApp extends StatelessWidget {
 List<SingleChildWidget> providers() {
   return [
     ChangeNotifierProvider(create: (context) => AuthProvider()),
+    ChangeNotifierProvider(create: (context) => ProfileProvider()),
   ];
 }

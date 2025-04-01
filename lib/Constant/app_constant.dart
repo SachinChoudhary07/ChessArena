@@ -29,6 +29,16 @@ class AppConstants {
   static const String tournaments = 'Tournaments';
   static const String createContest = 'Create Contest';
 
+  //Profile Text
+  static const String profile = 'Profile';
+  static const String updateProfile = 'Update Profile';
+  static const String logout = 'Logout';
+  static const String confirmLogout = 'Confirm Logout';
+  static const String sureLogOut = 'Are you sure you want to logout?';
+  static const String cancel = 'Cancel';
+  static const String inviteFriends = 'Invite Friends';
+  static const String deleteAccount = 'Delete Account';
+
   // Success Messages
   static const String registrationSuccess = 'Registration successful';
   static const String loginSuccess = 'Login successful';

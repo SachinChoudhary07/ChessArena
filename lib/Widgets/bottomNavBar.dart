@@ -1,4 +1,5 @@
 import 'package:chess_cash/Screens/Dashboard/DashboardScreen.dart';
+import 'package:chess_cash/Screens/ProfileScreens/ProfileScreens.dart';
 import 'package:flutter/material.dart';
 
 class BottomNavBar extends StatefulWidget {
@@ -10,10 +11,10 @@ class _BottomNavBarState extends State<BottomNavBar> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = [
-    Dashboardscreen(),
+    const Dashboardscreen(),
     WalletScreen(),
     HistoryScreen(),
-    ProfileScreen(),
+    const Profilescreens(),
   ];
 
   void _onItemTapped(int index) {
@@ -59,14 +60,15 @@ class _BottomNavBarState extends State<BottomNavBar> {
 class WalletScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Center(child: Text('Wallet Screen', style: TextStyle(fontSize: 24)));
+    return const Center(
+        child: Text('Wallet Screen', style: TextStyle(fontSize: 24)));
   }
 }
 
 class HistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return const Center(
         child: Text('History Screen', style: TextStyle(fontSize: 24)));
   }
 }
@@ -74,7 +76,7 @@ class HistoryScreen extends StatelessWidget {
 class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return const Center(
         child: Text('Profile Screen', style: TextStyle(fontSize: 24)));
   }
 }
