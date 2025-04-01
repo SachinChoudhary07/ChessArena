@@ -95,7 +95,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           style: TextStyle(color: Colors.white),
                         ),
                         value: value,
-                        activeColor: Colors.amber,
+                        activeColor: ColorResources.secondaryColor,
                         onChanged: (bool? newValue) {
                           isAgeConfirmed.value = newValue ?? false;
                         },
@@ -106,7 +106,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ElevatedButton(
                     onPressed: () => _register(authProvider),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
+                      backgroundColor: ColorResources.secondaryColor,
                       disabledBackgroundColor: Colors.grey,
                     ),
                     child: const Text(
@@ -144,9 +144,9 @@ class _RegisterPageState extends State<RegisterPage> {
                       // push(context, const LoginPage());
                       push(context, BottomNavBar());
                     },
-                    child: const Text(
+                    child: Text(
                       AppConstants.alreadyAccount,
-                      style: TextStyle(color: Colors.amber),
+                      style: TextStyle(color: ColorResources.secondaryColor),
                     ),
                   ),
                 ],

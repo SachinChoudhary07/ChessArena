@@ -1,3 +1,4 @@
+import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Providers/AuthProvider/AuthProvider.dart';
 import 'package:chess_cash/splash_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -31,23 +32,25 @@ class MyApp extends StatelessWidget {
       title: 'Chess4Cash',
       theme: ThemeData(
         brightness: Brightness.dark,
-        primaryColor: const Color(0xFFFFD700),
+        primaryColor: ColorResources.secondaryColor,
         // Gold color
         scaffoldBackgroundColor: const Color(0xFF000000),
         // Black background
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Color(0xFFFFD700)), // Primary Text
-          bodyMedium: TextStyle(color: Color(0xFFFFC107)), // Secondary Text
-          titleLarge:
-              TextStyle(color: Color(0xFFFFD700), fontWeight: FontWeight.bold),
+        textTheme: TextTheme(
+          bodyLarge:
+              TextStyle(color: ColorResources.secondaryColor), // Primary Text
+          // bodyMedium: TextStyle(color: Color(0xFFFFC107)), // Secondary Text
+          titleLarge: TextStyle(
+              color: ColorResources.secondaryColor,
+              fontWeight: FontWeight.bold),
         ),
-        appBarTheme: const AppBarTheme(
+        appBarTheme: AppBarTheme(
           backgroundColor: Colors.black,
           titleTextStyle: TextStyle(
-              color: Color(0xFFFFD700),
+              color: ColorResources.secondaryColor,
               fontSize: 20,
               fontWeight: FontWeight.bold),
-          iconTheme: IconThemeData(color: Color(0xFFFFD700)),
+          iconTheme: IconThemeData(color: ColorResources.secondaryColor),
         ),
         buttonTheme: const ButtonThemeData(
           buttonColor: Colors.black, // Black button background
@@ -56,12 +59,14 @@ class MyApp extends StatelessWidget {
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.black,
-            foregroundColor: const Color(0xFFFFD700),
-            side: const BorderSide(color: Color(0xFFFFD700)), // Gold border
+            foregroundColor: ColorResources.secondaryColor,
+            side:
+                BorderSide(color: ColorResources.secondaryColor), // Gold border
             textStyle: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
-        iconTheme: const IconThemeData(color: Color(0xFFFFD700)), // Gold icons
+        iconTheme:
+            IconThemeData(color: ColorResources.secondaryColor), // Gold icons
       ),
       home: const SplashScreen(),
     );

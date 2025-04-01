@@ -21,6 +21,14 @@ class AppConstants {
   static const String alreadyAccount = 'Already have an account? Login';
   static const String dontHaveAccount = 'Don\'t have an account? Register';
 
+  // Dashboard Text
+  static const String addMoney = 'Add Money';
+  static const String withdraw = 'Withdraw';
+  static const String playFreeMatch = 'Play Free Match';
+  static const String joinPaidContest = 'Join Paid Contest';
+  static const String tournaments = 'Tournaments';
+  static const String createContest = 'Create Contest';
+
   // Success Messages
   static const String registrationSuccess = 'Registration successful';
   static const String loginSuccess = 'Login successful';

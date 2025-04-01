@@ -1,3 +1,4 @@
+import 'package:chess_cash/Screens/Dashboard/DashboardScreen.dart';
 import 'package:flutter/material.dart';
 
 class BottomNavBar extends StatefulWidget {
@@ -9,7 +10,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = [
-    HomeScreen(),
+    Dashboardscreen(),
     WalletScreen(),
     HistoryScreen(),
     ProfileScreen(),
@@ -52,13 +53,6 @@ class _BottomNavBarState extends State<BottomNavBar> {
         ],
       ),
     );
-  }
-}
-
-class HomeScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text('Home Screen', style: TextStyle(fontSize: 24)));
   }
 }
 
