@@ -39,6 +39,21 @@ class AppConstants {
   static const String inviteFriends = 'Invite Friends';
   static const String deleteAccount = 'Delete Account';
 
+  //Wallet screen text
+  static const String totalBalance = 'Total Balance';
+  static const String viewTransaction = 'Transaction History';
+  static const String addCash = 'Add Cash';
+  static const String wallet = 'Wallet';
+  static const String cashExpiringSoon = 'Cash expiring soon';
+
+  //Game History Text
+  static const String history = 'History';
+  static const String upcoming = 'Upcoming';
+  static const String completed = 'Completed';
+
+  //Join Contest Text
+  static const String joinContest = 'Join Contest';
+
   // Success Messages
   static const String registrationSuccess = 'Registration successful';
   static const String loginSuccess = 'Login successful';

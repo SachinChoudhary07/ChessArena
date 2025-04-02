@@ -33,8 +33,7 @@ class _ProfilescreensState extends State<Profilescreens> {
             ),
             TextButton(
               onPressed: () {
-                Navigator.pop(context);
-                provider.logout();
+                provider.logout(context);
               },
               child: const Text(
                 AppConstants.logout,

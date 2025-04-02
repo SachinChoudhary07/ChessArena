@@ -1,5 +1,7 @@
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
+import 'package:chess_cash/Screens/PaidContest/JoinPaidContest.dart';
+import 'package:chess_cash/Services/navigation.dart';
 import 'package:flutter/material.dart';
 
 import '../../Constant/ui_helper.dart';
@@ -38,20 +40,25 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _buildButton(AppConstants.addMoney,
-                        Icons.account_balance_wallet, Colors.green),
+                        Icons.account_balance_wallet, Colors.green, () {}),
                     Helper.widthSizedBox(),
                     _buildButton(AppConstants.withdraw, Icons.money_off,
-                        ColorResources.secondaryColor),
+                        ColorResources.secondaryColor, () {}),
                   ],
                 ),
-                _buildButton(
-                    AppConstants.playFreeMatch, Icons.play_arrow, Colors.blue),
+                _buildButton(AppConstants.playFreeMatch, Icons.play_arrow,
+                    Colors.blue, () {}),
                 _buildButton(AppConstants.joinPaidContest, Icons.attach_money,
-                    ColorResources.secondaryColor),
+                    ColorResources.secondaryColor, () {
+                  push(context, const JoinPaidContest());
+                }),
                 _buildButton(AppConstants.tournaments, Icons.emoji_events,
-                    ColorResources.secondaryColor),
-                _buildButton(AppConstants.createContest,
-                    Icons.compare_arrows_sharp, ColorResources.secondaryColor),
+                    ColorResources.secondaryColor, () {}),
+                _buildButton(
+                    AppConstants.createContest,
+                    Icons.compare_arrows_sharp,
+                    ColorResources.secondaryColor,
+                    () {}),
                 Helper.heightSizedBox(20),
                 Container(
                   decoration: BoxDecoration(
@@ -89,28 +96,32 @@ class _DashboardscreenState extends State<Dashboardscreen> {
     );
   }
 
-  Widget _buildButton(String text, IconData icon, iconColor) {
-    return Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
-        margin: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-            border: Border.all(color: ColorResources.secondaryColor),
-            borderRadius: BorderRadius.circular(10)),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Icon(
-              icon,
-              color: iconColor,
-              size: 35,
-            ),
-            Helper.widthSizedBox(),
-            Text(
-              text,
-              style:
-                  TextStyle(color: ColorResources.secondaryColor, fontSize: 18),
-            )
-          ],
-        ));
+  Widget _buildButton(String text, IconData icon, iconColor, onTap) {
+    return InkWell(
+      splashColor: Colors.transparent,
+      onTap: onTap,
+      child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+              border: Border.all(color: ColorResources.secondaryColor),
+              borderRadius: BorderRadius.circular(10)),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Icon(
+                icon,
+                color: iconColor,
+                size: 35,
+              ),
+              Helper.widthSizedBox(),
+              Text(
+                text,
+                style: TextStyle(
+                    color: ColorResources.secondaryColor, fontSize: 18),
+              )
+            ],
+          )),
+    );
   }
 }

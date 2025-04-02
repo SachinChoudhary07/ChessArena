@@ -1,5 +1,7 @@
 import 'package:chess_cash/Screens/Dashboard/DashboardScreen.dart';
+import 'package:chess_cash/Screens/HistoryScreens/GameHistoryScreen.dart';
 import 'package:chess_cash/Screens/ProfileScreens/ProfileScreens.dart';
+import 'package:chess_cash/Screens/WalletScreens/WalletScreen.dart';
 import 'package:flutter/material.dart';
 
 class BottomNavBar extends StatefulWidget {
@@ -12,8 +14,8 @@ class _BottomNavBarState extends State<BottomNavBar> {
 
   final List<Widget> _pages = [
     const Dashboardscreen(),
-    WalletScreen(),
-    HistoryScreen(),
+    const WalletScreen(),
+    const GameHistoryScreen(),
     const Profilescreens(),
   ];
 
@@ -54,29 +56,5 @@ class _BottomNavBarState extends State<BottomNavBar> {
         ],
       ),
     );
-  }
-}
-
-class WalletScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-        child: Text('Wallet Screen', style: TextStyle(fontSize: 24)));
-  }
-}
-
-class HistoryScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-        child: Text('History Screen', style: TextStyle(fontSize: 24)));
-  }
-}
-
-class ProfileScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-        child: Text('Profile Screen', style: TextStyle(fontSize: 24)));
   }
 }

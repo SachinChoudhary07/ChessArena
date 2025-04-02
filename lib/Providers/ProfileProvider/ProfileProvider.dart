@@ -1,13 +1,14 @@
 import 'package:chess_cash/Constant/app_constant.dart';
+import 'package:chess_cash/Screens/AuthScreens/loginScreen.dart';
+import 'package:chess_cash/Services/navigation.dart';
 import 'package:chess_cash/Widgets/customToast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -23,7 +24,7 @@ class ProfileProvider with ChangeNotifier {
   Future<void> fetchUserProfile() async {
     if (currentUser != null) {
       final doc =
-      await _firestore.collection('users').doc(currentUser!.uid).get();
+          await _firestore.collection('users').doc(currentUser!.uid).get();
       if (doc.exists) {
         profileImageUrl = doc['profileImageUrl'];
         name = doc['name'];
@@ -34,12 +35,8 @@ class ProfileProvider with ChangeNotifier {
   }
 
   Future<void> updateProfileImage() async {
-    if (await Permission.photos
-        .request()
-        .isGranted ||
-        await Permission.storage
-            .request()
-            .isGranted) {
+    if (await Permission.photos.request().isGranted ||
+        await Permission.storage.request().isGranted) {
       final ImagePicker picker = ImagePicker();
       final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
@@ -77,11 +74,12 @@ class ProfileProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> logout() async {
+  Future<void> logout(context) async {
     setLoading(true);
     await _auth.signOut();
     await _googleSignIn.signOut();
     await _setLoginState(false);
+    pushAndRemoveUntil(context, const LoginPage(), false);
     setLoading(false);
     CustomToast.show(AppConstants.logoutSuccess, bgColor: Colors.green);
     notifyListeners();
