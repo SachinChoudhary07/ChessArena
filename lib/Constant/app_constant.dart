@@ -16,8 +16,7 @@ class AppConstants {
   static const String userName = 'Username';
   static const String email = 'Email';
   static const String password = 'Password';
-  static const String ageConfirmation =
-      'I confirm that I am at least 18 years old.';
+  static const String ageConfirmation = '18 years old ?';
   static const String alreadyAccount = 'Already have an account? Login';
   static const String dontHaveAccount = 'Don\'t have an account? Register';
 
@@ -68,10 +67,30 @@ class AppConstants {
   static const String authFailed = 'Authentication failed';
   static const String unexpectedError = 'An unexpected error occurred';
 
-  // Firestore Collections & Fields
+  // Collection Names
   static const String usersCollection = 'users';
+
+  // User Profile Fields
   static const String uidField = 'uid';
   static const String emailField = 'email';
   static const String usernameField = 'username';
+  static const String profileImageField = 'profileImage';
   static const String createdAtField = 'createdAt';
+  static const String deviceInfoField = 'deviceInfo';
+  static const String fcmTokenField = 'fcmToken';
+
+  // Chess & Game-Related Fields
+  static const String eloRatingField = 'eloRating';
+  static const String gamesPlayedField = 'gamesPlayed';
+  static const String gamesWonField = 'gamesWon';
+  static const String gamesLostField = 'gamesLost';
+  static const String gamesDrawnField = 'gamesDrawn';
+  static const String rankingField = 'ranking';
+  static const String balanceField = 'Balance';
+
+  // Security & Admin Control Fields
+  static const String isBannedField = 'isBanned';
+  static const String isVerifiedField = 'isVerified';
+  static const String banReasonField = 'banReason';
+  static const String suspiciousFlagField = 'suspiciousFlag';
 }

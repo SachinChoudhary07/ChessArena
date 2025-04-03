@@ -11,6 +11,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
+
   @override
   State<RegisterPage> createState() => _RegisterPageState();
 }
@@ -43,7 +45,6 @@ class _RegisterPageState extends State<RegisterPage> {
       CustomToast.show("You must confirm your age", bgColor: Colors.red);
       return;
     }
-
     authProvider.signUp(username, email, password, context);
   }
 
@@ -108,6 +109,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: ColorResources.secondaryColor,
                       disabledBackgroundColor: Colors.grey,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 10, horizontal: 60),
                     ),
                     child: const Text(
                       AppConstants.register,
@@ -139,6 +142,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ],
                     ),
                   ),
+                  Helper.heightSizedBox(40),
                   TextButton(
                     onPressed: () {
                       // push(context, const LoginPage());

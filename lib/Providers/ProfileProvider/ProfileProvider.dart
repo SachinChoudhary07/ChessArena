@@ -22,14 +22,21 @@ class ProfileProvider with ChangeNotifier {
   String? email;
 
   Future<void> fetchUserProfile() async {
+    setLoading(true);
     if (currentUser != null) {
       final doc =
           await _firestore.collection('users').doc(currentUser!.uid).get();
       if (doc.exists) {
-        profileImageUrl = doc['profileImageUrl'];
-        name = doc['name'];
+        print(doc['username']);
+        print("Nameeeeeeeeeeeeeeeee----------->doc['name']");
+        // profileImageUrl = doc['profileImageUrl'];
+        name = doc['username'];
         email = doc['email'];
+        setLoading(false);
         notifyListeners();
+      } else {
+        setLoading(false);
+        print("object-------->");
       }
     }
   }

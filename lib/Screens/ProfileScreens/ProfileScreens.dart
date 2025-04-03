@@ -2,6 +2,7 @@ import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Constant/ui_helper.dart';
 import 'package:chess_cash/Providers/ProfileProvider/ProfileProvider.dart';
+import 'package:chess_cash/Widgets/loader.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -56,6 +57,9 @@ class _ProfilescreensState extends State<Profilescreens> {
       ),
       body: Consumer<ProfileProvider>(
         builder: (context, profileProvider, child) {
+          if (profileProvider.isLoading) {
+            return const Center(child: Loader());
+          }
           return Padding(
             padding: const EdgeInsets.all(16.0),
             child: SingleChildScrollView(

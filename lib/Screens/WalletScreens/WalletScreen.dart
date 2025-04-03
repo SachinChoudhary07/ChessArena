@@ -64,7 +64,8 @@ class _WalletScreenState extends State<WalletScreen> {
                     ),
                     child: const Text(
                       AppConstants.addCash,
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -80,7 +81,9 @@ class _WalletScreenState extends State<WalletScreen> {
                     ),
                     child: Text(
                       AppConstants.withdraw,
-                      style: TextStyle(color: ColorResources.secondaryColor),
+                      style: TextStyle(
+                          color: ColorResources.secondaryColor,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -178,23 +181,6 @@ class _WalletScreenState extends State<WalletScreen> {
                     ],
                   ),
                   Helper.heightSizedBox(8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Withdrawable Balance',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '₹0',
-                        style: TextStyle(
-                          color: ColorResources.secondaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             )

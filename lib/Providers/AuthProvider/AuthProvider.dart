@@ -1,4 +1,5 @@
 import 'package:chess_cash/Constant/app_constant.dart';
+import 'package:chess_cash/Screens/AuthScreens/loginScreen.dart';
 import 'package:chess_cash/Widgets/bottomNavBar.dart';
 import 'package:chess_cash/Widgets/customToast.dart';
 import 'package:chess_cash/services/navigation.dart';
@@ -53,11 +54,26 @@ class AuthProvider with ChangeNotifier {
         AppConstants.uidField: userCredential.user!.uid,
         AppConstants.emailField: email,
         AppConstants.usernameField: username,
+        AppConstants.profileImageField: "",
         AppConstants.createdAtField: Timestamp.now(),
+        AppConstants.deviceInfoField: "Unknown",
+        AppConstants.fcmTokenField: "",
+        AppConstants.eloRatingField: 400,
+        AppConstants.gamesPlayedField: 0,
+        AppConstants.gamesWonField: 0,
+        AppConstants.gamesLostField: 0,
+        AppConstants.gamesDrawnField: 0,
+        AppConstants.rankingField: 0,
+        AppConstants.balanceField: 0.0,
+        AppConstants.isBannedField: false,
+        AppConstants.isVerifiedField: true,
+        AppConstants.banReasonField: "",
+        AppConstants.suspiciousFlagField: false,
       });
       await _setLoginState(true);
       setLoading(false);
       CustomToast.show(AppConstants.registrationSuccess, bgColor: Colors.green);
+      push(context, LoginPage());
       notifyListeners();
     } on FirebaseAuthException catch (e) {
       setLoading(false);
@@ -122,7 +138,21 @@ class AuthProvider with ChangeNotifier {
             AppConstants.uidField: user.uid,
             AppConstants.emailField: user.email,
             AppConstants.usernameField: user.displayName ?? "",
+            AppConstants.profileImageField: user.photoURL ?? "",
             AppConstants.createdAtField: Timestamp.now(),
+            AppConstants.deviceInfoField: "Unknown",
+            AppConstants.fcmTokenField: "",
+            AppConstants.eloRatingField: 400,
+            AppConstants.gamesPlayedField: 0,
+            AppConstants.gamesWonField: 0,
+            AppConstants.gamesLostField: 0,
+            AppConstants.gamesDrawnField: 0,
+            AppConstants.rankingField: 0,
+            AppConstants.balanceField: 0.0,
+            AppConstants.isBannedField: false,
+            AppConstants.isVerifiedField: true,
+            AppConstants.banReasonField: "",
+            AppConstants.suspiciousFlagField: false,
           });
         }
       }
