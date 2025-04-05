@@ -55,6 +55,11 @@ class AppConstants {
   //Join Contest Text
   static const String joinContest = 'Join Contest';
 
+  // Matchmaking Text
+  static const String waitingText =
+      'Looking for opponents with similar skills as you...';
+  static const String you = 'You';
+
   // Success Messages
   static const String registrationSuccess = 'Registration successful';
   static const String loginSuccess = 'Login successful';

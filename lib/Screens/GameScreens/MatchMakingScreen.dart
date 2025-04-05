@@ -1,4 +1,4 @@
-import 'dart:async';
+import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:flutter/material.dart';
 
 class MatchMakingScreen extends StatefulWidget {
@@ -9,87 +9,118 @@ class MatchMakingScreen extends StatefulWidget {
 }
 
 class _MatchMakingScreenState extends State<MatchMakingScreen> {
-  bool isWaiting = true; // Simulate waiting status
-  double opacity = 0.0; // For animation
-
-  @override
-  void initState() {
-    super.initState();
-    _startAnimation();
-  }
-
-  void _startAnimation() {
-    Future.delayed(const Duration(milliseconds: 500), () {
-      setState(() {
-        opacity = 1.0;
-      });
-    });
-  }
-
-  void _simulateMatchFound() {
-    setState(() {
-      isWaiting = false;
-    });
-    // Start game after 5 seconds
-    Timer(const Duration(seconds: 5), () {
-      _startGame();
-    });
-  }
-
-  void _startGame() {
-    // Navigate to the game screen or perform another action
-    // For example, Navigator.pushReplacementNamed(context, '/gameScreen');
-  }
+  bool isSearching = true;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('MatchMaking'),
-      ),
-      body: Center(
-        child: isWaiting ? _buildWaitingScreen() : _buildMatchFoundScreen(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 100),
+            const Text(
+              AppConstants.waitingText,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 100),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildPlayerCard(AppConstants.you, "assets/your_avatar.png"),
+                const Text(
+                  "VS",
+                  style: TextStyle(
+                    color: Colors.purple,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 22,
+                  ),
+                ),
+                _buildSearchingCard(),
+              ],
+            ),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 40),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                icon: const Icon(Icons.close),
+                label: const Text(AppConstants.cancel),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.orange, width: 1.5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildWaitingScreen() {
+  Widget _buildPlayerCard(String label, String imagePath) {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const CircularProgressIndicator(),
-        const SizedBox(height: 20),
-        AnimatedOpacity(
-          opacity: opacity,
-          duration: const Duration(seconds: 1),
-          child: const Text(
-            'Waiting for an opponent...',
-            style: TextStyle(fontSize: 18),
+        Container(
+          height: 100,
+          width: 100,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.orange, width: 3),
+            borderRadius: BorderRadius.circular(12),
+            image: DecorationImage(
+              image: AssetImage(imagePath),
+              fit: BoxFit.cover,
+            ),
           ),
         ),
-        const SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: _simulateMatchFound,
-          child: const Text('Cancel'),
+        const SizedBox(height: 10),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.orange,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildMatchFoundScreen() {
+  Widget _buildSearchingCard() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.check_circle, color: Colors.green, size: 100),
-        const SizedBox(height: 20),
-        const Text(
-          'Match Found!',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        Container(
+          height: 100,
+          width: 100,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.purple, width: 3),
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.purple.shade800,
+          ),
+          child: const Icon(
+            Icons.search,
+            color: Colors.white,
+            size: 40,
+          ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 10),
         const Text(
-          'Starting game in 5 seconds...',
-          style: TextStyle(fontSize: 16),
+          "Searching...",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+          ),
         ),
       ],
     );
