@@ -2,6 +2,8 @@ import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Constant/ui_helper.dart';
 import 'package:chess_cash/Providers/ProfileProvider/ProfileProvider.dart';
+import 'package:chess_cash/Screens/LeaderBoard/EloLeaderBoard.dart';
+import 'package:chess_cash/Services/navigation.dart';
 import 'package:chess_cash/Widgets/loader.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -143,6 +145,22 @@ class _ProfilescreensState extends State<Profilescreens> {
                       child: Text(
                         AppConstants.inviteFriends,
                         style: TextStyle(color: ColorResources.secondaryColor),
+                      ),
+                    ),
+                  ),
+                  Helper.heightSizedBox(16),
+                  GestureDetector(
+                    onTap: () => push(context, const EloLeaderboard()),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.red),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'LeaderBoard',
+                        style: TextStyle(color: Colors.red),
                       ),
                     ),
                   ),
