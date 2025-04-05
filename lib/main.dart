@@ -1,3 +1,4 @@
+import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Providers/AuthProvider/AuthProvider.dart';
 import 'package:chess_cash/Providers/ProfileProvider/ProfileProvider.dart';
@@ -30,7 +31,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Chess4Cash',
+      title: AppConstants.appName,
       theme: ThemeData(
         brightness: Brightness.dark,
         primaryColor: ColorResources.secondaryColor,

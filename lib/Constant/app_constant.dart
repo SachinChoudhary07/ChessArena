@@ -5,6 +5,7 @@ class AppConstants {
   // Images
   static const String loginSignupImage = 'assets/images/lose.png';
   static const String googleImage = 'assets/images/google.png';
+  static const String loaderImage = 'assets/images/king.png';
 
   // App Info
   static const String appName = 'Chess4Cash';
@@ -21,6 +22,7 @@ class AppConstants {
   static const String dontHaveAccount = 'Don\'t have an account? Register';
 
   // Dashboard Text
+  static const String home = 'Home';
   static const String addMoney = 'Add Money';
   static const String withdraw = 'Withdraw';
   static const String playFreeMatch = 'Play Free Match';

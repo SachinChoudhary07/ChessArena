@@ -1,3 +1,4 @@
+import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Screens/Dashboard/DashboardScreen.dart';
 import 'package:chess_cash/Screens/HistoryScreens/GameHistoryScreen.dart';
 import 'package:chess_cash/Screens/ProfileScreens/ProfileScreens.dart';
@@ -39,19 +40,19 @@ class _BottomNavBarState extends State<BottomNavBar> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
-            label: 'Home',
+            label: AppConstants.home,
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.account_balance_wallet),
-            label: 'Wallet',
+            label: AppConstants.wallet,
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.history),
-            label: 'History',
+            label: AppConstants.history,
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
-            label: 'Profile',
+            label: AppConstants.profile,
           ),
         ],
       ),

@@ -1,5 +1,7 @@
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
+import 'package:chess_cash/Screens/GameScreens/MatchMakingScreen.dart';
+import 'package:chess_cash/Services/navigation.dart';
 import 'package:flutter/material.dart';
 
 class JoinPaidContest extends StatefulWidget {
@@ -85,18 +87,21 @@ class _JoinPaidContestState extends State<JoinPaidContest> {
                     ],
                   ),
                   Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          border:
-                              Border.all(color: ColorResources.secondaryColor)),
-                      child: Text(
-                        "Join Now",
-                        style: TextStyle(
-                            color: ColorResources.secondaryColor,
-                            fontWeight: FontWeight.bold),
+                    child: InkWell(
+                      onTap: () => push(context, const MatchMakingScreen()),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                                color: ColorResources.secondaryColor)),
+                        child: Text(
+                          "Join Now",
+                          style: TextStyle(
+                              color: ColorResources.secondaryColor,
+                              fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                   )

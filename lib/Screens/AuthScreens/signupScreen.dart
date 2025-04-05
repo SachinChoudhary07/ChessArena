@@ -136,7 +136,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         Helper.widthSizedBox(10),
                         const Text(
-                          "Continue with Google",
+                          AppConstants.google,
                           style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
                       ],

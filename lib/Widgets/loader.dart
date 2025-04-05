@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:flutter/material.dart';
 
 class Loader extends StatefulWidget {
@@ -41,7 +42,7 @@ class _LoaderState extends State<Loader> with SingleTickerProviderStateMixin {
           return Transform.rotate(
             angle: _rotationAnimation.value,
             child: Image.asset(
-              'assets/images/king.png',
+              AppConstants.loaderImage,
               color: Colors.white,
               width: 60,
               height: 60,
