@@ -44,6 +44,11 @@ dependencies:
   shared_preferences:
   image_picker:
   permission_handler: ^11.0.1
+  squares:
+  flutter_chess_board:
+  firebase_database:
+  razorpay_flutter:
+
 
 dev_dependencies:
   flutter_test:
