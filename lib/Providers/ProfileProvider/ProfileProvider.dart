@@ -29,7 +29,7 @@ class ProfileProvider with ChangeNotifier {
       if (doc.exists) {
         print(doc['username']);
         print("Nameeeeeeeeeeeeeeeee----------->doc['name']");
-        // profileImageUrl = doc['profileImageUrl'];
+        profileImageUrl = doc['profileImage'];
         name = doc['username'];
         email = doc['email'];
         setLoading(false);
@@ -90,5 +90,48 @@ class ProfileProvider with ChangeNotifier {
     setLoading(false);
     CustomToast.show(AppConstants.logoutSuccess, bgColor: Colors.green);
     notifyListeners();
+  }
+
+  Future<void> deleteAccount(BuildContext context) async {
+    try {
+      setLoading(true);
+
+      final user = _auth.currentUser;
+      if (user != null) {
+        // Step 1: Delete Firestore user document
+        await _firestore.collection('users').doc(user.uid).delete();
+
+        // Step 2: Delete Firebase Auth user
+        await user.delete();
+
+        // Step 3: Clear SharedPreferences login state
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('isLoggedIn');
+
+        // Step 4: Sign out from Google if used
+        await _googleSignIn.signOut();
+
+        // Step 5: Navigate to login screen
+        pushAndRemoveUntil(context, const LoginPage(), false);
+
+        CustomToast.show("Account deleted successfully", bgColor: Colors.green);
+      } else {
+        CustomToast.show("User not found!", bgColor: Colors.red);
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        CustomToast.show(
+          "Please log in again to delete your account.",
+          bgColor: Colors.orange,
+        );
+      } else {
+        CustomToast.show("Error: ${e.message}", bgColor: Colors.red);
+      }
+    } catch (e) {
+      CustomToast.show("Error deleting account: $e", bgColor: Colors.red);
+    } finally {
+      setLoading(false);
+      notifyListeners();
+    }
   }
 }

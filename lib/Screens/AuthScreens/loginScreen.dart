@@ -20,13 +20,12 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        if (authProvider.isLoading) {
-          return const Center(child: Loader());
-        }
         return Scaffold(
           backgroundColor: Colors.black,
           appBar: AppBar(
@@ -37,68 +36,121 @@ class _LoginPageState extends State<LoginPage> {
           body: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Image.asset(
-                    AppConstants.loginSignupImage,
-                    color: Colors.white,
-                    height: 140,
-                  ),
-                  Helper.heightSizedBox(20),
-                  CustomTextField(
-                      controller: emailController, label: AppConstants.email),
-                  Helper.heightSizedBox(10),
-                  CustomTextField(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    Image.asset(
+                      AppConstants.loginSignupImage,
+                      color: Colors.white,
+                      height: 140,
+                    ),
+                    Helper.heightSizedBox(20),
+
+                    /// Email Field
+                    CustomTextField(
+                      controller: emailController,
+                      label: AppConstants.email,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Email is required';
+                        }
+                        final emailRegex =
+                            RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$');
+                        if (!emailRegex.hasMatch(value)) {
+                          return 'Enter a valid email';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    Helper.heightSizedBox(10),
+
+                    /// Password Field
+                    CustomTextField(
                       controller: passwordController,
                       label: AppConstants.password,
-                      obscureText: true),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () {
-                      authProvider.login(
-                        emailController.text,
-                        passwordController.text,
-                        context,
-                      );
-                    },
-                    style:
-                        ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-                    child: const Text(AppConstants.login,
-                        style: TextStyle(color: Colors.black)),
-                  ),
-                  Helper.heightSizedBox(10),
-                  ElevatedButton(
-                    onPressed: () {
-                      authProvider.signInWithGoogle(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ColorResources.primaryColor,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 10, horizontal: 40),
+                      obscureText: true,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Password is required';
+                        }
+                        if (value.length < 6) {
+                          return 'Password must be at least 6 characters';
+                        }
+                        return null;
+                      },
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          AppConstants.googleImage,
-                          height: 24,
-                        ),
-                        Helper.widthSizedBox(10),
-                        const Text(
-                          AppConstants.google,
-                          style: TextStyle(color: Colors.white, fontSize: 16),
-                        ),
-                      ],
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      push(context, RegisterPage());
-                    },
-                    child: const Text(AppConstants.dontHaveAccount,
-                        style: TextStyle(color: Colors.amber)),
-                  )
-                ],
+
+                    const SizedBox(height: 20),
+
+                    authProvider.isLoading
+                        ? const Padding(
+                            padding: EdgeInsets.only(top: 20, bottom: 20),
+                            child: Loader(),
+                          )
+                        : Column(
+                            children: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  if (_formKey.currentState!.validate()) {
+                                    authProvider.login(
+                                      emailController.text,
+                                      passwordController.text,
+                                      context,
+                                    );
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.amber,
+                                ),
+                                child: const Text(
+                                  AppConstants.login,
+                                  style: TextStyle(color: Colors.black),
+                                ),
+                              ),
+                              Helper.heightSizedBox(10),
+                              ElevatedButton(
+                                onPressed: () {
+                                  authProvider.signInWithGoogle(context);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: ColorResources.primaryColor,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                    horizontal: 40,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Image.asset(
+                                      AppConstants.googleImage,
+                                      height: 24,
+                                    ),
+                                    Helper.widthSizedBox(10),
+                                    const Text(
+                                      AppConstants.google,
+                                      style: TextStyle(
+                                          color: Colors.white, fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+
+                    TextButton(
+                      onPressed: () {
+                        push(context, const RegisterPage());
+                      },
+                      child: const Text(
+                        AppConstants.dontHaveAccount,
+                        style: TextStyle(color: Colors.amber),
+                      ),
+                    )
+                  ],
+                ),
               ),
             ),
           ),

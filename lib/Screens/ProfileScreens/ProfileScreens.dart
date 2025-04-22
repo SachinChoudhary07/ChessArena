@@ -55,6 +55,14 @@ class _ProfilescreensState extends State<Profilescreens> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: const Text(AppConstants.profile),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InkWell(
+                onTap: () => push(context, EloLeaderboard()),
+                child: const Icon(Icons.leaderboard)),
+          )
+        ],
         backgroundColor: ColorResources.primaryColor,
       ),
       body: Consumer<ProfileProvider>(
@@ -107,6 +115,7 @@ class _ProfilescreensState extends State<Profilescreens> {
                   ),
                   Helper.heightSizedBox(8),
                   TextField(
+                    readOnly: true,
                     controller:
                         TextEditingController(text: profileProvider.email),
                     decoration: const InputDecoration(
@@ -150,22 +159,6 @@ class _ProfilescreensState extends State<Profilescreens> {
                   ),
                   Helper.heightSizedBox(16),
                   GestureDetector(
-                    onTap: () => push(context, const EloLeaderboard()),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.red),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        'LeaderBoard',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ),
-                  Helper.heightSizedBox(16),
-                  GestureDetector(
                     onTap: () => _showLogoutConfirmationDialog(profileProvider),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -182,7 +175,36 @@ class _ProfilescreensState extends State<Profilescreens> {
                   ),
                   Helper.heightSizedBox(16),
                   GestureDetector(
-                    onTap: () {},
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text("Delete Account"),
+                          content: const Text(
+                              "Are you sure you want to delete your account?"),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text("Cancel"),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                Provider.of<ProfileProvider>(context,
+                                        listen: false)
+                                    .deleteAccount(context);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white),
+                              child: const Text(
+                                "Delete",
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       alignment: Alignment.center,

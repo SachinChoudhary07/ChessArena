@@ -30,7 +30,7 @@ class _EloLeaderboardState extends State<EloLeaderboard> {
       body: leaderboardProvider.errorMessage.isNotEmpty
           ? Center(child: Text(leaderboardProvider.errorMessage))
           : leaderboardProvider.leaderboard.isEmpty
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: Text('No Data Found'))
               : ListView.builder(
                   itemCount: leaderboardProvider.leaderboard.length,
                   itemBuilder: (context, index) {

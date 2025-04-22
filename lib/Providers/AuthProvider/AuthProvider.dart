@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Screens/AuthScreens/loginScreen.dart';
 import 'package:chess_cash/Widgets/bottomNavBar.dart';
@@ -5,6 +7,7 @@ import 'package:chess_cash/Widgets/customToast.dart';
 import 'package:chess_cash/services/navigation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,24 +40,40 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> signUp(String username, String email, String password,
-      BuildContext context) async {
+  Future<void> signUp(
+    String username,
+    String email,
+    String password,
+    BuildContext context,
+    String imagePath, // Local image file path
+  ) async {
     setLoading(true);
     try {
+      // Step 1: Create Firebase Auth User
       UserCredential userCredential =
           await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      await _firestore
-          .collection(AppConstants.usersCollection)
-          .doc(userCredential.user!.uid)
-          .set({
-        AppConstants.uidField: userCredential.user!.uid,
+      // Step 2: Upload image to Firebase Storage
+      String uid = userCredential.user!.uid;
+      String imageUrl = "";
+      if (imagePath.isNotEmpty) {
+        final ref = FirebaseStorage.instance
+            .ref()
+            .child("profileImages")
+            .child("$uid.jpg");
+        await ref.putFile(File(imagePath));
+        imageUrl = await ref.getDownloadURL();
+      }
+
+      // Step 3: Save user data in Firestore
+      await _firestore.collection(AppConstants.usersCollection).doc(uid).set({
+        AppConstants.uidField: uid,
         AppConstants.emailField: email,
         AppConstants.usernameField: username,
-        AppConstants.profileImageField: "",
+        AppConstants.profileImageField: imageUrl,
         AppConstants.createdAtField: Timestamp.now(),
         AppConstants.deviceInfoField: "Unknown",
         AppConstants.fcmTokenField: "",
@@ -70,6 +89,7 @@ class AuthProvider with ChangeNotifier {
         AppConstants.banReasonField: "",
         AppConstants.suspiciousFlagField: false,
       });
+
       await _setLoginState(true);
       setLoading(false);
       CustomToast.show(AppConstants.registrationSuccess, bgColor: Colors.green);
@@ -77,12 +97,61 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
     } on FirebaseAuthException catch (e) {
       setLoading(false);
+      print("object");
       _handleAuthError(e);
     } catch (e) {
       setLoading(false);
+      print('eeeeeeeeeeeee----------${e.toString()}');
       CustomToast.show(AppConstants.unexpectedError, bgColor: Colors.red);
     }
   }
+
+  // Future<void> signUp(String username, String email, String password,
+  //     BuildContext context) async {
+  //   setLoading(true);
+  //   try {
+  //     UserCredential userCredential =
+  //         await _auth.createUserWithEmailAndPassword(
+  //       email: email,
+  //       password: password,
+  //     );
+  //
+  //     await _firestore
+  //         .collection(AppConstants.usersCollection)
+  //         .doc(userCredential.user!.uid)
+  //         .set({
+  //       AppConstants.uidField: userCredential.user!.uid,
+  //       AppConstants.emailField: email,
+  //       AppConstants.usernameField: username,
+  //       AppConstants.profileImageField: "",
+  //       AppConstants.createdAtField: Timestamp.now(),
+  //       AppConstants.deviceInfoField: "Unknown",
+  //       AppConstants.fcmTokenField: "",
+  //       AppConstants.eloRatingField: 400,
+  //       AppConstants.gamesPlayedField: 0,
+  //       AppConstants.gamesWonField: 0,
+  //       AppConstants.gamesLostField: 0,
+  //       AppConstants.gamesDrawnField: 0,
+  //       AppConstants.rankingField: 0,
+  //       AppConstants.balanceField: 0.0,
+  //       AppConstants.isBannedField: false,
+  //       AppConstants.isVerifiedField: true,
+  //       AppConstants.banReasonField: "",
+  //       AppConstants.suspiciousFlagField: false,
+  //     });
+  //     await _setLoginState(true);
+  //     setLoading(false);
+  //     CustomToast.show(AppConstants.registrationSuccess, bgColor: Colors.green);
+  //     push(context, LoginPage());
+  //     notifyListeners();
+  //   } on FirebaseAuthException catch (e) {
+  //     setLoading(false);
+  //     _handleAuthError(e);
+  //   } catch (e) {
+  //     setLoading(false);
+  //     CustomToast.show(AppConstants.unexpectedError, bgColor: Colors.red);
+  //   }
+  // }
 
   Future<void> login(
       String email, String password, BuildContext context) async {

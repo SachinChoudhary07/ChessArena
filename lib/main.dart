@@ -17,7 +17,8 @@ void main() async {
           apiKey: 'AIzaSyCWiSHMmORX9SBCusBQjL2bOkszlYt3IlE',
           appId: '1:1023134763353:android:8b822128cf38dd947de448',
           messagingSenderId: '1023134763353',
-          projectId: 'chess4cash-37f67'));
+          projectId: 'chess4cash-37f67',
+          storageBucket: "chess4cash-37f67.firebasestorage.app"));
   runApp(
     MultiProvider(
       providers: providers(),

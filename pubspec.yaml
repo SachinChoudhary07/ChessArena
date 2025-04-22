@@ -49,7 +49,7 @@ dependencies:
   firebase_database:
   razorpay_flutter:
   intl:
-
+  firebase_storage:
 dev_dependencies:
   flutter_test:
     sdk: flutter
