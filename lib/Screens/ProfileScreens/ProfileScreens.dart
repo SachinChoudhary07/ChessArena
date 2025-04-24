@@ -59,7 +59,7 @@ class _ProfilescreensState extends State<Profilescreens> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: InkWell(
-                onTap: () => push(context, EloLeaderboard()),
+                onTap: () => push(context, const EloLeaderboard()),
                 child: const Icon(Icons.leaderboard)),
           )
         ],
@@ -67,161 +67,166 @@ class _ProfilescreensState extends State<Profilescreens> {
       ),
       body: Consumer<ProfileProvider>(
         builder: (context, profileProvider, child) {
-          if (profileProvider.isLoading) {
-            return const Center(child: Loader());
-          }
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Stack(
+          return profileProvider.isLoading
+              ? const Center(
+                  child: Loader(),
+                )
+              : Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          radius: 66,
-                          backgroundImage: NetworkImage(
-                            profileProvider.profileImageUrl ??
-                                'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSSzGVa3SoC992I_CxrcuJt7Hms5yCufJo_aTAI2yTFSqs0_YTQ1SpjaCJxenSUUBFXdUg&usqp=CAU',
+                        Center(
+                          child: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 66,
+                                backgroundImage: NetworkImage(
+                                  profileProvider.profileImageUrl ??
+                                      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSSzGVa3SoC992I_CxrcuJt7Hms5yCufJo_aTAI2yTFSqs0_YTQ1SpjaCJxenSUUBFXdUg&usqp=CAU',
+                                ),
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: InkWell(
+                                  onTap: () {
+                                    profileProvider.updateProfileImage();
+                                  },
+                                  child: CircleAvatar(
+                                    radius: 15,
+                                    backgroundColor: Colors.white,
+                                    child: Icon(Icons.edit,
+                                        size: 15,
+                                        color: ColorResources.primaryColor),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: InkWell(
-                            onTap: () {
-                              profileProvider.updateProfileImage();
-                            },
-                            child: CircleAvatar(
-                              radius: 15,
-                              backgroundColor: Colors.white,
-                              child: Icon(Icons.edit,
-                                  size: 15, color: ColorResources.primaryColor),
+                        Helper.heightSizedBox(26),
+                        TextField(
+                          controller:
+                              TextEditingController(text: profileProvider.name),
+                          decoration: const InputDecoration(
+                            labelText: AppConstants.userName,
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        Helper.heightSizedBox(8),
+                        TextField(
+                          readOnly: true,
+                          controller: TextEditingController(
+                              text: profileProvider.email),
+                          decoration: const InputDecoration(
+                            labelText: AppConstants.email,
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        Helper.heightSizedBox(16),
+                        GestureDetector(
+                          onTap: () {},
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                  color: ColorResources.secondaryColor),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              AppConstants.updateProfile,
+                              style: TextStyle(
+                                  color: ColorResources.secondaryColor),
+                            ),
+                          ),
+                        ),
+                        Helper.heightSizedBox(16),
+                        GestureDetector(
+                          onTap: () {},
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                  color: ColorResources.secondaryColor),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              AppConstants.inviteFriends,
+                              style: TextStyle(
+                                  color: ColorResources.secondaryColor),
+                            ),
+                          ),
+                        ),
+                        Helper.heightSizedBox(16),
+                        GestureDetector(
+                          onTap: () =>
+                              _showLogoutConfirmationDialog(profileProvider),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.red),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              AppConstants.logout,
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ),
+                        Helper.heightSizedBox(16),
+                        GestureDetector(
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: const Text("Delete Account"),
+                                content: const Text(
+                                    "Are you sure you want to delete your account?"),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text("Cancel"),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      Provider.of<ProfileProvider>(context,
+                                              listen: false)
+                                          .deleteAccount(context);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.white),
+                                    child: const Text(
+                                      "Delete",
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.red),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              AppConstants.deleteAccount,
+                              style: TextStyle(color: Colors.red),
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Helper.heightSizedBox(26),
-                  TextField(
-                    controller:
-                        TextEditingController(text: profileProvider.name),
-                    decoration: const InputDecoration(
-                      labelText: AppConstants.userName,
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  Helper.heightSizedBox(8),
-                  TextField(
-                    readOnly: true,
-                    controller:
-                        TextEditingController(text: profileProvider.email),
-                    decoration: const InputDecoration(
-                      labelText: AppConstants.email,
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  Helper.heightSizedBox(16),
-                  GestureDetector(
-                    onTap: () {},
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        border:
-                            Border.all(color: ColorResources.secondaryColor),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        AppConstants.updateProfile,
-                        style: TextStyle(color: ColorResources.secondaryColor),
-                      ),
-                    ),
-                  ),
-                  Helper.heightSizedBox(16),
-                  GestureDetector(
-                    onTap: () {},
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        border:
-                            Border.all(color: ColorResources.secondaryColor),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        AppConstants.inviteFriends,
-                        style: TextStyle(color: ColorResources.secondaryColor),
-                      ),
-                    ),
-                  ),
-                  Helper.heightSizedBox(16),
-                  GestureDetector(
-                    onTap: () => _showLogoutConfirmationDialog(profileProvider),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.red),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        AppConstants.logout,
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ),
-                  Helper.heightSizedBox(16),
-                  GestureDetector(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: const Text("Delete Account"),
-                          content: const Text(
-                              "Are you sure you want to delete your account?"),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text("Cancel"),
-                            ),
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                                Provider.of<ProfileProvider>(context,
-                                        listen: false)
-                                    .deleteAccount(context);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white),
-                              child: const Text(
-                                "Delete",
-                                style: TextStyle(color: Colors.red),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.red),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        AppConstants.deleteAccount,
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
+                );
         },
       ),
     );

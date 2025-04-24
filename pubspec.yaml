@@ -50,6 +50,7 @@ dependencies:
   razorpay_flutter:
   intl:
   firebase_storage:
+  flutter_native_splash:
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -103,3 +104,10 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+
+flutter_native_splash:
+  color: "#42a5f5"
+  image: assets/Icons/splash_Icon.png
+  color_dark: "#042a49"
+  image_dark: assets/Icons/splash_Icon.png

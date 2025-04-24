@@ -2,6 +2,7 @@ import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Screens/GameScreens/MatchMakingScreen.dart';
 import 'package:chess_cash/Screens/PaidContest/JoinPaidContest.dart';
+import 'package:chess_cash/Screens/create_contest.dart';
 import 'package:chess_cash/Services/navigation.dart';
 import 'package:flutter/material.dart';
 
@@ -50,7 +51,7 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                 _buildButton(
                     AppConstants.playFreeMatch, Icons.play_arrow, Colors.blue,
                     () {
-                  push(context, MatchMakingScreen());
+                  push(context, const MatchMakingScreen());
                 }),
                 _buildButton(AppConstants.joinPaidContest, Icons.attach_money,
                     ColorResources.secondaryColor, () {
@@ -61,8 +62,9 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                 _buildButton(
                     AppConstants.createContest,
                     Icons.compare_arrows_sharp,
-                    ColorResources.secondaryColor,
-                    () {}),
+                    ColorResources.secondaryColor, () {
+                  push(context, const CreateContest());
+                }),
                 Helper.heightSizedBox(20),
                 Container(
                   decoration: BoxDecoration(

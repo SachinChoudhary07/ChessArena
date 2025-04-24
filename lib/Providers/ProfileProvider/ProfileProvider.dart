@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Screens/AuthScreens/loginScreen.dart';
 import 'package:chess_cash/Services/navigation.dart';
 import 'package:chess_cash/Widgets/customToast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:image_picker/image_picker.dart';
@@ -41,6 +44,41 @@ class ProfileProvider with ChangeNotifier {
     }
   }
 
+  Future<void> updateUserDetails({String? newName, XFile? newImage}) async {
+    try {
+      setLoading(true);
+      Map<String, dynamic> updates = {};
+
+      if (newName != null && newName.trim().isNotEmpty) {
+        updates['username'] = newName.trim();
+        name = newName.trim();
+      }
+
+      if (newImage != null) {
+        String imageUrl = await uploadImage(newImage);
+        updates['profileImage'] = imageUrl;
+        profileImageUrl = imageUrl;
+      }
+
+      if (updates.isNotEmpty) {
+        await _firestore
+            .collection('users')
+            .doc(currentUser!.uid)
+            .update(updates);
+        CustomToast.show("Profile updated successfully", bgColor: Colors.green);
+      } else {
+        CustomToast.show("Nothing to update", bgColor: Colors.orange);
+      }
+
+      notifyListeners();
+    } catch (e) {
+      print("Error updating profile: $e");
+      CustomToast.show("Failed to update profile", bgColor: Colors.red);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   Future<void> updateProfileImage() async {
     if (await Permission.photos.request().isGranted ||
         await Permission.storage.request().isGranted) {
@@ -52,7 +90,7 @@ class ProfileProvider with ChangeNotifier {
         // Assume uploadImage returns the URL of the uploaded image
         String imageUrl = await uploadImage(pickedFile);
         await _firestore.collection('users').doc(currentUser!.uid).update({
-          'profileImageUrl': imageUrl,
+          'profileImage': imageUrl,
         });
         profileImageUrl = imageUrl;
         notifyListeners();
@@ -61,9 +99,18 @@ class ProfileProvider with ChangeNotifier {
   }
 
   Future<String> uploadImage(XFile file) async {
-    // Implement Firebase Storage upload logic here
-    // Return the URL of the uploaded image
-    return 'uploaded_image_url';
+    try {
+      final storageRef = FirebaseStorage.instance.ref();
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+      final fileRef = storageRef.child('profile_images/$fileName');
+
+      final uploadTask = await fileRef.putFile(File(file.path));
+      final downloadUrl = await fileRef.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      print("Error uploading image: $e");
+      throw Exception('Failed to upload image');
+    }
   }
 
   bool isLoading = false;
