@@ -1,10 +1,13 @@
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
+import 'package:chess_cash/Providers/WalletProvider/WalletProvider.dart';
 import 'package:chess_cash/Screens/GameScreens/MatchMakingScreen.dart';
 import 'package:chess_cash/Screens/PaidContest/JoinPaidContest.dart';
 import 'package:chess_cash/Screens/create_contest.dart';
 import 'package:chess_cash/Services/navigation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../../Constant/ui_helper.dart';
 
@@ -18,6 +21,8 @@ class Dashboardscreen extends StatefulWidget {
 class _DashboardscreenState extends State<Dashboardscreen> {
   @override
   Widget build(BuildContext context) {
+    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+
     return SafeArea(
       child: Scaffold(
         backgroundColor: ColorResources.primaryColor,
@@ -41,11 +46,19 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildButton(AppConstants.addMoney,
-                        Icons.account_balance_wallet, Colors.green, () {}),
+                    _buildButton(
+                      AppConstants.addMoney,
+                      Icons.account_balance_wallet,
+                      Colors.green,
+                      () => _showAddCashBottomSheet(context, walletProvider),
+                    ),
                     Helper.widthSizedBox(),
-                    _buildButton(AppConstants.withdraw, Icons.money_off,
-                        ColorResources.secondaryColor, () {}),
+                    _buildButton(
+                        AppConstants.withdraw,
+                        Icons.money_off,
+                        ColorResources.secondaryColor,
+                        () => _showWithdrawalCashBottomSheet(
+                            context, walletProvider)),
                   ],
                 ),
                 _buildButton(
@@ -129,5 +142,163 @@ class _DashboardscreenState extends State<Dashboardscreen> {
             ],
           )),
     );
+  }
+
+  void _showAddCashBottomSheet(
+      BuildContext context, WalletProvider walletProvider) {
+    final focusNode = FocusNode();
+
+    showModalBottomSheet(
+      constraints: BoxConstraints.tight(
+          Size.fromHeight(MediaQuery.of(context).size.height / 1.7)),
+      context: context,
+      isScrollControlled: true,
+      builder: (_) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Enter Amount',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                focusNode: focusNode,
+                maxLength: 4,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                  hintText: 'e.g. 100',
+                  prefixText: '₹ ',
+                  border: OutlineInputBorder(),
+                ),
+                autofocus: true,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16)),
+                onPressed: () {
+                  if (controller.text.isNotEmpty) {
+                    walletProvider.enteredAmount =
+                        double.tryParse(controller.text);
+                    if (walletProvider.enteredAmount != null &&
+                        walletProvider.enteredAmount! > 0) {
+                      Navigator.pop(context);
+                      walletProvider.openCheckout(controller.text, context);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Please enter a valid amount')),
+                      );
+                    }
+                  }
+                },
+                child: const Text('PROCEED TO PAY'),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+
+    focusNode.requestFocus();
+  }
+
+  TextEditingController withdrawalupiController = TextEditingController();
+  TextEditingController withdrawalController = TextEditingController();
+  TextEditingController controller = TextEditingController();
+
+  void _showWithdrawalCashBottomSheet(
+      BuildContext context, WalletProvider walletProvider) {
+    final focusNode = FocusNode();
+
+    showModalBottomSheet(
+      constraints: BoxConstraints.tight(
+          Size.fromHeight(MediaQuery.of(context).size.height / 1.5)),
+      context: context,
+      isScrollControlled: true,
+      builder: (_) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Enter Amount',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: withdrawalController,
+                focusNode: focusNode,
+                maxLength: 4,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                  hintText: 'e.g. 100',
+                  prefixText: '₹ ',
+                  border: OutlineInputBorder(),
+                ),
+                autofocus: true,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Enter UPI ID',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: withdrawalupiController,
+                keyboardType: TextInputType.text,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. abc@paytm',
+                  prefixText: '@ ',
+                  border: OutlineInputBorder(),
+                ),
+                autofocus: true,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16)),
+                onPressed: () {
+                  final amount = double.tryParse(withdrawalController.text);
+                  final upiID = withdrawalupiController.text;
+                  if (amount != null && upiID.isNotEmpty) {
+                    walletProvider.requestWithdrawal(amount, upiID, context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Please enter valid details')),
+                    );
+                  }
+                },
+                child: const Text('PROCEED TO WITHDRAWAL'),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+
+    focusNode.requestFocus();
   }
 }
