@@ -51,6 +51,8 @@ dependencies:
   intl:
   firebase_storage:
   flutter_native_splash:
+  pinput: ^5.0.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

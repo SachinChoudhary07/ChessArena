@@ -1,5 +1,4 @@
 import 'package:chess_cash/Constant/app_constant.dart';
-import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Constant/ui_helper.dart';
 import 'package:chess_cash/Providers/AuthProvider/AuthProvider.dart';
 import 'package:chess_cash/Screens/AuthScreens/signupScreen.dart';
@@ -24,7 +23,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthProvider>(
+    return Consumer<AutProvider>(
       builder: (context, authProvider, child) {
         return Scaffold(
           backgroundColor: Colors.black,
@@ -110,33 +109,33 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
                               Helper.heightSizedBox(10),
-                              ElevatedButton(
-                                onPressed: () {
-                                  authProvider.signInWithGoogle(context);
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: ColorResources.primaryColor,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 10,
-                                    horizontal: 40,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Image.asset(
-                                      AppConstants.googleImage,
-                                      height: 24,
-                                    ),
-                                    Helper.widthSizedBox(10),
-                                    const Text(
-                                      AppConstants.google,
-                                      style: TextStyle(
-                                          color: Colors.white, fontSize: 16),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                              // ElevatedButton(
+                              //   onPressed: () {
+                              //     authProvider.signInWithGoogle(context);
+                              //   },
+                              //   style: ElevatedButton.styleFrom(
+                              //     backgroundColor: ColorResources.primaryColor,
+                              //     padding: const EdgeInsets.symmetric(
+                              //       vertical: 10,
+                              //       horizontal: 40,
+                              //     ),
+                              //   ),
+                              //   child: Row(
+                              //     mainAxisSize: MainAxisSize.min,
+                              //     children: [
+                              //       Image.asset(
+                              //         AppConstants.googleImage,
+                              //         height: 24,
+                              //       ),
+                              //       Helper.widthSizedBox(10),
+                              //       const Text(
+                              //         AppConstants.google,
+                              //         style: TextStyle(
+                              //             color: Colors.white, fontSize: 16),
+                              //       ),
+                              //     ],
+                              //   ),
+                              // ),
                             ],
                           ),
 

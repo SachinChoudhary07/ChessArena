@@ -80,7 +80,7 @@ class MyApp extends StatelessWidget {
 
 List<SingleChildWidget> providers() {
   return [
-    ChangeNotifierProvider(create: (context) => AuthProvider()),
+    ChangeNotifierProvider(create: (context) => AutProvider()),
     ChangeNotifierProvider(create: (context) => ProfileProvider()),
     ChangeNotifierProvider(create: (context) => LeaderBoardProvider()),
     ChangeNotifierProvider(create: (context) => WalletProvider()),

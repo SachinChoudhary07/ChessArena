@@ -17,9 +17,11 @@ class AppConstants {
   static const String userName = 'Username';
   static const String email = 'Email';
   static const String password = 'Password';
-  static const String ageConfirmation = '18 years old ?';
+  static const String ageConfirmation = 'I am 18+ years old.';
   static const String alreadyAccount = 'Already have an account? Login';
   static const String dontHaveAccount = 'Don\'t have an account? Register';
+  static const String privacyPolicy =
+      'By creating an account, I agree to the Terms & Conditions and Privacy Policy outlined here.';
 
   // Dashboard Text
   static const String home = 'Home';

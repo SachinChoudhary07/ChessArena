@@ -7,6 +7,7 @@ import 'package:chess_cash/Screens/create_contest.dart';
 import 'package:chess_cash/Services/navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:icons_plus/icons_plus.dart';
 import 'package:provider/provider.dart';
 
 import '../../Constant/ui_helper.dart';
@@ -49,21 +50,20 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                     _buildButton(
                       AppConstants.addMoney,
                       Icons.account_balance_wallet,
-                      Colors.green,
+                      ColorResources.secondaryColor,
                       () => _showAddCashBottomSheet(context, walletProvider),
                     ),
                     Helper.widthSizedBox(),
                     _buildButton(
                         AppConstants.withdraw,
-                        Icons.money_off,
+                        ZondIcons.wallet,
                         ColorResources.secondaryColor,
                         () => _showWithdrawalCashBottomSheet(
                             context, walletProvider)),
                   ],
                 ),
-                _buildButton(
-                    AppConstants.playFreeMatch, Icons.play_arrow, Colors.blue,
-                    () {
+                _buildButton(AppConstants.playFreeMatch, Icons.play_arrow,
+                    ColorResources.secondaryColor, () {
                   push(context, const MatchMakingScreen());
                 }),
                 _buildButton(AppConstants.joinPaidContest, Icons.attach_money,
