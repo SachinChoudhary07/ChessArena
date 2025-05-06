@@ -21,7 +21,8 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   late String currentUserId;
-  late String profile;
+
+  // late String profile;
   late int currentUserElo;
 
   StreamSubscription? matchmakingListener;
@@ -30,7 +31,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
   void initState() {
     super.initState();
     currentUserId = _auth.currentUser!.uid;
-    profile = _auth.currentUser!.photoURL!;
+    // profile = _auth.currentUser!.photoURL!;
     // Replace this with your actual way to get user Elo
     currentUserElo = 1500;
     _startMatchmaking();
@@ -133,7 +134,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildPlayerCard(AppConstants.you, profile),
+                // _buildPlayerCard(AppConstants.you, profile),
                 const Text(
                   "VS",
                   style: TextStyle(

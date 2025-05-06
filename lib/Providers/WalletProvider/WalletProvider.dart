@@ -46,11 +46,11 @@ class WalletProvider extends ChangeNotifier {
         'email': 'user@example.com',
       },
       'method': {
-        'card': true,
-        'netbanking': true,
         'upi': true,
+        'netbanking': true,
+        'card': true,
         'wallet': true,
-      },
+      }
     };
 
     try {

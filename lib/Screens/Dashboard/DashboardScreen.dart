@@ -5,9 +5,9 @@ import 'package:chess_cash/Screens/GameScreens/MatchMakingScreen.dart';
 import 'package:chess_cash/Screens/PaidContest/JoinPaidContest.dart';
 import 'package:chess_cash/Screens/create_contest.dart';
 import 'package:chess_cash/Services/navigation.dart';
+import 'package:chess_cash/Widgets/customToast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:icons_plus/icons_plus.dart';
 import 'package:provider/provider.dart';
 
 import '../../Constant/ui_helper.dart';
@@ -56,7 +56,7 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                     Helper.widthSizedBox(),
                     _buildButton(
                         AppConstants.withdraw,
-                        ZondIcons.wallet,
+                        Icons.account_balance_wallet_outlined,
                         ColorResources.secondaryColor,
                         () => _showWithdrawalCashBottomSheet(
                             context, walletProvider)),
@@ -71,7 +71,10 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                   push(context, const JoinPaidContest());
                 }),
                 _buildButton(AppConstants.tournaments, Icons.emoji_events,
-                    ColorResources.secondaryColor, () {}),
+                    ColorResources.secondaryColor, () {
+                  CustomToast.show('Coming Soon',
+                      bgColor: ColorResources.secondaryColor);
+                }),
                 _buildButton(
                     AppConstants.createContest,
                     Icons.compare_arrows_sharp,
@@ -87,9 +90,16 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: '10 min',
-                        items: <String>['10 min', '15 min', '30 min']
-                            .map<DropdownMenuItem<String>>((String value) {
+                        value: '1 min',
+                        // Time options: 1 min, 3 min, 5 min, 10 min, 15 min, 30 min.
+                        items: <String>[
+                          '1 min',
+                          '3 min',
+                          '5 min',
+                          '10 min',
+                          '15 min',
+                          '30 min'
+                        ].map<DropdownMenuItem<String>>((String value) {
                           return DropdownMenuItem<String>(
                             alignment: Alignment.center,
                             value: value,
@@ -298,7 +308,6 @@ class _DashboardscreenState extends State<Dashboardscreen> {
         );
       },
     );
-
     focusNode.requestFocus();
   }
 }

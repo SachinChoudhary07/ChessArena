@@ -141,7 +141,7 @@ class AutProvider with ChangeNotifier {
         AppConstants.createdAtField: Timestamp.now(),
         AppConstants.deviceInfoField: "Unknown",
         AppConstants.fcmTokenField: "",
-        AppConstants.eloRatingField: 400,
+        AppConstants.eloRatingField: 1200,
         AppConstants.gamesPlayedField: 0,
         AppConstants.gamesWonField: 0,
         AppConstants.gamesLostField: 0,

@@ -55,14 +55,15 @@ class WalletScreen extends StatelessWidget {
                     _buildActionButton(
                       context,
                       label: AppConstants.addCash,
-                      color: Colors.green,
+                      color: Colors.transparent,
+                      textColor: ColorResources.secondaryColor,
                       onTap: () =>
                           _showAddCashBottomSheet(context, walletProvider),
                     ),
                     _buildActionButton(
                       context,
                       label: AppConstants.withdraw,
-                      color: Colors.white,
+                      color: Colors.transparent,
                       textColor: ColorResources.secondaryColor,
                       onTap: () => _showWithdrawalCashBottomSheet(
                           context, walletProvider),
