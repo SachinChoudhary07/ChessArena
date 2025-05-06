@@ -35,6 +35,7 @@ class LeaderBoardProvider with ChangeNotifier {
       setLoading(false);
     } catch (e) {
       _errorMessage = 'Error fetching leaderboard: $e';
+      print(_errorMessage);
       setLoading(false);
     }
     notifyListeners();
