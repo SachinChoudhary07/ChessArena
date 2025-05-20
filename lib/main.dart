@@ -10,8 +10,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
+import 'Providers/gameProvider/GameProvider.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(
       options: const FirebaseOptions(
           apiKey: 'AIzaSyCWiSHMmORX9SBCusBQjL2bOkszlYt3IlE',
@@ -19,6 +22,11 @@ void main() async {
           messagingSenderId: '1023134763353',
           projectId: 'chess4cash-37f67',
           storageBucket: "chess4cash-37f67.firebasestorage.app"));
+  // await FirebaseAppCheck.instance
+  //     .activate(androidProvider: AndroidProvider.debug
+  //         // Or use: AndroidProvider.debug for development
+  //         );
+
   runApp(
     MultiProvider(
       providers: providers(),
@@ -84,5 +92,9 @@ List<SingleChildWidget> providers() {
     ChangeNotifierProvider(create: (context) => ProfileProvider()),
     ChangeNotifierProvider(create: (context) => LeaderBoardProvider()),
     ChangeNotifierProvider(create: (context) => WalletProvider()),
+    ChangeNotifierProvider(create: (context) => GameProvider()),
   ];
 }
+
+// debug token app check
+//A3225464-5115-407C-A9AB-9238773D13A9

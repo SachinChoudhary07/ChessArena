@@ -5,7 +5,6 @@ import 'package:chess_cash/Screens/GameScreens/MatchMakingScreen.dart';
 import 'package:chess_cash/Screens/PaidContest/JoinPaidContest.dart';
 import 'package:chess_cash/Screens/create_contest.dart';
 import 'package:chess_cash/Services/navigation.dart';
-import 'package:chess_cash/Widgets/customToast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -71,10 +70,7 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                   push(context, const JoinPaidContest());
                 }),
                 _buildButton(AppConstants.tournaments, Icons.emoji_events,
-                    ColorResources.secondaryColor, () {
-                  CustomToast.show('Coming Soon',
-                      bgColor: ColorResources.secondaryColor);
-                }),
+                    ColorResources.secondaryColor, () {}),
                 _buildButton(
                     AppConstants.createContest,
                     Icons.compare_arrows_sharp,

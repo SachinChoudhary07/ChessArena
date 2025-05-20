@@ -29,14 +29,17 @@ class AutProvider with ChangeNotifier {
 
   String? _verificationId;
 
-  Future<void> sendOtp(String phoneNumber, BuildContext context) async {
+  Future<void> sendOtp(
+    String phoneNumber,
+    BuildContext context,
+    VoidCallback onOtpSent,
+  ) async {
     setLoading(true);
     try {
       await _auth.verifyPhoneNumber(
-        phoneNumber: phoneNumber,
+        phoneNumber: "+91$phoneNumber",
         timeout: const Duration(seconds: 60),
         verificationCompleted: (PhoneAuthCredential credential) async {
-          // Auto-complete case
           await _auth.signInWithCredential(credential);
         },
         verificationFailed: (FirebaseAuthException e) {
@@ -48,6 +51,9 @@ class AutProvider with ChangeNotifier {
           setLoading(false);
           _verificationId = verificationId;
           CustomToast.show("OTP Sent", bgColor: Colors.green);
+
+          // ✅ Navigate here
+          onOtpSent();
         },
         codeAutoRetrievalTimeout: (String verificationId) {
           _verificationId = verificationId;
@@ -69,6 +75,7 @@ class AutProvider with ChangeNotifier {
     required String imagePath,
     required String skillLevel,
   }) async {
+    print('printing smsCode:- $smsCode');
     if (_verificationId == null) {
       CustomToast.show("No OTP was sent", bgColor: Colors.red);
       return;
@@ -90,6 +97,8 @@ class AutProvider with ChangeNotifier {
           username, email, number, password, context, imagePath, skillLevel);
     } on FirebaseAuthException catch (e) {
       setLoading(false);
+      print("error");
+      print(e);
       CustomToast.show("Invalid OTP", bgColor: Colors.red);
     }
   }
@@ -135,7 +144,7 @@ class AutProvider with ChangeNotifier {
         AppConstants.uidField: uid,
         AppConstants.emailField: email,
         AppConstants.usernameField: username,
-        'phoneNumber': number,
+        'phoneNumber': "+91$number",
         'skillLevel': skillLevel,
         AppConstants.profileImageField: imageUrl,
         AppConstants.createdAtField: Timestamp.now(),
@@ -162,6 +171,7 @@ class AutProvider with ChangeNotifier {
     } on FirebaseAuthException catch (e) {
       setLoading(false);
       print("object");
+      print("error$e");
       _handleAuthError(e);
     } catch (e) {
       setLoading(false);
@@ -174,20 +184,19 @@ class AutProvider with ChangeNotifier {
 
   void resendOtp(String phoneNumber, BuildContext context) {
     FirebaseAuth _auth = FirebaseAuth.instance;
-
     try {
       // Show loading UI
       isLoading = true;
       notifyListeners();
 
       _auth.verifyPhoneNumber(
-        phoneNumber: phoneNumber,
+        phoneNumber: "+91$phoneNumber",
         timeout: const Duration(seconds: 60),
 
         // Auto verify (e.g., for Android sometimes auto SMS detection)
         verificationCompleted: (PhoneAuthCredential credential) async {
           // Optionally sign in directly if auto-complete works
-          // await _auth.signInWithCredential(credential);
+          await _auth.signInWithCredential(credential);
           isLoading = false;
           notifyListeners();
         },

@@ -69,9 +69,8 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    authProvider.sendOtp(phoneNumberController.text, context);
-
-    push(
+    authProvider.sendOtp(phoneNumberController.text, context, () {
+      push(
         context,
         Otpscreen(
           imagePath: _selectedImage!.path,
@@ -79,8 +78,10 @@ class _RegisterPageState extends State<RegisterPage> {
           number: phoneNumberController.text,
           password: password,
           username: username,
-          skillLevel: _selectedSkillLevel!, // Send skill level to OTP screen
-        ));
+          skillLevel: _selectedSkillLevel!,
+        ),
+      );
+    });
   }
 
   final ImagePicker _picker = ImagePicker();
