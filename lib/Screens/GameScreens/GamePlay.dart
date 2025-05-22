@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Screens/Dashboard/DashboardScreen.dart';
 import 'package:chess_cash/Services/navigation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:squares/squares.dart';
@@ -11,7 +12,9 @@ import 'package:stockfish/stockfish.dart';
 import '../../Providers/gameProvider/GameProvider.dart';
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+  final String roomCode;
+
+  const GameScreen({super.key, required this.roomCode});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -27,9 +30,28 @@ class _GameScreenState extends State<GameScreen> {
     gameProvider.resetGame(newGame: false);
     gameProvider.fetchUserProfile();
 
-    if (mounted) {
-      // letOtherPlayerPlayFirst();
-    }
+    FirebaseFirestore.instance
+        .collection('games')
+        .doc(widget.roomCode)
+        .snapshots()
+        .listen((DocumentSnapshot snapshot) {
+      if (snapshot.exists) {
+        final data = snapshot.data() as Map<String, dynamic>;
+
+        final player1 = data['player1'];
+        final player2 = data['player2'];
+        final creatorUid = data['creatorUid'];
+        final gameStatus = data['status'];
+
+        final gameProvider = context.read<GameProvider>();
+        gameProvider.initializeMultiplayerGame(
+          data: data,
+          userId: gameProvider.userId, // from your auth
+          roomCode: widget.roomCode,
+        );
+      }
+    });
+
     super.initState();
   }
 

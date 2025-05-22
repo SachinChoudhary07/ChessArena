@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:bishop/bishop.dart' as bishop;
 import 'package:chess_cash/Screens/Dashboard/DashboardScreen.dart';
 import 'package:chess_cash/Services/navigation.dart';
-import 'package:chess_cash/modals/gameModal.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -11,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:square_bishop/square_bishop.dart';
 import 'package:squares/squares.dart';
 import 'package:stockfish/stockfish.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../Constant/app_constant.dart';
 
@@ -324,6 +322,68 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
+  String _roomCode = '';
+  String gameCreatorUid = '';
+  String gameCreatorName = '';
+  String gameCreatorPhoto = '';
+  int gameCreatorRating = 0;
+
+  String userPhoto = '';
+  int userRating = 0;
+
+  void initializeMultiplayerGame({
+    required Map<String, dynamic> data,
+    required String userId,
+    required String roomCode,
+  }) {
+    _roomCode = roomCode;
+    _vsComputer = false;
+
+    _gameCreatorUid = data[AppConstants.gameCreatorUid];
+    _gameCreatorName = data[AppConstants.gameCreatorName];
+    _gameCreatorPhoto = data[AppConstants.gameCreatorImage];
+    _gameCreatorRating = data[AppConstants.gameCreatorRating];
+
+    _userId = userId;
+    _userName = userId == _gameCreatorUid
+        ? data[AppConstants.gameCreatorName]
+        : data[AppConstants.userName];
+    _userPhoto = userId == _gameCreatorUid
+        ? data[AppConstants.gameCreatorImage]
+        : data[AppConstants.userImage];
+    _userRating = userId == _gameCreatorUid
+        ? data[AppConstants.gameCreatorRating]
+        : data[AppConstants.userRating];
+
+    // Determine if we are white or black
+    if (userId == _gameCreatorUid) {
+      _player = Squares.white;
+      _playerColor = PlayerColor.white;
+    } else {
+      _player = Squares.black;
+      _playerColor = PlayerColor.black;
+    }
+
+    // Set game timers
+    List<String> whitesTimeParts = data[AppConstants.whitesTime].split(':');
+    List<String> blacksTimeParts = data[AppConstants.blacksTime].split(':');
+
+    int whitesGameTime =
+        int.parse(whitesTimeParts[0]) * 60 + int.parse(whitesTimeParts[1]);
+    int blacksGamesTime =
+        int.parse(blacksTimeParts[0]) * 60 + int.parse(blacksTimeParts[1]);
+
+    _savedWhitesTime = Duration(minutes: whitesGameTime);
+    _savedBlacksTime = Duration(minutes: blacksGamesTime);
+    _whitesTime = _savedWhitesTime;
+    _blacksTime = _savedBlacksTime;
+
+    _game = bishop.Game(variant: bishop.Variant.standard());
+    _state = _game.squaresState(_player);
+
+    notifyListeners();
+  }
+
   // game over dialog
   void gameOverDialog({
     required BuildContext context,
@@ -458,123 +518,6 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
-  // search for player
-  Future searchPlayer({
-    required String uid,
-    required String name,
-    required String email,
-    required String image,
-    required String createdAt,
-    required int playerRating,
-    required Function() onSuccess,
-    required Function(String) onFail,
-  }) async {
-    try {
-      // get all available games
-      final availableGames =
-          await firebaseFirestore.collection(AppConstants.availableGames).get();
-
-      //check if there are any available games
-      if (availableGames.docs.isNotEmpty) {
-        final List<DocumentSnapshot> gamesList = availableGames.docs
-            .where((element) => element[AppConstants.isPlaying] == false)
-            .toList();
-
-        // check if there are no games where isPlaying == false
-        if (gamesList.isEmpty) {
-          _waitingText = AppConstants.searchingPlayerText;
-          notifyListeners();
-          // create a new game
-          createNewGameInFireStore(
-            uid: uid,
-            name: name,
-            email: email,
-            image: image,
-            createdAt: createdAt,
-            playerRating: playerRating,
-            onSuccess: onSuccess,
-            onFail: onFail,
-          );
-        } else {
-          _waitingText = AppConstants.joiningGameText;
-          notifyListeners();
-          // join a game
-          joinGame(
-            game: gamesList.first,
-            uid: uid,
-            name: name,
-            email: email,
-            image: image,
-            createdAt: createdAt,
-            playerRating: playerRating,
-            onSuccess: onSuccess,
-            onFail: onFail,
-          );
-        }
-      } else {
-        _waitingText = AppConstants.searchingPlayerText;
-        notifyListeners();
-        // we don not have any available games - create a game
-        createNewGameInFireStore(
-          uid: uid,
-          name: name,
-          email: email,
-          image: image,
-          createdAt: createdAt,
-          playerRating: playerRating,
-          onSuccess: onSuccess,
-          onFail: onFail,
-        );
-      }
-    } on FirebaseException catch (e) {
-      _isLoading = false;
-      notifyListeners();
-      onFail(e.toString());
-    }
-  }
-
-  // create a game
-  void createNewGameInFireStore({
-    required String uid,
-    required String name,
-    required String email,
-    required String image,
-    required String createdAt,
-    required int playerRating,
-    required Function() onSuccess,
-    required Function(String) onFail,
-  }) async {
-    // create a game id
-    _gameId = const Uuid().v4();
-    notifyListeners();
-
-    try {
-      await firebaseFirestore
-          .collection(AppConstants.availableGames)
-          .doc(uid)
-          .set({
-        AppConstants.uid: '',
-        AppConstants.name: '',
-        AppConstants.photoUrl: '',
-        AppConstants.userRating: 1200,
-        AppConstants.gameCreatorUid: uid,
-        AppConstants.gameCreatorName: name,
-        AppConstants.gameCreatorImage: image,
-        AppConstants.gameCreatorRating: playerRating,
-        AppConstants.isPlaying: false,
-        AppConstants.gameId: gameId,
-        AppConstants.dateCreated:
-            DateTime.now().microsecondsSinceEpoch.toString(),
-        AppConstants.whitesTime: _savedWhitesTime.toString(),
-        AppConstants.blacksTime: _savedBlacksTime.toString(),
-      });
-
-      onSuccess();
-    } on FirebaseException catch (e) {
-      onFail(e.toString());
-    }
-  }
-
   String _gameCreatorUid = '';
   String _gameCreatorName = '';
   String _gameCreatorPhoto = '';
@@ -584,208 +527,9 @@ class GameProvider extends ChangeNotifier {
   String _userPhoto = '';
   int _userRating = 1200;
 
-  String get gameCreatorUid => _gameCreatorUid;
-
-  String get gameCreatorName => _gameCreatorName;
-
-  String get gameCreatorPhoto => _gameCreatorPhoto;
-
-  int get gameCreatorRating => _gameCreatorRating;
-
   String get userId => _userId;
 
   String get userName => _userName;
-
-  String get userPhoto => _userPhoto;
-
-  int get userRating => _userRating;
-
-  // join game
-  void joinGame({
-    required DocumentSnapshot<Object?> game,
-    required String uid,
-    required String name,
-    required String email,
-    required String image,
-    required String createdAt,
-    required int playerRating,
-    required Function() onSuccess,
-    required Function(String) onFail,
-  }) async {
-    try {
-      // get our created game
-      final myGame = await firebaseFirestore
-          .collection(AppConstants.availableGames)
-          .doc(uid)
-          .get();
-
-      // get data from the game we are joining
-      _gameCreatorUid = game[AppConstants.gameCreatorUid];
-      _gameCreatorName = game[AppConstants.gameCreatorName];
-      _gameCreatorPhoto = game[AppConstants.gameCreatorImage];
-      _gameCreatorRating = game[AppConstants.gameCreatorRating];
-      _userId = uid;
-      _userName = name;
-      _userPhoto = image;
-      _userRating = playerRating;
-      _gameId = game[AppConstants.gameId];
-      notifyListeners();
-
-      if (myGame.exists) {
-        // delete our created game since we are joing another game
-        await myGame.reference.delete();
-      }
-
-      // initialize the gameModel
-      final gameModel = GameModel(
-        gameId: gameId,
-        gameCreatorUid: _gameCreatorUid,
-        userId: userId,
-        positonFen: getPositionFen(),
-        winnerId: '',
-        whitesTime: game[AppConstants.whitesTime],
-        blacksTime: game[AppConstants.blacksTime],
-        whitsCurrentMove: '',
-        blacksCurrentMove: '',
-        boardState: state.board.flipped().toString(),
-        playState: PlayState.ourTurn.name.toString(),
-        isWhitesTurn: true,
-        isGameOver: false,
-        squareState: state.player,
-        moves: state.moves.toList(),
-      );
-
-      // create a game controller directory in fireStore
-      await firebaseFirestore
-          .collection(AppConstants.runningGames)
-          .doc(gameId)
-          .collection(AppConstants.game)
-          .doc(gameId)
-          .set(gameModel.toMap());
-
-      // create a new game directory in fireStore
-      await firebaseFirestore
-          .collection(AppConstants.runningGames)
-          .doc(gameId)
-          .set({
-        AppConstants.gameCreatorUid: gameCreatorUid,
-        AppConstants.gameCreatorName: gameCreatorName,
-        AppConstants.gameCreatorImage: gameCreatorPhoto,
-        AppConstants.gameCreatorRating: gameCreatorRating,
-        AppConstants.userId: userId,
-        AppConstants.userName: userName,
-        AppConstants.userImage: userPhoto,
-        AppConstants.userRating: userRating,
-        AppConstants.isPlaying: true,
-        AppConstants.dateCreated:
-            DateTime.now().microsecondsSinceEpoch.toString(),
-        AppConstants.gameScore: '0-0',
-      });
-
-      // update game settings depending on the data of the game we are joining
-      await setGameDataAndSettings(
-        game: game,
-        uid: uid,
-        name: name,
-        email: email,
-        image: image,
-        createdAt: createdAt,
-        playerRating: playerRating,
-      );
-
-      onSuccess();
-    } on FirebaseException catch (e) {
-      onFail(e.toString());
-    }
-  }
-
-  StreamSubscription? isPlayingStreamSubScription;
-
-  // chech if the other player has joined
-  void checkIfOpponentJoined({
-    required String uid,
-    required String name,
-    required String email,
-    required String image,
-    required String createdAt,
-    required int playerRating,
-    required Function() onSuccess,
-  }) async {
-    // stream firestore if the player has joined
-    isPlayingStreamSubScription = firebaseFirestore
-        .collection(AppConstants.availableGames)
-        .doc(uid)
-        .snapshots()
-        .listen((event) async {
-      // chech if the game exist
-      if (event.exists) {
-        final DocumentSnapshot game = event;
-
-        // chech if itsPlaying == true
-        if (game[AppConstants.isPlaying]) {
-          isPlayingStreamSubScription!.cancel();
-          await Future.delayed(const Duration(milliseconds: 100));
-          // get data from the game we are joining
-          _gameCreatorUid = game[AppConstants.gameCreatorUid];
-          _gameCreatorName = game[AppConstants.gameCreatorName];
-          _gameCreatorPhoto = game[AppConstants.gameCreatorImage];
-          _userId = game[AppConstants.uid];
-          _userName = game[AppConstants.name];
-          _userPhoto = game[AppConstants.photoUrl];
-
-          setPlayerColor(player: 0);
-          notifyListeners();
-
-          onSuccess();
-        }
-      }
-    });
-  }
-
-  // set game data and settings
-  Future<void> setGameDataAndSettings({
-    required DocumentSnapshot<Object?> game,
-    required String uid,
-    required String name,
-    required String email,
-    required String image,
-    required String createdAt,
-    required int playerRating,
-  }) async {
-    // get reference to the game we are joining
-    final opponentsGame = firebaseFirestore
-        .collection(AppConstants.availableGames)
-        .doc(game[AppConstants.gameCreatorUid]);
-
-    // time - 0:10:00.0000000
-    List<String> whitesTimeParts = game[AppConstants.whitesTime].split(':');
-    List<String> blacksTimeParts = game[AppConstants.blacksTime].split(':');
-
-    int whitesGameTime =
-        int.parse(whitesTimeParts[0]) * 60 + int.parse(whitesTimeParts[1]);
-    int blacksGamesTime =
-        int.parse(blacksTimeParts[0]) * 60 + int.parse(blacksTimeParts[1]);
-
-    // set game time
-    await setGameTime(
-      newSavedWhitesTime: whitesGameTime.toString(),
-      newSavedBlacksTime: blacksGamesTime.toString(),
-    );
-
-    // update the created game in fireStore
-    await opponentsGame.update({
-      AppConstants.isPlaying: true,
-      AppConstants.uid: uid,
-      AppConstants.name: name,
-      AppConstants.photoUrl: image,
-      AppConstants.userRating: playerRating,
-    });
-
-    // set the player state
-    setPlayerColor(player: 1);
-    notifyListeners();
-  }
-
   bool _isWhitesTurn = true;
   String blacksMove = '';
   String whitesMove = '';

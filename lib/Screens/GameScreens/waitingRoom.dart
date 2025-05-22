@@ -27,9 +27,7 @@ class _WaitingRoomState extends State<WaitingRoom> {
         _navigated = true;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (_) => const GameScreen(
-                // roomId: '132456',
-                ),
+            builder: (_) => GameScreen(roomCode: widget.roomCode),
           ),
         );
       }
