@@ -122,15 +122,15 @@ class _DashboardscreenState extends State<Dashboardscreen> {
   }
 
   Widget _buildButton(String text, IconData icon, iconColor, onTap) {
-    return InkWell(
-      splashColor: Colors.transparent,
-      onTap: onTap,
-      child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
-          margin: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-              border: Border.all(color: ColorResources.secondaryColor),
-              borderRadius: BorderRadius.circular(10)),
+    return Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+            border: Border.all(color: ColorResources.secondaryColor),
+            borderRadius: BorderRadius.circular(10)),
+        child: InkWell(
+          splashColor: Colors.black,
+          onTap: onTap,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
@@ -146,8 +146,8 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                     color: ColorResources.secondaryColor, fontSize: 18),
               )
             ],
-          )),
-    );
+          ),
+        ));
   }
 
   void _showAddCashBottomSheet(

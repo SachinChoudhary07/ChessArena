@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:chess_cash/Constant/app_constant.dart';
-import 'package:chess_cash/Screens/GameScreens/gamescreen.dart';
+import 'package:chess_cash/Screens/GameScreens/GamePlay.dart';
 import 'package:chess_cash/Services/navigation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -97,18 +97,14 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    // Navigate to chess game page
+    final gameId = gameDoc.id;
+
+    // Navigate to GameScreen with the roomCode
     if (mounted) {
-      // Navigator.pushReplacementNamed(context, '/chess_game', arguments: {
-      //   'gameId': gameDoc.id,
-      //   'playerId': currentUserId,
-      // });
       pushReplacement(
-          context,
-          ChessGameScreen(
-            gameId: gameDoc.id,
-            playerId: currentUserId,
-          ));
+        context,
+        GameScreen(roomCode: gameId), // ✅ passing game ID
+      );
     }
   }
 
