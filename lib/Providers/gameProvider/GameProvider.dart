@@ -26,6 +26,13 @@ class ChessGameProvider with ChangeNotifier {
   Timer? _gameTimer;
   DateTime? _lastMoveTime;
 
+  bool isLoading = false;
+
+  void setLoading(bool value) {
+    isLoading = value;
+    notifyListeners();
+  }
+
   // Firebase
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   StreamSubscription? _gameSubscription;
@@ -134,15 +141,6 @@ class ChessGameProvider with ChangeNotifier {
 
   // Update local game state from Firestore data
   void _updateGameFromFirestore(Map<String, dynamic> data) {
-    // Update board state
-    // if (data['boardState'] != null) {
-    //   final boardData = data['boardState'];
-    //   for (int row = 0; row < 8; row++) {
-    //     for (int col = 0; col < 8; col++) {
-    //       _board[row][col] = ChessPiece.fromMap(boardData[row][col]);
-    //     }
-    //   }
-    // }
     if (data['boardState'] != null) {
       final boardData = data['boardState'] as Map<String, dynamic>;
       for (int row = 0; row < 8; row++) {

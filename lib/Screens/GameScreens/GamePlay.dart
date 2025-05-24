@@ -1,4 +1,5 @@
 import 'package:chess_cash/Providers/gameProvider/GameProvider.dart';
+import 'package:chess_cash/Widgets/loader.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -26,12 +27,16 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
+  String? player1Name;
+  String? player2Name;
+  String? gameName = '';
+
   Future<void> _initializeGame() async {
     _gameProvider = Provider.of<ChessGameProvider>(context, listen: false);
+    _gameProvider.setLoading(true);
     final currentUser = FirebaseAuth.instance.currentUser;
 
     if (currentUser != null) {
-      // Get the game document to determine player color
       final gameDoc = await FirebaseFirestore.instance
           .collection('games')
           .doc(widget.roomCode)
@@ -39,10 +44,27 @@ class _GameScreenState extends State<GameScreen> {
 
       if (gameDoc.exists) {
         final data = gameDoc.data() as Map<String, dynamic>;
-        PieceColor playerColor;
 
-        // Determine if current user is player1 or player2
-        if (data['player1'] == currentUser.uid) {
+        final player1UID = data['player1'];
+        final player2UID = data['player2'];
+
+        final player1Snapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(player1UID)
+            .get();
+        final player2Snapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(player2UID)
+            .get();
+
+        // setState(() {
+        player1Name = player1Snapshot.data()?['username'] ?? 'Player 1';
+        player2Name = player2Snapshot.data()?['username'] ?? 'Player 2';
+        gameName = data['gameName'] ?? 'Chess Match';
+        // });
+
+        PieceColor playerColor;
+        if (player1UID == currentUser.uid) {
           playerColor = data['player1Color'] == 'white'
               ? PieceColor.white
               : PieceColor.black;
@@ -57,60 +79,170 @@ class _GameScreenState extends State<GameScreen> {
           currentUser.uid,
           playerColor,
         );
-        setState(() => _isInitialized = true);
+        _gameProvider.setLoading(false);
+        // setState(() => _isInitialized = true);
       }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Chess Game - ${widget.roomCode}'),
+  String _getOpponentName() {
+    final myColor =
+        Provider.of<ChessGameProvider>(context, listen: false).playerColor;
+    return myColor == PieceColor.white
+        ? (player2Name ?? 'Opponent')
+        : (player1Name ?? 'Opponent');
+  }
+
+  Future<bool> _onBackPressed() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Leave Match?"),
+        content: Text(
+          "If you leave, your opponent (${_getOpponentName()}) will win the match.\nAre you sure you want to exit?",
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.flag),
-            onPressed: () => _showGameMenu(context),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Yes, Exit"),
           ),
         ],
       ),
-      body: Consumer<ChessGameProvider>(
-        builder: (context, gameProvider, child) {
-          return Column(
-            children: [
-              // Opponent info and timer
-              _buildPlayerInfo(
-                isOpponent: true,
-                timeLeft: gameProvider.playerColor == PieceColor.white
-                    ? gameProvider.blackTimeLeft
-                    : gameProvider.whiteTimeLeft,
-                isActive: !gameProvider.isMyTurn,
-              ),
+    );
 
-              // Chess board
-              Expanded(
-                child: Center(
-                  child: AspectRatio(
-                    aspectRatio: 1.0,
-                    child: _buildChessBoard(gameProvider),
+    if (result == true) {
+      await _handlePlayerExit();
+      return true; // Allow pop
+    }
+
+    return false; // Prevent pop
+  }
+
+  Future<void> _handlePlayerExit() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    final gameDocRef =
+        FirebaseFirestore.instance.collection('games').doc(widget.roomCode);
+
+    final snapshot = await gameDocRef.get();
+    if (!snapshot.exists) return;
+
+    final data = snapshot.data()!;
+    final player1UID = data['player1'];
+    final player2UID = data['player2'];
+
+    final opponentUID =
+        (player1UID == currentUser.uid) ? player2UID : player1UID;
+
+    await gameDocRef.update({
+      'gameStatus': 'resignation',
+      'winner': opponentUID,
+      'endedBy': currentUser.uid,
+      'endReason': 'Player Resign',
+    });
+
+    // Optionally: Show a toast/snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('You left the game. ${_getOpponentName()} wins!')),
+    );
+  }
+
+  // void handleGameStatus(String status) {
+  //   switch (status) {
+  //     case 'win':
+  //       statusText = 'You Win!';
+  //       statusColor = Colors.green;
+  //       break;
+  //
+  //     case 'lose':
+  //       statusText = 'You Lost!';
+  //       statusColor = Colors.red;
+  //       break;
+  //
+  //     case 'draw':
+  //       statusText = 'It\'s a Draw!';
+  //       statusColor = Colors.grey;
+  //       break;
+  //
+  //     case 'resignation':
+  //       final currentUser = FirebaseAuth.instance.currentUser;
+  //       final winnerId = gameProvider.winner;
+  //       final youWon = winnerId == currentUser?.uid;
+  //
+  //       statusText = youWon
+  //           ? 'You Win! Your opponent left the game.'
+  //           : 'You Lost! You left the game.';
+  //       statusColor = youWon ? Colors.green : Colors.red;
+  //       break;
+  //
+  //     default:
+  //       statusText = 'Game Over';
+  //       statusColor = Colors.black;
+  //   }
+  //
+  //   notifyListeners(); // if inside ChangeNotifier
+  // }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: _onBackPressed,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('$gameName - ${widget.roomCode}'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.more_vert),
+              onPressed: () => _showGameMenu(context),
+            ),
+          ],
+        ),
+        body: Consumer<ChessGameProvider>(
+          builder: (context, gameProvider, child) {
+            if (gameProvider.isLoading) {
+              return Loader();
+            }
+            return Column(
+              children: [
+                // Opponent info and timer
+                _buildPlayerInfo(
+                  isOpponent: true,
+                  timeLeft: gameProvider.playerColor == PieceColor.white
+                      ? gameProvider.blackTimeLeft
+                      : gameProvider.whiteTimeLeft,
+                  isActive: !gameProvider.isMyTurn,
+                ),
+
+                // Chess board
+                Expanded(
+                  child: Center(
+                    child: AspectRatio(
+                      aspectRatio: 1.0,
+                      child: _buildChessBoard(gameProvider),
+                    ),
                   ),
                 ),
-              ),
 
-              // Current player info and timer
-              _buildPlayerInfo(
-                isOpponent: false,
-                timeLeft: gameProvider.playerColor == PieceColor.white
-                    ? gameProvider.whiteTimeLeft
-                    : gameProvider.blackTimeLeft,
-                isActive: gameProvider.isMyTurn,
-              ),
+                // Current player info and timer
+                _buildPlayerInfo(
+                  isOpponent: false,
+                  timeLeft: gameProvider.playerColor == PieceColor.white
+                      ? gameProvider.whiteTimeLeft
+                      : gameProvider.blackTimeLeft,
+                  isActive: gameProvider.isMyTurn,
+                ),
 
-              // Game status
-              _buildGameStatus(gameProvider),
-            ],
-          );
-        },
+                // Game status
+                _buildGameStatus(gameProvider),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -124,7 +256,7 @@ class _GameScreenState extends State<GameScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isActive
-            ? Colors.green.withOpacity(0.3)
+            ? Colors.green.withOpacity(0.2)
             : Colors.grey.withOpacity(0.1),
         border: Border.all(
           color: isActive ? Colors.green : Colors.grey,
@@ -135,7 +267,17 @@ class _GameScreenState extends State<GameScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            isOpponent ? 'Opponent' : 'You',
+            isOpponent
+                ? (Provider.of<ChessGameProvider>(context, listen: false)
+                            .playerColor ==
+                        PieceColor.white
+                    ? (player2Name ?? 'Opponent')
+                    : (player1Name ?? 'Opponent'))
+                : (Provider.of<ChessGameProvider>(context, listen: false)
+                            .playerColor ==
+                        PieceColor.white
+                    ? (player1Name ?? 'You')
+                    : (player2Name ?? 'You')),
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -263,32 +405,39 @@ class _GameScreenState extends State<GameScreen> {
     String statusText = '';
     Color statusColor = Colors.blue;
 
-    if (gameProvider.gameStatus == null ||
-        gameProvider.gameStatus == 'playing') {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final winnerId = gameProvider.winner;
+    final youWon = winnerId == currentUser?.uid;
+    final isGameOver =
+        gameProvider.gameStatus != null && gameProvider.gameStatus != 'playing';
+
+    if (!isGameOver) {
       statusText = gameProvider.isMyTurn ? 'Your Turn' : 'Opponent\'s Turn';
       statusColor = gameProvider.isMyTurn ? Colors.green : Colors.orange;
     } else {
       switch (gameProvider.gameStatus) {
         case 'checkmate':
-          statusText =
-              'Checkmate! ${gameProvider.winner == 'white' ? 'White' : 'Black'} Wins!';
-          statusColor = Colors.red;
+          statusText = youWon ? 'Checkmate! You Win!' : 'Checkmate! You Lose!';
+          statusColor = youWon ? Colors.green : Colors.red;
           break;
+
         case 'stalemate':
-          statusText = 'Stalemate! It\'s a Draw!';
-          statusColor = Colors.grey;
-          break;
         case 'draw':
           statusText = 'Draw!';
           statusColor = Colors.grey;
           break;
+
         case 'resignation':
-          statusText = 'Game Over - Resignation';
-          statusColor = Colors.red;
+          statusText = youWon
+              ? 'You Win! Your opponent left the game.'
+              : 'You Lost! You left the game.';
+          statusColor = youWon ? Colors.green : Colors.red;
           break;
+
         case 'timeout':
-          statusText = 'Game Over - Time Out';
-          statusColor = Colors.red;
+          statusText =
+              youWon ? 'You Win! Opponent timed out.' : 'You Lost! Time’s up.';
+          statusColor = youWon ? Colors.green : Colors.red;
           break;
       }
     }

@@ -1,6 +1,9 @@
 // Enhanced WaitingRoom with proper player color assignment
 
+import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Screens/GameScreens/GamePlay.dart';
+import 'package:chess_cash/Services/navigation.dart';
+import 'package:chess_cash/Widgets/loader.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -20,13 +23,64 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
 
   void _startCountdown(Map<String, dynamic> roomData) {
     _initializeGameData(roomData).then((_) {
-      print("Printing Room Dara${roomData}");
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => GameScreen(roomCode: widget.roomCode),
-        ),
-      );
+      Future.delayed(const Duration(seconds: 3));
+      pushReplacement(
+          context,
+          GameScreen(
+            roomCode: widget.roomCode,
+          ));
     });
+  }
+
+  String? player1Name; // ✅
+  String? player2Name; // ✅
+  String? time;
+
+  Future<void> _fetchPlayerNames(String? player1, String? player2) async {
+    if (player1 != null) {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(player1)
+          .get();
+      player1Name = snapshot.data()?['username'] ?? 'Player 1';
+    }
+
+    if (player2 != null) {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(player2)
+          .get();
+      player2Name = snapshot.data()?['username'] ?? 'Player 2';
+    }
+
+    final snapshot1 = await FirebaseFirestore.instance
+        .collection('games')
+        .doc(widget.roomCode)
+        .get();
+
+    time = snapshot1.data()?['time'] ?? 300;
+
+    if (mounted) setState(() {}); // ✅ Refresh UI
+  }
+
+  int parseTimeToSeconds(String? timeString) {
+    if (timeString == null) return 0;
+
+    final parts = timeString.trim().split(' ');
+    if (parts.length != 2) return 0;
+
+    final value = int.tryParse(parts[0]);
+    final unit = parts[1].toLowerCase();
+
+    if (value == null) return 0;
+
+    if (unit.contains('min')) {
+      return value * 60; // convert to seconds
+    } else if (unit.contains('sec')) {
+      return value; // already in seconds
+    } else {
+      return 0; // unsupported unit
+    }
   }
 
   Future<void> _initializeGameData(Map<String, dynamic> roomData) async {
@@ -51,6 +105,8 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
       }
     }
 
+    final seconds = parseTimeToSeconds(time); // time is '3 min'
+
     // Update game document with initial game state
     await FirebaseFirestore.instance
         .collection('games')
@@ -59,8 +115,10 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
       'boardState': boardMap, // flat map instead of 2D list
       'currentPlayer': 'white',
       'gameStatus': 'playing',
-      'whiteTimeLeft': 600, // 10 minutes
-      'blackTimeLeft': 600,
+      // 'whiteTimeLeft': seconds, // 10 minutes
+      // 'blackTimeLeft': seconds,
+      'whiteTimeLeft': 300, // 10 minutes
+      'blackTimeLeft': 300,
       'player1Color': 'white',
       'player2Color': 'black',
       'gameStarted': true,
@@ -113,7 +171,7 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Waiting Room"),
-        backgroundColor: Colors.blue,
+        backgroundColor: ColorResources.primaryColor,
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
@@ -138,6 +196,11 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
           final player1 = data['player1'];
           final player2 = data['player2'];
           final status = data['status'];
+          final gameName = data['gameName'];
+
+          if (player1Name == null || (player2 != null && player2Name == null)) {
+            _fetchPlayerNames(player1, player2); // ✅ Fetch names
+          }
 
           final players = [player1, if (player2 != null) player2];
 
@@ -146,11 +209,14 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
           }
 
           return Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Colors.blue, Colors.lightBlue],
+                colors: [
+                  ColorResources.primaryColor,
+                  ColorResources.secondaryColor
+                ],
               ),
             ),
             child: Column(
@@ -160,15 +226,6 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
                   Icons.games,
                   size: 80,
                   color: Colors.white,
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  "Chess Game",
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
                 ),
                 const SizedBox(height: 40),
                 Container(
@@ -188,7 +245,7 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
                   child: Column(
                     children: [
                       const Text(
-                        "Waiting for players...",
+                        "Waiting for player...",
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -199,27 +256,31 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
+                          border:
+                              Border.all(color: ColorResources.primaryColor),
                           color: Colors.grey[100],
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           "Room Code: ${widget.roomCode}",
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2,
-                          ),
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
+                              color: ColorResources.secondaryColor),
                         ),
                       ),
                       const SizedBox(height: 20),
                       ...players.asMap().entries.map((entry) {
                         final index = entry.key;
-                        final player = entry.value;
+                        final playerName = index == 0
+                            ? (player1Name ?? 'Player 1')
+                            : (player2Name ?? 'Player 2'); // ✅
                         return Container(
                           padding: const EdgeInsets.all(12),
                           margin: const EdgeInsets.symmetric(vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.green,
+                            color: ColorResources.secondaryColor,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
@@ -232,7 +293,7 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                "Player ${index + 1}",
+                                playerName,
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -264,20 +325,19 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
                       }),
                       const SizedBox(height: 20),
                       if (status == 'ready') ...[
-                        const CircularProgressIndicator(),
                         const SizedBox(height: 10),
                         Text(
                           _countdown > 0
-                              ? "Game starting in $_countdown..."
+                              ? "Game is starting in some time ..."
                               : "Starting game...",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Colors.orange,
+                            color: ColorResources.secondaryColor,
                           ),
                         ),
                       ] else ...[
-                        const CircularProgressIndicator(),
+                        const Loader(),
                         const SizedBox(height: 10),
                         Text(
                           "${players.length}/2 players joined",

@@ -16,7 +16,7 @@ class CreateContest extends StatefulWidget {
 }
 
 class _CreateContestState extends State<CreateContest> {
-  final timeOptions = ['1 min', '3 min', '5 min', '10 min'];
+  final timeOptions = ['1 min', '3 min', '5 min', '10 min', '15 min'];
   final entryFees = ['₹50', '₹100', '₹200', '₹500', '₹1000', '₹5000', '₹10000'];
 
   String selectedTime = '3 min';
