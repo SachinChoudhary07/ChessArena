@@ -1,16 +1,10 @@
-import 'dart:developer';
-
-import 'package:chess_cash/Constant/app_constant.dart';
-import 'package:chess_cash/Screens/Dashboard/DashboardScreen.dart';
-import 'package:chess_cash/Services/navigation.dart';
+import 'package:chess_cash/Providers/gameProvider/GameProvider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:squares/squares.dart';
-import 'package:stockfish/stockfish.dart';
 
-import '../../Providers/gameProvider/GameProvider.dart';
-
+// screens/game_screen.dart
 class GameScreen extends StatefulWidget {
   final String roomCode;
 
@@ -21,562 +15,506 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  Stockfish? stockfish;
+  late ChessGameProvider _gameProvider;
+  bool _isInitialized = false;
 
   @override
   void initState() {
-    //stockfish = Stockfish();
-    final gameProvider = context.read<GameProvider>();
-    gameProvider.resetGame(newGame: false);
-    gameProvider.fetchUserProfile();
-
-    FirebaseFirestore.instance
-        .collection('games')
-        .doc(widget.roomCode)
-        .snapshots()
-        .listen((DocumentSnapshot snapshot) {
-      if (snapshot.exists) {
-        final data = snapshot.data() as Map<String, dynamic>;
-
-        final player1 = data['player1'];
-        final player2 = data['player2'];
-        final creatorUid = data['creatorUid'];
-        final gameStatus = data['status'];
-
-        final gameProvider = context.read<GameProvider>();
-        gameProvider.initializeMultiplayerGame(
-          data: data,
-          userId: gameProvider.userId, // from your auth
-          roomCode: widget.roomCode,
-        );
-      }
-    });
-
     super.initState();
-  }
-
-  @override
-  void dispose() {
-    stockfish?.dispose();
-    super.dispose();
-  }
-
-  void letOtherPlayerPlayFirst() {
-    // wait for widget to rebuild
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final gameProvider = context.read<GameProvider>();
-
-      if (gameProvider.vsComputer) {
-        if (gameProvider.state.state == PlayState.theirTurn &&
-            !gameProvider.aiThinking) {
-          gameProvider.setAiThinking(true);
-
-          // wait auntil stockfish is ready
-          await waitUntilReady();
-
-          // get the current position of the board and sent to stockfish
-          stockfish?.stdin =
-              '${UCICommands.position} ${gameProvider.getPositionFen()}';
-
-          // set stockfish level
-          stockfish?.stdin =
-              '${UCICommands.goMoveTime} ${gameProvider.gameLevel * 1000}';
-
-          stockfish?.stdout.listen((event) {
-            if (event.contains(UCICommands.bestMove)) {
-              final bestMove = event.split(' ')[1];
-              gameProvider.makeStringMove(bestMove);
-              gameProvider.setAiThinking(false);
-              gameProvider.setSquaresState().whenComplete(() {
-                if (gameProvider.player == Squares.white) {
-                  // check if we can play whitesTimer
-                  if (gameProvider.playWhitesTimer) {
-                    // pause timer for black
-                    gameProvider.pauseBlacksTimer();
-
-                    startTimer(
-                      isWhiteTimer: true,
-                      onNewGame: () {},
-                    );
-
-                    gameProvider.setPlayWhitesTimer(value: false);
-                  }
-                } else {
-                  if (gameProvider.playBlacksTimer) {
-                    // pause timer for white
-                    gameProvider.pauseWhitesTimer();
-
-                    startTimer(
-                      isWhiteTimer: false,
-                      onNewGame: () {},
-                    );
-
-                    gameProvider.setPlayBlactsTimer(value: false);
-                  }
-                }
-              });
-            }
-          });
-        }
-      } else {
-        // listen for game changes in fireStore
-        gameProvider.listenForGameChanges(
-          context: context,
-          uid: gameProvider.userId,
-          name: gameProvider.userName,
-          email: gameProvider.email ?? '',
-          image: gameProvider.profileImageUrl ?? '',
-          createdAt: gameProvider.createdAt ?? '',
-          playerRating: gameProvider.playerRating ?? 234,
-        );
-      }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeGame();
     });
   }
 
-  void _onMove(Move move) async {
-    log('move: ${move.toString()}');
-    log('String move: ${move.algebraic()}');
-    final gameProvider = context.read<GameProvider>();
-    bool result = gameProvider.makeSquaresMove(move);
-    if (result) {
-      gameProvider.setSquaresState().whenComplete(() async {
-        if (gameProvider.player == Squares.white) {
-          // check if we are playing vs computer
-          if (gameProvider.vsComputer) {
-            // pause timer for white
-            gameProvider.pauseWhitesTimer();
+  Future<void> _initializeGame() async {
+    _gameProvider = Provider.of<ChessGameProvider>(context, listen: false);
+    final currentUser = FirebaseAuth.instance.currentUser;
 
-            startTimer(
-              isWhiteTimer: false,
-              onNewGame: () {},
-            );
-            // set whites bool flag to true so that we dont run this code agin until true
-            gameProvider.setPlayWhitesTimer(value: true);
-          } else {
-            // play and save white's move to fireStore
-            await gameProvider.playMoveAndSaveToFireStore(
-              context: context,
-              move: move,
-              isWhitesMove: true,
-            );
-          }
+    if (currentUser != null) {
+      // Get the game document to determine player color
+      final gameDoc = await FirebaseFirestore.instance
+          .collection('games')
+          .doc(widget.roomCode)
+          .get();
+
+      if (gameDoc.exists) {
+        final data = gameDoc.data() as Map<String, dynamic>;
+        PieceColor playerColor;
+
+        // Determine if current user is player1 or player2
+        if (data['player1'] == currentUser.uid) {
+          playerColor = data['player1Color'] == 'white'
+              ? PieceColor.white
+              : PieceColor.black;
         } else {
-          if (gameProvider.vsComputer) {
-            // pause timer for black
-            gameProvider.pauseBlacksTimer();
-
-            startTimer(
-              isWhiteTimer: true,
-              onNewGame: () {},
-            );
-            // set blacks bool flag to true so that we dont run this code agin until true
-            gameProvider.setPlayBlactsTimer(value: true);
-          } else {
-            // play and save black's move to fireStore
-            await gameProvider.playMoveAndSaveToFireStore(
-              context: context,
-              move: move,
-              isWhitesMove: false,
-            );
-          }
+          playerColor = data['player2Color'] == 'white'
+              ? PieceColor.white
+              : PieceColor.black;
         }
-      });
-    }
 
-    if (gameProvider.vsComputer) {
-      if (gameProvider.state.state == PlayState.theirTurn &&
-          !gameProvider.aiThinking) {
-        gameProvider.setAiThinking(true);
-
-        // wait auntil stockfish is ready
-        await waitUntilReady();
-
-        // get the current position of the board and sent to stockfish
-        stockfish?.stdin =
-            '${UCICommands.position} ${gameProvider.getPositionFen()}';
-
-        // set stockfish level
-        stockfish?.stdin =
-            '${UCICommands.goMoveTime} ${gameProvider.gameLevel * 1000}';
-
-        stockfish?.stdout.listen((event) {
-          if (event.contains(UCICommands.bestMove)) {
-            final bestMove = event.split(' ')[1];
-            gameProvider.makeStringMove(bestMove);
-            gameProvider.setAiThinking(false);
-            gameProvider.setSquaresState().whenComplete(() {
-              if (gameProvider.player == Squares.white) {
-                // check if we can play whitesTimer
-                if (gameProvider.playWhitesTimer) {
-                  // pause timer for black
-                  gameProvider.pauseBlacksTimer();
-
-                  startTimer(
-                    isWhiteTimer: true,
-                    onNewGame: () {},
-                  );
-
-                  gameProvider.setPlayWhitesTimer(value: false);
-                }
-              } else {
-                if (gameProvider.playBlacksTimer) {
-                  // pause timer for white
-                  gameProvider.pauseWhitesTimer();
-
-                  startTimer(
-                    isWhiteTimer: false,
-                    onNewGame: () {},
-                  );
-
-                  gameProvider.setPlayBlactsTimer(value: false);
-                }
-              }
-            });
-          }
-        });
+        _gameProvider.initializeGame(
+          widget.roomCode,
+          currentUser.uid,
+          playerColor,
+        );
+        setState(() => _isInitialized = true);
       }
-    }
-
-    await Future.delayed(const Duration(seconds: 1));
-    // listen if its game over
-    checkGameOverListener();
-  }
-
-  Future<void> waitUntilReady() async {
-    while (stockfish?.state.value != StockfishState.ready) {
-      await Future.delayed(const Duration(seconds: 1));
-    }
-  }
-
-  void checkGameOverListener() {
-    final gameProvider = context.read<GameProvider>();
-
-    gameProvider.gameOverListerner(
-      context: context,
-      stockfish: stockfish,
-      onNewGame: () {
-        // start new game
-      },
-    );
-  }
-
-  void startTimer({
-    required bool isWhiteTimer,
-    required Function onNewGame,
-  }) {
-    final gameProvider = context.read<GameProvider>();
-    if (isWhiteTimer) {
-      // start timer for White
-      gameProvider.startWhitesTimer(
-        context: context,
-        stockfish: stockfish,
-        onNewGame: onNewGame,
-      );
-    } else {
-      // start timer for black
-      gameProvider.startBlacksTimer(
-        context: context,
-        stockfish: stockfish,
-        onNewGame: onNewGame,
-      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final gameProvider = context.read<GameProvider>();
-    final userModel = context.read<GameProvider>().fetchUserProfile();
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (didpop) async {
-        if (didpop) return;
-        bool? leave = await _showExitConfirmDialog(context);
-        if (leave != null && leave) {
-          stockfish?.stdin = UCICommands.stop;
-          await Future.delayed(const Duration(milliseconds: 200))
-              .whenComplete(() {
-            // if the user confirms, navigate to home screen
-            pushAndRemoveUntil(context, Dashboardscreen(), false);
-            // Navigator.pushNamedAndRemoveUntil(
-            //     context, Dashboardscreen(), (route) => false);
-          });
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          // leading: IconButton(
-          //   icon: const Icon(
-          //     Icons.arrow_back,
-          //     color: Colors.white,
-          //   ),
-          //   onPressed: () {
-          //     // TODO show dialog if sure
-          //     Navigator.pop(context);
-          //   },
-          // ),
-          backgroundColor: Colors.blue,
-          title: const Text(
-            'Flutter Chess',
-            style: TextStyle(color: Colors.white),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Chess Game - ${widget.roomCode}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.flag),
+            onPressed: () => _showGameMenu(context),
           ),
-          actions: [
-            IconButton(
-              onPressed: () {
-                gameProvider.resetGame(newGame: false);
-              },
-              icon: const Icon(Icons.start, color: Colors.white),
-            ),
-            IconButton(
-              onPressed: () {
-                gameProvider.flipTheBoard();
-              },
-              icon: const Icon(Icons.rotate_left, color: Colors.white),
-            ),
-          ],
-        ),
-        body: Consumer<GameProvider>(
-          builder: (context, gameProvider, child) {
-            String whitesTimer = getTimerToDisplay(
-              gameProvider: gameProvider,
-              isUser: true,
-            );
-            String blacksTimer = getTimerToDisplay(
-              gameProvider: gameProvider,
-              isUser: false,
-            );
-            return Column(
-              //mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // opponents data
-                showOpponentsData(
-                  gameProvider: gameProvider,
-                  uid: gameProvider.userId,
-                  name: gameProvider.userName,
-                  email: gameProvider.email ?? '',
-                  image: gameProvider.profileImageUrl ?? '',
-                  createdAt: gameProvider.createdAt ?? '',
-                  playerRating: gameProvider.playerRating ?? 234,
-                  timeToShow: blacksTimer,
-                ),
+        ],
+      ),
+      body: Consumer<ChessGameProvider>(
+        builder: (context, gameProvider, child) {
+          return Column(
+            children: [
+              // Opponent info and timer
+              _buildPlayerInfo(
+                isOpponent: true,
+                timeLeft: gameProvider.playerColor == PieceColor.white
+                    ? gameProvider.blackTimeLeft
+                    : gameProvider.whiteTimeLeft,
+                isActive: !gameProvider.isMyTurn,
+              ),
 
-                gameProvider.vsComputer
-                    ? Padding(
-                        padding: const EdgeInsets.all(4.0),
-                        child: BoardController(
-                          state: gameProvider.flipBoard
-                              ? gameProvider.state.board.flipped()
-                              : gameProvider.state.board,
-                          playState: gameProvider.state.state,
-                          pieceSet: PieceSet.merida(),
-                          theme: BoardTheme.brown,
-                          moves: gameProvider.state.moves,
-                          onMove: _onMove,
-                          onPremove: _onMove,
-                          markerTheme: MarkerTheme(
-                            empty: MarkerTheme.dot,
-                            piece: MarkerTheme.corners(),
-                          ),
-                          promotionBehaviour: PromotionBehaviour.autoPremove,
-                        ),
-                      )
-                    : buildChessBoard(
-                        gameProvider: gameProvider,
-                        uid: gameProvider.userId,
-                        name: gameProvider.userName,
-                        email: gameProvider.email ?? '',
-                        image: gameProvider.profileImageUrl ?? '',
-                        createdAt: gameProvider.createdAt ?? '',
-                        playerRating: gameProvider.playerRating ?? 234,
-                      ),
-
-                // our data
-                ListTile(
-                  leading: gameProvider.profileImageUrl == ''
-                      ? CircleAvatar(
-                          radius: 25,
-                          backgroundImage: AssetImage('assets/images/king.png'),
-                        )
-                      : CircleAvatar(
-                          radius: 25,
-                          backgroundImage:
-                              NetworkImage(gameProvider.profileImageUrl ?? ''),
-                        ),
-                  title: Text(gameProvider.userName),
-                  subtitle: Text('Rating: ${gameProvider.playerRating}'),
-                  trailing: Text(
-                    whitesTimer,
-                    style: const TextStyle(fontSize: 16),
+              // Chess board
+              Expanded(
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: 1.0,
+                    child: _buildChessBoard(gameProvider),
                   ),
                 ),
-              ],
-            );
-          },
-        ),
+              ),
+
+              // Current player info and timer
+              _buildPlayerInfo(
+                isOpponent: false,
+                timeLeft: gameProvider.playerColor == PieceColor.white
+                    ? gameProvider.whiteTimeLeft
+                    : gameProvider.blackTimeLeft,
+                isActive: gameProvider.isMyTurn,
+              ),
+
+              // Game status
+              _buildGameStatus(gameProvider),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget buildChessBoard({
-    required GameProvider gameProvider,
-    required String uid,
-    required String name,
-    required String email,
-    required String image,
-    required String createdAt,
-    required int playerRating,
+  Widget _buildPlayerInfo({
+    required bool isOpponent,
+    required int timeLeft,
+    required bool isActive,
   }) {
-    bool isOurTurn =
-        gameProvider.isWhitesTurn == (gameProvider.gameCreatorUid == uid);
-
-    log('CHESS UID: ${gameProvider.player}');
-
-    return Padding(
-      padding: const EdgeInsets.all(4.0),
-      child: BoardController(
-        state: gameProvider.flipBoard
-            ? gameProvider.state.board.flipped()
-            : gameProvider.state.board,
-        playState: isOurTurn ? PlayState.ourTurn : PlayState.theirTurn,
-        pieceSet: PieceSet.merida(),
-        theme: BoardTheme.brown,
-        moves: gameProvider.state.moves,
-        onMove: _onMove,
-        onPremove: _onMove,
-        markerTheme: MarkerTheme(
-          empty: MarkerTheme.dot,
-          piece: MarkerTheme.corners(),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isActive
+            ? Colors.green.withOpacity(0.3)
+            : Colors.grey.withOpacity(0.1),
+        border: Border.all(
+          color: isActive ? Colors.green : Colors.grey,
+          width: 2,
         ),
-        promotionBehaviour: PromotionBehaviour.autoPremove,
       ),
-    );
-  }
-
-  getState({required GameProvider gameProvider}) {
-    if (gameProvider.flipBoard) {
-      return gameProvider.state.board.flipped();
-    } else {
-      gameProvider.state.board;
-    }
-  }
-
-  Widget showOpponentsData({
-    required GameProvider gameProvider,
-    required String uid,
-    required String name,
-    required String email,
-    required String image,
-    required String createdAt,
-    required int playerRating,
-    required String timeToShow,
-  }) {
-    if (gameProvider.vsComputer) {
-      return ListTile(
-        leading: CircleAvatar(
-          radius: 25,
-          backgroundImage: AssetImage('assets/images/king.png'),
-        ),
-        title: const Text('Stockfish'),
-        subtitle: Text('Rating: ${gameProvider.gameLevel * 1000}'),
-        trailing: Text(
-          timeToShow,
-          style: const TextStyle(fontSize: 16),
-        ),
-      );
-    } else {
-      // check is we are the creator of this game
-      if (gameProvider.gameCreatorUid == uid) {
-        return ListTile(
-          leading: gameProvider.userPhoto == ''
-              ? CircleAvatar(
-                  radius: 25,
-                  backgroundImage: AssetImage('assets/images/king.png'),
-                )
-              : CircleAvatar(
-                  radius: 25,
-                  backgroundImage: NetworkImage(gameProvider.userPhoto),
-                ),
-          title: Text(gameProvider.userName),
-          subtitle: Text('Rating: ${gameProvider.userRating}'),
-          trailing: Text(
-            timeToShow,
-            style: const TextStyle(fontSize: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            isOpponent ? 'Opponent' : 'You',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        );
-      } else {
-        return ListTile(
-          leading: gameProvider.gameCreatorPhoto == ''
-              ? CircleAvatar(
-                  radius: 25,
-                  backgroundImage: AssetImage('assets/images/king.png'),
-                )
-              : CircleAvatar(
-                  radius: 25,
-                  backgroundImage: NetworkImage(gameProvider.gameCreatorPhoto),
-                ),
-          title: Text(gameProvider.gameCreatorName),
-          subtitle: Text('Rating: ${gameProvider.gameCreatorRating}'),
-          trailing: Text(
-            timeToShow,
-            style: const TextStyle(fontSize: 16),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<bool?> _showExitConfirmDialog(BuildContext context) async {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Leave Game?',
-          textAlign: TextAlign.center,
-        ),
-        content: const Text(
-          'Are you sure to leave this game?',
-          textAlign: TextAlign.center,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(false);
-            },
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(true);
-            },
-            child: const Text('Yes'),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: timeLeft < 60 ? Colors.red : Colors.blue,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              Provider.of<ChessGameProvider>(context, listen: false)
+                  .formatTime(timeLeft),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  String getTimerToDisplay({
-    required GameProvider gameProvider,
-    required bool isUser,
-  }) {
-    String timer = '';
-    // check if is user
-    if (isUser) {
-      if (gameProvider.player == Squares.white) {
-        timer = gameProvider.whitesTime.toString().substring(2, 7);
-      }
-      if (gameProvider.player == Squares.black) {
-        timer = gameProvider.blacksTime.toString().substring(2, 7);
-      }
+  Widget _buildChessBoard(ChessGameProvider gameProvider) {
+    final board = gameProvider.board;
+    if (board.length != 8 || board.any((row) => row.length != 8)) {
+      print("board.length");
+      print(board.length);
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.brown, width: 4),
+      ),
+      child: GridView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 8,
+        ),
+        itemCount: 64,
+        itemBuilder: (context, index) {
+          final row = index ~/ 8;
+          final col = index % 8;
+          final position = ChessPosition(row, col);
+          final piece = board[row][col];
+          final isSelected = gameProvider.selectedPosition == position;
+          final isPossibleMove = gameProvider.possibleMoves.contains(position);
+          final isWhiteSquare = (row + col) % 2 == 0;
+
+          return GestureDetector(
+            onTap: () => gameProvider.onSquareTapped(row, col),
+            child: Container(
+              decoration: BoxDecoration(
+                color:
+                    _getSquareColor(isWhiteSquare, isSelected, isPossibleMove),
+                border: isPossibleMove
+                    ? Border.all(color: Colors.yellow, width: 3)
+                    : null,
+              ),
+              child: Center(
+                child: piece != null
+                    ? _buildPieceWidget(piece)
+                    : isPossibleMove
+                        ? Container(
+                            width: 20,
+                            height: 20,
+                            decoration: const BoxDecoration(
+                              color: Colors.yellow,
+                              shape: BoxShape.circle,
+                            ),
+                          )
+                        : null,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Color _getSquareColor(
+      bool isWhiteSquare, bool isSelected, bool isPossibleMove) {
+    if (isSelected) return Colors.blue;
+    if (isPossibleMove) return Colors.green;
+    return isWhiteSquare ? Colors.white : Colors.brown[300]!;
+  }
+
+  Widget _buildPieceWidget(ChessPiece piece) {
+    final pieceSymbol = _getPieceSymbol(piece);
+    return Text(
+      pieceSymbol,
+      style: TextStyle(
+        fontSize: 32,
+        color: piece.color == PieceColor.white ? Colors.white : Colors.black,
+        shadows: piece.color == PieceColor.white
+            ? [const Shadow(color: Colors.black, blurRadius: 2)]
+            : [const Shadow(color: Colors.white, blurRadius: 2)],
+      ),
+    );
+  }
+
+  String _getPieceSymbol(ChessPiece piece) {
+    final isWhite = piece.color == PieceColor.white;
+    switch (piece.type) {
+      case PieceType.king:
+        return isWhite ? '♔' : '♚';
+      case PieceType.queen:
+        return isWhite ? '♕' : '♛';
+      case PieceType.rook:
+        return isWhite ? '♖' : '♜';
+      case PieceType.bishop:
+        return isWhite ? '♗' : '♝';
+      case PieceType.knight:
+        return isWhite ? '♘' : '♞';
+      case PieceType.pawn:
+        return isWhite ? '♙' : '♟';
+    }
+  }
+
+  Widget _buildGameStatus(ChessGameProvider gameProvider) {
+    String statusText = '';
+    Color statusColor = Colors.blue;
+
+    if (gameProvider.gameStatus == null ||
+        gameProvider.gameStatus == 'playing') {
+      statusText = gameProvider.isMyTurn ? 'Your Turn' : 'Opponent\'s Turn';
+      statusColor = gameProvider.isMyTurn ? Colors.green : Colors.orange;
     } else {
-      // if its not user do the opposite
-      if (gameProvider.player == Squares.white) {
-        timer = gameProvider.blacksTime.toString().substring(2, 7);
-      }
-      if (gameProvider.player == Squares.black) {
-        timer = gameProvider.whitesTime.toString().substring(2, 7);
+      switch (gameProvider.gameStatus) {
+        case 'checkmate':
+          statusText =
+              'Checkmate! ${gameProvider.winner == 'white' ? 'White' : 'Black'} Wins!';
+          statusColor = Colors.red;
+          break;
+        case 'stalemate':
+          statusText = 'Stalemate! It\'s a Draw!';
+          statusColor = Colors.grey;
+          break;
+        case 'draw':
+          statusText = 'Draw!';
+          statusColor = Colors.grey;
+          break;
+        case 'resignation':
+          statusText = 'Game Over - Resignation';
+          statusColor = Colors.red;
+          break;
+        case 'timeout':
+          statusText = 'Game Over - Time Out';
+          statusColor = Colors.red;
+          break;
       }
     }
 
-    return timer;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.2),
+        border: Border(top: BorderSide(color: statusColor, width: 2)),
+      ),
+      child: Text(
+        statusText,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: statusColor,
+        ),
+      ),
+    );
+  }
+
+  void _showGameMenu(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Game Menu'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.flag),
+                title: const Text('Resign'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmResign();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.handshake),
+                title: const Text('Offer Draw'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDraw();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.exit_to_app),
+                title: const Text('Leave Game'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmResign() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Resign Game'),
+          content: const Text('Are you sure you want to resign?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _gameProvider.resignGame();
+              },
+              child: const Text('Resign'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _confirmDraw() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Offer Draw'),
+          content: const Text('Do you want to offer a draw?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _gameProvider.offerDraw();
+              },
+              child: const Text('Offer Draw'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// models/chess_piece.dart
+class ChessPiece {
+  final PieceType type;
+  final PieceColor color;
+  bool hasMoved;
+
+  ChessPiece({
+    required this.type,
+    required this.color,
+    this.hasMoved = false,
+  });
+
+  // Convert to map for Firebase
+  Map<String, dynamic> toMap() {
+    return {
+      'type': type.toString().split('.').last,
+      'color': color.toString().split('.').last,
+      'hasMoved': hasMoved,
+    };
+  }
+
+  // Create from map for Firebase
+  static ChessPiece? fromMap(Map<String, dynamic>? map) {
+    if (map == null) return null;
+    return ChessPiece(
+      type: PieceType.values
+          .firstWhere((e) => e.toString().split('.').last == map['type']),
+      color: PieceColor.values
+          .firstWhere((e) => e.toString().split('.').last == map['color']),
+      hasMoved: map['hasMoved'] ?? false,
+    );
+  }
+
+  ChessPiece copyWith({bool? hasMoved}) {
+    return ChessPiece(
+      type: type,
+      color: color,
+      hasMoved: hasMoved ?? this.hasMoved,
+    );
+  }
+}
+
+enum PieceType { king, queen, rook, bishop, knight, pawn }
+
+enum PieceColor { white, black }
+
+// models/chess_position.dart
+class ChessPosition {
+  final int row;
+  final int col;
+
+  const ChessPosition(this.row, this.col);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ChessPosition && other.row == row && other.col == col;
+  }
+
+  @override
+  int get hashCode => row.hashCode ^ col.hashCode;
+
+  bool isValid() {
+    return row >= 0 && row < 8 && col >= 0 && col < 8;
+  }
+
+  Map<String, dynamic> toMap() {
+    return {'row': row, 'col': col};
+  }
+
+  static ChessPosition fromMap(Map<String, dynamic> map) {
+    return ChessPosition(map['row'], map['col']);
+  }
+}
+
+// models/chess_move.dart
+class ChessMove {
+  final ChessPosition from;
+  final ChessPosition to;
+  final ChessPiece piece;
+  final ChessPiece? capturedPiece;
+  final DateTime timestamp;
+  final String playerId;
+
+  ChessMove({
+    required this.from,
+    required this.to,
+    required this.piece,
+    this.capturedPiece,
+    required this.timestamp,
+    required this.playerId,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'from': from.toMap(),
+      'to': to.toMap(),
+      'piece': piece.toMap(),
+      'capturedPiece': capturedPiece?.toMap(),
+      'timestamp': timestamp.millisecondsSinceEpoch,
+      'playerId': playerId,
+    };
+  }
+
+  static ChessMove fromMap(Map<String, dynamic> map) {
+    return ChessMove(
+      from: ChessPosition.fromMap(map['from']),
+      to: ChessPosition.fromMap(map['to']),
+      piece: ChessPiece.fromMap(map['piece'])!,
+      capturedPiece: ChessPiece.fromMap(map['capturedPiece']),
+      timestamp: DateTime.fromMillisecondsSinceEpoch(map['timestamp']),
+      playerId: map['playerId'],
+    );
   }
 }

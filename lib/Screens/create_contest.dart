@@ -55,7 +55,8 @@ class _CreateContestState extends State<CreateContest> {
           .doc(roomCode)
           .set(roomData);
 
-      push(context, WaitingRoom(roomCode: roomCode)); // Push with correct code
+      push(context,
+          EnhancedWaitingRoom(roomCode: roomCode)); // Push with correct code
     }
   }
 
@@ -93,7 +94,7 @@ class _CreateContestState extends State<CreateContest> {
                     'status': 'ready', // Set status to ready once joined
                   });
 
-                  push(context, WaitingRoom(roomCode: code));
+                  push(context, EnhancedWaitingRoom(roomCode: code));
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                     content: Text("Invalid or already joined game code."),

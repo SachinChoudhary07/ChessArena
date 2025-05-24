@@ -92,7 +92,8 @@ List<SingleChildWidget> providers() {
     ChangeNotifierProvider(create: (context) => ProfileProvider()),
     ChangeNotifierProvider(create: (context) => LeaderBoardProvider()),
     ChangeNotifierProvider(create: (context) => WalletProvider()),
-    ChangeNotifierProvider(create: (context) => GameProvider()),
+    // ChangeNotifierProvider(create: (context) => GameProvider()),
+    ChangeNotifierProvider(create: (context) => ChessGameProvider()),
   ];
 }
 
