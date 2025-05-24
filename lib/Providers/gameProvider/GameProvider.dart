@@ -29,8 +29,8 @@ class ChessGameProvider with ChangeNotifier {
   bool isLoading = false;
 
   void setLoading(bool value) {
-    isLoading = value;
-    notifyListeners();
+    // isLoading = value;
+    // notifyListeners();
   }
 
   // Firebase
@@ -64,14 +64,14 @@ class ChessGameProvider with ChangeNotifier {
     _roomCode = roomCode;
     _playerId = playerId;
     _playerColor = playerColor;
-    _initializeBoard();
+    // _initializeBoard();
     _listenToGameUpdates();
     _startTimer();
     notifyListeners();
   }
 
   // Initialize the chess board with starting positions
-  void _initializeBoard() {
+  void initializeBoard() {
     print("_InitializeBoard Called ---------------->>>>>>>>>>>>");
     _board = List.generate(8, (row) => List.generate(8, (col) => null));
 

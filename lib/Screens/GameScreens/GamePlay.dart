@@ -33,6 +33,8 @@ class _GameScreenState extends State<GameScreen> {
 
   Future<void> _initializeGame() async {
     _gameProvider = Provider.of<ChessGameProvider>(context, listen: false);
+    _gameProvider.initializeBoard();
+
     _gameProvider.setLoading(true);
     final currentUser = FirebaseAuth.instance.currentUser;
 
@@ -79,7 +81,7 @@ class _GameScreenState extends State<GameScreen> {
           currentUser.uid,
           playerColor,
         );
-        _gameProvider.setLoading(false);
+        // _gameProvider.setLoading(false);
         // setState(() => _isInitialized = true);
       }
     }
