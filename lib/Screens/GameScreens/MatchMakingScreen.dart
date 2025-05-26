@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math';
-
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Screens/GameScreens/GamePlay.dart';
 import 'package:chess_cash/Services/navigation.dart';
@@ -9,7 +8,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class MatchMakingScreen extends StatefulWidget {
-  const MatchMakingScreen({super.key});
+  final String time; // Renamed from timeLimit to time for consistency
+
+  const MatchMakingScreen({
+    super.key,
+    required this.time,
+  });
 
   @override
   State<MatchMakingScreen> createState() => _MatchMakingScreenState();
@@ -29,6 +33,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
   @override
   void initState() {
     super.initState();
+    print("🎮 MatchMaking: Screen Initialized");
     init();
   }
 
@@ -36,12 +41,14 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
     currentUserId = _auth.currentUser!.uid;
     profile = _auth.currentUser?.photoURL ??
         'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT9nPR4_CyTE4xJdV3eDJ3P4rDGs8uvpTEW-qK_-WzU6xfjqg1I1CeyCcPOHztCFtwfbrc&usqp=CAU';
-    // Replace this with your actual way to get user Elo
     currentUserElo = 1400;
+    print(
+        "🎮 MatchMaking: Init - UserID: $currentUserId, ELO: $currentUserElo");
     _startMatchmaking();
   }
 
   Future<void> _startMatchmaking() async {
+    print("🎮 MatchMaking: Starting matchmaking process");
     final docRef =
         _firestore.collection('matchmaking_queue').doc(currentUserId);
     await docRef.set({
@@ -49,12 +56,15 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
       'elo': currentUserElo,
       'timestamp': FieldValue.serverTimestamp(),
     });
+    print("🎮 MatchMaking: Added to queue - UserID: $currentUserId");
 
     matchmakingListener = _firestore
         .collection('matchmaking_queue')
         .orderBy('timestamp')
         .snapshots()
         .listen((snapshot) async {
+      print(
+          "🎮 MatchMaking: Queue updated - ${snapshot.docs.length} players in queue");
       final now = DateTime.now();
 
       for (var doc in snapshot.docs) {
@@ -66,11 +76,15 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
         if (opponentId == currentUserId) continue;
 
         final waitingDuration = now.difference(timestamp.toDate()).inSeconds;
-
-        // Gradual Elo widening: +25 every 30 seconds, capped at ±300
         final allowedRange = min(100 + (waitingDuration ~/ 30) * 25, 300);
 
+        print(
+            "🎮 MatchMaking: Checking opponent - ID: $opponentId, ELO: $opponentElo");
+        print(
+            "🎮 MatchMaking: Wait time: ${waitingDuration}s, Allowed ELO range: ±$allowedRange");
+
         if ((opponentElo - currentUserElo).abs() <= allowedRange) {
+          print("🎮 MatchMaking: Match found! Opponent ID: $opponentId");
           await _createGameRoom(opponentId);
           break;
         }
@@ -79,38 +93,179 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
   }
 
   Future<void> _createGameRoom(String opponentId) async {
-    // Stop listening to queue
+    print("🎮 GameRoom: Starting room creation with opponent: $opponentId");
     await matchmakingListener?.cancel();
+    print("🎮 GameRoom: Matchmaking listener cancelled");
 
-    // Remove both users from queue
-    await _firestore
+    final currentUserDoc = await _firestore
         .collection('matchmaking_queue')
         .doc(currentUserId)
-        .delete();
-    await _firestore.collection('matchmaking_queue').doc(opponentId).delete();
+        .get();
 
-    // Create new game room
-    final gameDoc = await _firestore.collection('games').add({
-      'player1': currentUserId,
-      'player2': opponentId,
-      'status': 'waiting',
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    final opponentDoc =
+        await _firestore.collection('matchmaking_queue').doc(opponentId).get();
 
-    final gameId = gameDoc.id;
+    final currentUserTimestamp =
+        currentUserDoc.data()?['timestamp'] as Timestamp;
+    final opponentTimestamp = opponentDoc.data()?['timestamp'] as Timestamp;
 
-    // Navigate to GameScreen with the roomCode
-    if (mounted) {
-      pushReplacement(
-        context,
-        GameScreen(roomCode: gameId), // ✅ passing game ID
-      );
+    print(
+        "🎮 GameRoom: Current user wait time: ${DateTime.now().difference(currentUserTimestamp.toDate()).inSeconds}s");
+    print(
+        "🎮 GameRoom: Opponent wait time: ${DateTime.now().difference(opponentTimestamp.toDate()).inSeconds}s");
+
+    String? gameId;
+
+    if (currentUserTimestamp.compareTo(opponentTimestamp) < 0) {
+      print("🎮 GameRoom: Current user creating game (waited longer)");
+      final gameDoc = await _firestore.collection('games').add({
+        'player1': currentUserId,
+        'player2': opponentId,
+        'status': 'ready',
+        'createdAt': FieldValue.serverTimestamp(),
+        'time': widget.time, // Using widget.time instead of timeLimit
+      });
+      gameId = gameDoc.id;
+      print("🎮 GameRoom: Game created with ID: $gameId");
+    } else {
+      await _firestore
+          .collection('matchmaking_queue')
+          .doc(currentUserId)
+          .delete();
+      await _firestore.collection('matchmaking_queue').doc(opponentId).delete();
+      print("🎮 GameRoom: Both players removed from queue");
+      print("🎮 GameRoom: Waiting for opponent to create game");
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      final querySnapshot = await _firestore
+          .collection('games')
+          .where('player2', isEqualTo: currentUserId)
+          .where('player1', isEqualTo: opponentId)
+          .where('status', isEqualTo: 'ready')
+          .orderBy('createdAt', descending: true)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        gameId = querySnapshot.docs.first.id;
+        print("🎮 GameRoom: Found and joining game with ID: $gameId");
+      } else {
+        print("❌ GameRoom: Failed to find game to join");
+      }
     }
+
+    if (gameId != null && mounted) {
+      print("🎮 GameRoom: Navigating to game screen with ID: $gameId");
+
+      final roomData = {
+        'player1': currentUserId,
+        'player2': opponentId,
+        'status': 'ready',
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+      _startCountdown(roomData, gameId);
+    } else {
+      print("❌ GameRoom: Failed to create/join game");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Failed to create/join game. Please try again.')),
+        );
+      }
+    }
+  }
+
+  void _startCountdown(Map<String, dynamic> roomData, String roomCode) {
+    _initializeGameData(roomData, roomCode).then((_) {
+      Future.delayed(const Duration(seconds: 3));
+      pushReplacement(
+          context,
+          GameScreen(
+            roomCode: roomCode,
+          ));
+    });
+  }
+
+  List<List<Map<String, dynamic>?>> _createInitialBoardState() {
+    final board = List.generate(
+        8, (row) => List.generate(8, (col) => null as Map<String, dynamic>?));
+
+    // Black pieces
+    board[0][0] = {'type': 'rook', 'color': 'black', 'hasMoved': false};
+    board[0][1] = {'type': 'knight', 'color': 'black', 'hasMoved': false};
+    board[0][2] = {'type': 'bishop', 'color': 'black', 'hasMoved': false};
+    board[0][3] = {'type': 'queen', 'color': 'black', 'hasMoved': false};
+    board[0][4] = {'type': 'king', 'color': 'black', 'hasMoved': false};
+    board[0][5] = {'type': 'bishop', 'color': 'black', 'hasMoved': false};
+    board[0][6] = {'type': 'knight', 'color': 'black', 'hasMoved': false};
+    board[0][7] = {'type': 'rook', 'color': 'black', 'hasMoved': false};
+
+    for (int col = 0; col < 8; col++) {
+      board[1][col] = {'type': 'pawn', 'color': 'black', 'hasMoved': false};
+    }
+
+    // White pieces
+    for (int col = 0; col < 8; col++) {
+      board[6][col] = {'type': 'pawn', 'color': 'white', 'hasMoved': false};
+    }
+
+    board[7][0] = {'type': 'rook', 'color': 'white', 'hasMoved': false};
+    board[7][1] = {'type': 'knight', 'color': 'white', 'hasMoved': false};
+    board[7][2] = {'type': 'bishop', 'color': 'white', 'hasMoved': false};
+    board[7][3] = {'type': 'queen', 'color': 'white', 'hasMoved': false};
+    board[7][4] = {'type': 'king', 'color': 'white', 'hasMoved': false};
+    board[7][5] = {'type': 'bishop', 'color': 'white', 'hasMoved': false};
+    board[7][6] = {'type': 'knight', 'color': 'white', 'hasMoved': false};
+    board[7][7] = {'type': 'rook', 'color': 'white', 'hasMoved': false};
+
+    return board;
+  }
+
+  Future<void> _initializeGameData(
+      Map<String, dynamic> roomData, String roomCode) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    // Determine player colors
+    final isPlayer1 = roomData['player1'] == currentUser.uid;
+    final playerColor = isPlayer1 ? 'white' : 'black';
+
+    // Setup initial board state
+    final initialBoardState = _createInitialBoardState();
+
+    // Convert 2D board to flat map (Firestore-compatible)
+    Map<String, dynamic> boardMap = {};
+    for (int row = 0; row < 8; row++) {
+      for (int col = 0; col < 8; col++) {
+        final piece = initialBoardState[row][col];
+        if (piece != null) {
+          boardMap['$row-$col'] = piece;
+        }
+      }
+    }
+
+    // Parse time string to seconds
+    final timeInMinutes = int.parse(widget.time.split(' ')[0]);
+    final timeInSeconds = timeInMinutes * 60;
+
+    // Update game document with initial game state
+    await FirebaseFirestore.instance.collection('games').doc(roomCode).update({
+      'boardState': boardMap,
+      'currentPlayer': 'white',
+      'gameStatus': 'playing',
+      'whiteTimeLeft': timeInSeconds,
+      'blackTimeLeft': timeInSeconds,
+      'player1Color': 'white',
+      'player2Color': 'black',
+      'gameStarted': true,
+      'lastUpdated': FieldValue.serverTimestamp(),
+    });
   }
 
   @override
   void dispose() {
-    _firestore.collection('matchmaking_queue').doc(currentUserId).delete();
+    // print("🎮 MatchMaking: Disposing screen - cleaning up");
+    // _firestore.collection('matchmaking_queue').doc(currentUserId).delete();
     matchmakingListener?.cancel();
     super.dispose();
   }

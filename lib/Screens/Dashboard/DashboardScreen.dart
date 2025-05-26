@@ -19,6 +19,8 @@ class Dashboardscreen extends StatefulWidget {
 }
 
 class _DashboardscreenState extends State<Dashboardscreen> {
+  String selectedTime = '3 min'; // Default selected time
+
   @override
   Widget build(BuildContext context) {
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
@@ -63,7 +65,7 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                 ),
                 _buildButton(AppConstants.playFreeMatch, Icons.play_arrow,
                     ColorResources.secondaryColor, () {
-                  push(context, const MatchMakingScreen());
+                  _startMatchmaking();
                 }),
                 _buildButton(AppConstants.joinPaidContest, Icons.attach_money,
                     ColorResources.secondaryColor, () {
@@ -86,7 +88,7 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: '1 min',
+                        value: selectedTime,
                         // Time options: 1 min, 3 min, 5 min, 10 min, 15 min, 30 min.
                         items: <String>[
                           '1 min',
@@ -108,7 +110,13 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                             ),
                           );
                         }).toList(),
-                        onChanged: (_) {},
+                        onChanged: (String? newValue) {
+                          if (newValue != null) {
+                            setState(() {
+                              selectedTime = newValue;
+                            });
+                          }
+                        },
                       ),
                     ),
                   ),
@@ -305,5 +313,15 @@ class _DashboardscreenState extends State<Dashboardscreen> {
       },
     );
     focusNode.requestFocus();
+  }
+
+  void _startMatchmaking() async {
+    print("🎮 Dashboard: Starting matchmaking with time limit: $selectedTime");
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MatchMakingScreen(time: selectedTime),
+      ),
+    );
   }
 }

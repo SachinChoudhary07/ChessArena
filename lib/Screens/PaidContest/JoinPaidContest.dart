@@ -88,7 +88,7 @@ class _JoinPaidContestState extends State<JoinPaidContest> {
                   ),
                   Center(
                     child: InkWell(
-                      onTap: () => push(context, const MatchMakingScreen()),
+                      // onTap: () => push(context, const MatchMakingScreen()),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 10),

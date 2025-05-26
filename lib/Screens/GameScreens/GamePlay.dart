@@ -18,10 +18,12 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   late ChessGameProvider _gameProvider;
   bool _isInitialized = false;
+  bool _isShowingPromotionDialog = false;
 
   @override
   void initState() {
     super.initState();
+    print("🎮 GameScreen: Initializing game screen");
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeGame();
     });
@@ -32,6 +34,7 @@ class _GameScreenState extends State<GameScreen> {
   String? gameName = '';
 
   Future<void> _initializeGame() async {
+    print("🎮 GameScreen: Starting game initialization");
     _gameProvider = Provider.of<ChessGameProvider>(context, listen: false);
     _gameProvider.initializeBoard();
 
@@ -39,6 +42,7 @@ class _GameScreenState extends State<GameScreen> {
     final currentUser = FirebaseAuth.instance.currentUser;
 
     if (currentUser != null) {
+      print("🎮 GameScreen: Fetching game data for room ${widget.roomCode}");
       final gameDoc = await FirebaseFirestore.instance
           .collection('games')
           .doc(widget.roomCode)
@@ -46,9 +50,11 @@ class _GameScreenState extends State<GameScreen> {
 
       if (gameDoc.exists) {
         final data = gameDoc.data() as Map<String, dynamic>;
+        print("🎮 GameScreen: Game data fetched successfully");
 
         final player1UID = data['player1'];
         final player2UID = data['player2'];
+        print("🎮 GameScreen: Player1: $player1UID, Player2: $player2UID");
 
         final player1Snapshot = await FirebaseFirestore.instance
             .collection('users')
@@ -59,21 +65,24 @@ class _GameScreenState extends State<GameScreen> {
             .doc(player2UID)
             .get();
 
-        // setState(() {
         player1Name = player1Snapshot.data()?['username'] ?? 'Player 1';
         player2Name = player2Snapshot.data()?['username'] ?? 'Player 2';
         gameName = data['gameName'] ?? 'Chess Match';
-        // });
+        print("🎮 GameScreen: Players loaded - $player1Name vs $player2Name");
 
         PieceColor playerColor;
         if (player1UID == currentUser.uid) {
           playerColor = data['player1Color'] == 'white'
               ? PieceColor.white
               : PieceColor.black;
+          print(
+              "🎮 GameScreen: Current user is Player 1 with color: $playerColor");
         } else {
           playerColor = data['player2Color'] == 'white'
               ? PieceColor.white
               : PieceColor.black;
+          print(
+              "🎮 GameScreen: Current user is Player 2 with color: $playerColor");
         }
 
         _gameProvider.initializeGame(
@@ -81,9 +90,12 @@ class _GameScreenState extends State<GameScreen> {
           currentUser.uid,
           playerColor,
         );
-        // _gameProvider.setLoading(false);
-        // setState(() => _isInitialized = true);
+        print("🎮 GameScreen: Game initialized successfully");
+      } else {
+        print("❌ GameScreen: Game document not found!");
       }
+    } else {
+      print("❌ GameScreen: No authenticated user found!");
     }
   }
 
@@ -96,6 +108,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<bool> _onBackPressed() async {
+    print("🎮 GameScreen: Back button pressed, showing confirmation dialog");
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -117,14 +130,16 @@ class _GameScreenState extends State<GameScreen> {
     );
 
     if (result == true) {
+      print("🎮 GameScreen: User confirmed exit, handling player exit");
       await _handlePlayerExit();
-      return true; // Allow pop
+      return true;
     }
 
-    return false; // Prevent pop
+    return false;
   }
 
   Future<void> _handlePlayerExit() async {
+    print("🎮 GameScreen: Processing player exit");
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
@@ -132,7 +147,10 @@ class _GameScreenState extends State<GameScreen> {
         FirebaseFirestore.instance.collection('games').doc(widget.roomCode);
 
     final snapshot = await gameDocRef.get();
-    if (!snapshot.exists) return;
+    if (!snapshot.exists) {
+      print("❌ GameScreen: Game document not found during exit");
+      return;
+    }
 
     final data = snapshot.data()!;
     final player1UID = data['player1'];
@@ -141,6 +159,7 @@ class _GameScreenState extends State<GameScreen> {
     final opponentUID =
         (player1UID == currentUser.uid) ? player2UID : player1UID;
 
+    print("🎮 GameScreen: Updating game status to resignation");
     await gameDocRef.update({
       'gameStatus': 'resignation',
       'winner': opponentUID,
@@ -148,7 +167,7 @@ class _GameScreenState extends State<GameScreen> {
       'endReason': 'Player Resign',
     });
 
-    // Optionally: Show a toast/snackbar
+    print("🎮 GameScreen: Player exit processed successfully");
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('You left the game. ${_getOpponentName()} wins!')),
     );
@@ -209,6 +228,15 @@ class _GameScreenState extends State<GameScreen> {
             if (gameProvider.isLoading) {
               return Loader();
             }
+
+            // Show promotion dialog if needed
+            if (gameProvider.isPromotionPending && !_isShowingPromotionDialog) {
+              _isShowingPromotionDialog = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _showPromotionDialog(gameProvider);
+              });
+            }
+
             return Column(
               children: [
                 // Opponent info and timer
@@ -438,7 +466,7 @@ class _GameScreenState extends State<GameScreen> {
 
         case 'timeout':
           statusText =
-              youWon ? 'You Win! Opponent timed out.' : 'You Lost! Time’s up.';
+              youWon ? 'You Win! Opponent timed out.' : 'You Lost! Time\'s up.';
           statusColor = youWon ? Colors.green : Colors.red;
           break;
       }
@@ -464,6 +492,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _showGameMenu(BuildContext context) {
+    print("🎮 GameScreen: Opening game menu");
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -504,6 +533,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _confirmResign() {
+    print("🎮 GameScreen: Showing resign confirmation dialog");
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -518,6 +548,7 @@ class _GameScreenState extends State<GameScreen> {
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
+                print("🎮 GameScreen: Player confirmed resignation");
                 _gameProvider.resignGame();
               },
               child: const Text('Resign'),
@@ -529,6 +560,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _confirmDraw() {
+    print("🎮 GameScreen: Showing draw offer confirmation dialog");
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -543,6 +575,7 @@ class _GameScreenState extends State<GameScreen> {
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
+                print("🎮 GameScreen: Player confirmed draw offer");
                 _gameProvider.offerDraw();
               },
               child: const Text('Offer Draw'),
@@ -550,6 +583,63 @@ class _GameScreenState extends State<GameScreen> {
           ],
         );
       },
+    );
+  }
+
+  void _showPromotionDialog(ChessGameProvider gameProvider) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        final pieceColor = gameProvider.playerColor;
+        return AlertDialog(
+          title: const Text('Choose Promotion Piece'),
+          content: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildPromotionPiece(PieceType.queen, pieceColor!, gameProvider),
+              _buildPromotionPiece(PieceType.rook, pieceColor, gameProvider),
+              _buildPromotionPiece(PieceType.bishop, pieceColor, gameProvider),
+              _buildPromotionPiece(PieceType.knight, pieceColor, gameProvider),
+            ],
+          ),
+        );
+      },
+    ).then((_) {
+      _isShowingPromotionDialog = false;
+    });
+  }
+
+  Widget _buildPromotionPiece(
+    PieceType type,
+    PieceColor color,
+    ChessGameProvider gameProvider,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).pop();
+        gameProvider.handlePromotion(type);
+      },
+      child: Container(
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.brown),
+          color: Colors.white,
+        ),
+        child: Center(
+          child: Text(
+            _getPieceSymbol(ChessPiece(type: type, color: color)),
+            style: TextStyle(
+              fontSize: 32,
+              color: color == PieceColor.white ? Colors.white : Colors.black,
+              shadows: color == PieceColor.white
+                  ? [const Shadow(color: Colors.black, blurRadius: 2)]
+                  : [const Shadow(color: Colors.white, blurRadius: 2)],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

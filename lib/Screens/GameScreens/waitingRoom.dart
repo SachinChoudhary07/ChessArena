@@ -64,23 +64,21 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
   }
 
   int parseTimeToSeconds(String? timeString) {
-    if (timeString == null) return 0;
+    if (timeString == null) return 300; // default 5 minutes
 
     final parts = timeString.trim().split(' ');
-    if (parts.length != 2) return 0;
+    if (parts.length != 2) return 300;
 
     final value = int.tryParse(parts[0]);
-    final unit = parts[1].toLowerCase();
+    if (value == null) return 300;
 
-    if (value == null) return 0;
-
-    if (unit.contains('min')) {
-      return value * 60; // convert to seconds
-    } else if (unit.contains('sec')) {
-      return value; // already in seconds
-    } else {
-      return 0; // unsupported unit
+    // Convert to seconds
+    if (parts[1].toLowerCase().contains('min')) {
+      print(
+          "🎮 WaitingRoom: Converting time limit $timeString to ${value * 60} seconds");
+      return value * 60;
     }
+    return 300; // default if parsing fails
   }
 
   Future<void> _initializeGameData(Map<String, dynamic> roomData) async {
@@ -105,20 +103,21 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
       }
     }
 
-    final seconds = parseTimeToSeconds(time); // time is '3 min'
+    // Get time from room data
+    final gameTimeSeconds = parseTimeToSeconds(roomData['time'] as String?);
+    print(
+        "🎮 WaitingRoom: Setting game time to $gameTimeSeconds seconds from ${roomData['time']}");
 
     // Update game document with initial game state
     await FirebaseFirestore.instance
         .collection('games')
         .doc(widget.roomCode)
         .update({
-      'boardState': boardMap, // flat map instead of 2D list
+      'boardState': boardMap,
       'currentPlayer': 'white',
       'gameStatus': 'playing',
-      // 'whiteTimeLeft': seconds, // 10 minutes
-      // 'blackTimeLeft': seconds,
-      'whiteTimeLeft': 300, // 10 minutes
-      'blackTimeLeft': 300,
+      'whiteTimeLeft': gameTimeSeconds,
+      'blackTimeLeft': gameTimeSeconds,
       'player1Color': 'white',
       'player2Color': 'black',
       'gameStarted': true,

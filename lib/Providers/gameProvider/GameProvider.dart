@@ -28,6 +28,12 @@ class ChessGameProvider with ChangeNotifier {
 
   bool isLoading = false;
 
+  // Add this at class level
+  Function(PieceType)? _onPromotionSelected;
+  bool _isPromotionPending = false;
+  ChessPosition? _promotionFrom;
+  ChessPosition? _promotionTo;
+
   void setLoading(bool value) {
     // isLoading = value;
     // notifyListeners();
@@ -61,10 +67,11 @@ class ChessGameProvider with ChangeNotifier {
   // Initialize the chess game
   void initializeGame(
       String roomCode, String playerId, PieceColor playerColor) {
+    print(
+        "🎲 GameProvider: Initializing game - Room: $roomCode, Player: $playerId, Color: $playerColor");
     _roomCode = roomCode;
     _playerId = playerId;
     _playerColor = playerColor;
-    // _initializeBoard();
     _listenToGameUpdates();
     _startTimer();
     notifyListeners();
@@ -72,7 +79,7 @@ class ChessGameProvider with ChangeNotifier {
 
   // Initialize the chess board with starting positions
   void initializeBoard() {
-    print("_InitializeBoard Called ---------------->>>>>>>>>>>>");
+    print("🎲 GameProvider: Initializing chess board");
     _board = List.generate(8, (row) => List.generate(8, (col) => null));
 
     // Place pieces in starting positions
@@ -119,6 +126,7 @@ class ChessGameProvider with ChangeNotifier {
       _placePiece(
           6, col, ChessPiece(type: PieceType.pawn, color: PieceColor.white));
     }
+    print("🎲 GameProvider: Chess board initialized with starting positions");
   }
 
   void _placePiece(int row, int col, ChessPiece piece) {
@@ -127,12 +135,14 @@ class ChessGameProvider with ChangeNotifier {
 
   // Listen to game updates from Firebase
   void _listenToGameUpdates() {
+    print("🎲 GameProvider: Starting game updates listener");
     _gameSubscription = _firestore
         .collection('games')
         .doc(_roomCode)
         .snapshots()
         .listen((snapshot) {
       if (snapshot.exists) {
+        print("🎲 GameProvider: Received game update");
         final data = snapshot.data() as Map<String, dynamic>;
         _updateGameFromFirestore(data);
       }
@@ -141,7 +151,9 @@ class ChessGameProvider with ChangeNotifier {
 
   // Update local game state from Firestore data
   void _updateGameFromFirestore(Map<String, dynamic> data) {
+    print("🎲 GameProvider: Updating game state from Firestore");
     if (data['boardState'] != null) {
+      print("🎲 GameProvider: Updating board state");
       final boardData = data['boardState'] as Map<String, dynamic>;
       for (int row = 0; row < 8; row++) {
         for (int col = 0; col < 8; col++) {
@@ -171,11 +183,19 @@ class ChessGameProvider with ChangeNotifier {
       _opponentId = data['player2'];
     }
 
+    print(
+        "🎲 GameProvider: Game state updated - Current Player: $_currentPlayer, Status: $_gameStatus");
+    if (_gameStatus != 'playing') {
+      print(
+          "🎲 GameProvider: Game ended - Winner: $_winner, Reason: $_gameStatus");
+    }
+
     notifyListeners();
   }
 
   // Start the game timer
   void _startTimer() {
+    print("🎲 GameProvider: Starting game timer");
     _gameTimer?.cancel();
     _lastMoveTime = DateTime.now();
 
@@ -184,11 +204,13 @@ class ChessGameProvider with ChangeNotifier {
         if (_currentPlayer == PieceColor.white) {
           _whiteTimeLeft--;
           if (_whiteTimeLeft <= 0) {
+            print("🎲 GameProvider: White player ran out of time");
             _endGame('black', 'timeout');
           }
         } else {
           _blackTimeLeft--;
           if (_blackTimeLeft <= 0) {
+            print("🎲 GameProvider: Black player ran out of time");
             _endGame('white', 'timeout');
           }
         }
@@ -200,37 +222,47 @@ class ChessGameProvider with ChangeNotifier {
 
   // Handle piece selection and moves
   void onSquareTapped(int row, int col) {
-    if (!isMyTurn || _gameStatus != 'playing') return;
+    if (!isMyTurn || _gameStatus != 'playing') {
+      print(
+          "🎲 GameProvider: Invalid move - Not player's turn or game not active");
+      return;
+    }
 
     final position = ChessPosition(row, col);
     final piece = _board[row][col];
 
-    // If no piece is selected
+    print("🎲 GameProvider: Square tapped at row: $row, col: $col");
+
     if (_selectedPosition == null) {
       if (piece != null && piece.color == _playerColor) {
         _selectedPosition = position;
         _possibleMoves = _calculatePossibleMoves(position);
+        print(
+            "🎲 GameProvider: Piece selected - Type: ${piece.type}, Color: ${piece.color}");
+        print(
+            "🎲 GameProvider: Possible moves calculated: ${_possibleMoves.length}");
         notifyListeners();
       }
     } else {
-      // If same piece is tapped again, deselect
       if (_selectedPosition == position) {
+        print("🎲 GameProvider: Piece deselected");
         _selectedPosition = null;
         _possibleMoves = [];
         notifyListeners();
         return;
       }
 
-      // If a valid move is selected
       if (_possibleMoves.contains(position)) {
+        print(
+            "🎲 GameProvider: Making move from $_selectedPosition to $position");
         _makeMove(_selectedPosition!, position);
       } else if (piece != null && piece.color == _playerColor) {
-        // Select a different piece
+        print("🎲 GameProvider: Selecting different piece");
         _selectedPosition = position;
         _possibleMoves = _calculatePossibleMoves(position);
         notifyListeners();
       } else {
-        // Invalid move, deselect
+        print("🎲 GameProvider: Invalid move - Deselecting piece");
         _selectedPosition = null;
         _possibleMoves = [];
         notifyListeners();
@@ -241,48 +273,79 @@ class ChessGameProvider with ChangeNotifier {
   // Calculate possible moves for a piece
   List<ChessPosition> _calculatePossibleMoves(ChessPosition position) {
     final piece = _board[position.row][position.col];
-    if (piece == null) return [];
+    if (piece == null) {
+      print(
+          "❌ GameProvider: Attempted to calculate moves for empty square at $position");
+      return [];
+    }
 
+    print(
+        "🎲 GameProvider: Calculating moves for ${piece.type} at position $position");
     List<ChessPosition> moves = [];
 
     switch (piece.type) {
       case PieceType.pawn:
         moves = _calculatePawnMoves(position, piece);
+        print("🎲 GameProvider: Found ${moves.length} potential pawn moves");
         break;
       case PieceType.rook:
         moves = _calculateRookMoves(position, piece);
+        print("🎲 GameProvider: Found ${moves.length} potential rook moves");
         break;
       case PieceType.knight:
         moves = _calculateKnightMoves(position, piece);
+        print("🎲 GameProvider: Found ${moves.length} potential knight moves");
         break;
       case PieceType.bishop:
         moves = _calculateBishopMoves(position, piece);
+        print("🎲 GameProvider: Found ${moves.length} potential bishop moves");
         break;
       case PieceType.queen:
         moves = _calculateQueenMoves(position, piece);
+        print("🎲 GameProvider: Found ${moves.length} potential queen moves");
         break;
       case PieceType.king:
         moves = _calculateKingMoves(position, piece);
+        print("🎲 GameProvider: Found ${moves.length} potential king moves");
         break;
     }
 
     // Filter out moves that would put own king in check
-    return moves
+    final validMoves = moves
         .where((move) => !_wouldBeInCheckAfterMove(position, move))
         .toList();
+    print(
+        "🎲 GameProvider: After check validation - ${validMoves.length} legal moves from ${moves.length} potential moves");
+
+    if (validMoves.isEmpty && moves.isNotEmpty) {
+      print("⚠️ GameProvider: All potential moves were blocked due to check");
+    }
+
+    return validMoves;
   }
 
   // Calculate pawn moves
   List<ChessPosition> _calculatePawnMoves(
       ChessPosition position, ChessPiece piece) {
+    print(
+        "🎲 GameProvider: Calculating pawn moves for ${piece.color} at row ${position.row}, col ${position.col}");
     List<ChessPosition> moves = [];
     final direction = piece.color == PieceColor.white ? -1 : 1;
     final startRow = piece.color == PieceColor.white ? 6 : 1;
+
+    // Check if pawn has reached the last rank
+    if ((piece.color == PieceColor.white && position.row == 0) ||
+        (piece.color == PieceColor.black && position.row == 7)) {
+      print("🎲 GameProvider: Pawn at promotion square - should be promoted");
+      return moves; // No moves possible, should be promoted
+    }
 
     // Forward move
     final oneForward = ChessPosition(position.row + direction, position.col);
     if (oneForward.isValid() &&
         _board[oneForward.row][oneForward.col] == null) {
+      print(
+          "🎲 GameProvider: Adding forward move to ${oneForward.row},${oneForward.col}");
       moves.add(oneForward);
 
       // Two squares forward from starting position
@@ -291,6 +354,8 @@ class ChessGameProvider with ChangeNotifier {
             ChessPosition(position.row + 2 * direction, position.col);
         if (twoForward.isValid() &&
             _board[twoForward.row][twoForward.col] == null) {
+          print(
+              "🎲 GameProvider: Adding double forward move to ${twoForward.row},${twoForward.col}");
           moves.add(twoForward);
         }
       }
@@ -303,11 +368,14 @@ class ChessGameProvider with ChangeNotifier {
       if (capturePos.isValid()) {
         final targetPiece = _board[capturePos.row][capturePos.col];
         if (targetPiece != null && targetPiece.color != piece.color) {
+          print(
+              "🎲 GameProvider: Adding diagonal capture move to ${capturePos.row},${capturePos.col}");
           moves.add(capturePos);
         }
       }
     }
 
+    print("🎲 GameProvider: Found ${moves.length} possible moves for pawn");
     return moves;
   }
 
@@ -449,7 +517,7 @@ class ChessGameProvider with ChangeNotifier {
   bool _wouldBeInCheckAfterMove(ChessPosition from, ChessPosition to) {
     // Make temporary move
     final originalPiece = _board[to.row][to.col];
-    final movingPiece = _board[from.row][from.col];
+    var movingPiece = _board[from.row][from.col];
 
     _board[to.row][to.col] = movingPiece;
     _board[from.row][from.col] = null;
@@ -460,6 +528,11 @@ class ChessGameProvider with ChangeNotifier {
     // Restore original position
     _board[from.row][from.col] = movingPiece;
     _board[to.row][to.col] = originalPiece;
+
+    if (isInCheck) {
+      print(
+          "⚠️ GameProvider: Move from $from to $to would leave/put king in check");
+    }
 
     return isInCheck;
   }
@@ -539,13 +612,42 @@ class ChessGameProvider with ChangeNotifier {
   }
 
   // Make a move
-  void _makeMove(ChessPosition from, ChessPosition to) {
-    final movingPiece = _board[from.row][from.col];
+  Future<void> _makeMove(ChessPosition from, ChessPosition to) async {
+    print("🎲 GameProvider: Processing move from $from to $to");
+    var movingPiece = _board[from.row][from.col];
     final capturedPiece = _board[to.row][to.col];
 
     if (movingPiece == null) return;
 
-    // Create the move
+    // Check for pawn promotion before making the move
+    if (movingPiece.type == PieceType.pawn) {
+      final isPromotion =
+          (movingPiece.color == PieceColor.white && to.row == 0) ||
+              (movingPiece.color == PieceColor.black && to.row == 7);
+
+      if (isPromotion) {
+        print("🎲 GameProvider: Pawn promotion pending at ${to.row},${to.col}");
+        _isPromotionPending = true;
+        _promotionFrom = from;
+        _promotionTo = to;
+        notifyListeners();
+        return; // Don't complete the move until promotion is chosen
+      }
+    }
+
+    _completeMoveAfterPromotion(from, to, movingPiece, capturedPiece);
+  }
+
+  // Complete the move after promotion (if any)
+  void _completeMoveAfterPromotion(ChessPosition from, ChessPosition to,
+      ChessPiece movingPiece, ChessPiece? capturedPiece,
+      {PieceType? promotionType}) {
+    if (promotionType != null) {
+      print("🎲 GameProvider: Promoting pawn to $promotionType");
+      movingPiece = ChessPiece(
+          type: promotionType, color: movingPiece.color, hasMoved: true);
+    }
+
     final move = ChessMove(
       from: from,
       to: to,
@@ -555,42 +657,62 @@ class ChessGameProvider with ChangeNotifier {
       playerId: _playerId,
     );
 
-    // Update board locally
     _board[to.row][to.col] = movingPiece.copyWith(hasMoved: true);
     _board[from.row][from.col] = null;
 
-    // Switch turns
     _currentPlayer = _currentPlayer == PieceColor.white
         ? PieceColor.black
         : PieceColor.white;
+    print("🎲 GameProvider: Turn changed to $_currentPlayer");
 
-    // Clear selection
     _selectedPosition = null;
     _possibleMoves = [];
+    _isPromotionPending = false;
+    _promotionFrom = null;
+    _promotionTo = null;
 
-    // Check for game end conditions
     _checkGameEndConditions();
-
-    // Update Firebase
     _updateGameInFirestore(move);
 
     notifyListeners();
   }
 
+  // Handle promotion selection
+  void handlePromotion(PieceType promotionType) {
+    print("🎲 GameProvider: Handling pawn promotion to $promotionType");
+    if (_isPromotionPending && _promotionFrom != null && _promotionTo != null) {
+      final movingPiece = _board[_promotionFrom!.row][_promotionFrom!.col];
+      final capturedPiece = _board[_promotionTo!.row][_promotionTo!.col];
+
+      if (movingPiece != null) {
+        _completeMoveAfterPromotion(
+            _promotionFrom!, _promotionTo!, movingPiece, capturedPiece,
+            promotionType: promotionType);
+      }
+    }
+  }
+
+  // Getter for promotion state
+  bool get isPromotionPending => _isPromotionPending;
+  ChessPosition? get promotionSquare => _promotionTo;
+
   // Check for checkmate, stalemate, etc.
   void _checkGameEndConditions() {
+    print("🎲 GameProvider: Checking game end conditions");
     final currentPlayerHasMoves = _hasValidMoves(_currentPlayer);
     final isInCheck = _isKingInCheck(_currentPlayer);
 
     if (!currentPlayerHasMoves) {
       if (isInCheck) {
-        // Checkmate
         final winner = _currentPlayer == PieceColor.white ? 'black' : 'white';
+        print("🎲 GameProvider: Checkmate! Winner: $winner");
         _endGame(winner, 'checkmate');
       } else {
-        // Stalemate
+        print("🎲 GameProvider: Stalemate! Game is a draw");
         _endGame(null, 'stalemate');
       }
+    } else if (isInCheck) {
+      print("🎲 GameProvider: ${_currentPlayer} is in check!");
     }
   }
 
@@ -612,11 +734,10 @@ class ChessGameProvider with ChangeNotifier {
 
   // End the game
   void _endGame(String? winner, String reason) {
+    print("🎲 GameProvider: Game ended - Winner: $winner, Reason: $reason");
     _gameStatus = reason;
     _winner = winner;
     _gameTimer?.cancel();
-
-    // Update Firebase with final game state
     _updateGameInFirestore(null);
   }
 
@@ -657,12 +778,14 @@ class ChessGameProvider with ChangeNotifier {
 
   // Resign game
   void resignGame() {
+    print("🎲 GameProvider: Player $_playerColor resigned");
     final winner = _playerColor == PieceColor.white ? 'black' : 'white';
     _endGame(winner, 'resignation');
   }
 
   // Offer draw (simplified - auto accept for now)
   void offerDraw() {
+    print("🎲 GameProvider: Draw offered and accepted");
     _endGame(null, 'draw');
   }
 
@@ -675,6 +798,7 @@ class ChessGameProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    print("🎲 GameProvider: Disposing game provider");
     _gameTimer?.cancel();
     _gameSubscription?.cancel();
     super.dispose();
