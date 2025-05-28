@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
@@ -739,6 +740,28 @@ class ChessGameProvider with ChangeNotifier {
     _winner = winner;
     _gameTimer?.cancel();
     _updateGameInFirestore(null);
+
+    // Get the winner and loser colors
+    final winnerColor = winner == 'white' ? PieceColor.white : PieceColor.black;
+
+    // Update stats for both players
+    _updateUserStats(_playerId, _playerColor == winnerColor);
+    _updateUserStats(_opponentId!, _playerColor != winnerColor);
+
+    //now give the 80% of the entry fee to the winner
+    _updateWinnerBalance(winnerColor, _roomCode);
+
+    // Record game history for both players
+    _recordGameHistory(_playerId, _playerColor == winnerColor, _opponentId!);
+    _recordGameHistory(_opponentId!, _playerColor != winnerColor, _playerId);
+
+    // Update ELO ratings (this function already handles both players)
+    if (winner != null && reason != 'draw') {
+      // Only update ELO for decisive games
+      final winnerId = _playerColor == winnerColor ? _playerId : _opponentId!;
+      final loserId = _playerColor == winnerColor ? _opponentId! : _playerId;
+      _updateEloRatings(winnerId, loserId);
+    }
   }
 
   // Update game state in Firestore
@@ -802,5 +825,87 @@ class ChessGameProvider with ChangeNotifier {
     _gameTimer?.cancel();
     _gameSubscription?.cancel();
     super.dispose();
+  }
+
+  // Add to GameProvider.dart
+  Future<void> _updateUserStats(String userId, bool isWinner) async {
+    final userRef = _firestore.collection('users').doc(userId);
+    await userRef.update({
+      'gamesPlayed': FieldValue.increment(1),
+      'gamesWon': isWinner ? FieldValue.increment(1) : FieldValue.increment(0),
+      'gamesLost':
+          !isWinner ? FieldValue.increment(1) : FieldValue.increment(0),
+      'lastGamePlayed': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> _updateWinnerBalance(
+      PieceColor winnerColor, String roomCode) async {
+    final winnerId = winnerColor == PieceColor.white ? _playerId : _opponentId!;
+    final loserId = winnerColor == PieceColor.white ? _opponentId! : _playerId;
+    final entryFee = await _firestore.collection('games').doc(roomCode).get();
+    final entryFeeAmount = entryFee.data()?['entryFee'] ?? 0;
+    if (entryFeeAmount > 0) {
+      final winnerAmount = entryFeeAmount * 0.8;
+      await _firestore
+          .collection('users')
+          .doc(winnerId)
+          .update({'Balance': FieldValue.increment(winnerAmount)});
+
+      print(
+          "💰 GameProvider: Updated winner's balance with prize money: $winnerAmount");
+    } else {
+      print("💰 GameProvider: No entry fee found for the game");
+    }
+  }
+
+// Add to GameProvider.dart
+  Future<void> _recordGameHistory(
+      String userId, bool isWinner, String opponentName) async {
+    final entryFee = await _firestore.collection('games').doc(_roomCode).get();
+    final entryFeeAmount = entryFee.data()?['entryFee'] ?? 0;
+
+    await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('gamehistory')
+        .doc(_roomCode)
+        .set({
+      'datetime': FieldValue.serverTimestamp(),
+      'entry_fees': entryFeeAmount.toInt(), // Get from game data
+      'game_name': 'Chess Match',
+      'opponent': opponentName,
+      'prize': entryFeeAmount * 0.8.toInt(), // Get from game data
+      'result': isWinner ? 'win' : 'loss'
+    });
+  }
+
+// Add to GameProvider.dart
+  Future<void> _updateEloRatings(String winnerId, String loserId) async {
+    const K = 32; // ELO K-factor
+
+    final winnerDoc = await _firestore.collection('users').doc(winnerId).get();
+    final loserDoc = await _firestore.collection('users').doc(loserId).get();
+
+    final winnerElo = winnerDoc.data()?['eloRating'] ?? 1200;
+    final loserElo = loserDoc.data()?['eloRating'] ?? 1200;
+
+    // Calculate expected scores
+    final expectedWinner = 1.0 / (1.0 + pow(10, (loserElo - winnerElo) / 400));
+    final expectedLoser = 1.0 / (1.0 + pow(10, (winnerElo - loserElo) / 400));
+
+    // Calculate new ratings
+    final newWinnerElo = winnerElo + K * (1 - expectedWinner);
+    final newLoserElo = loserElo + K * (0 - expectedLoser);
+
+    // Update ratings
+    await _firestore
+        .collection('users')
+        .doc(winnerId)
+        .update({'eloRating': newWinnerElo});
+    await _firestore
+        .collection('users')
+        .doc(loserId)
+        .update({'eloRating': newLoserElo});
   }
 }

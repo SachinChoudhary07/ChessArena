@@ -1,4 +1,5 @@
 import 'package:chess_cash/Providers/gameProvider/GameProvider.dart';
+import 'package:chess_cash/Widgets/bottomNavBar.dart';
 import 'package:chess_cash/Widgets/loader.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -108,6 +109,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<bool> _onBackPressed() async {
+    return false;
     print("🎮 GameScreen: Back button pressed, showing confirmation dialog");
     final result = await showDialog<bool>(
       context: context,
@@ -436,8 +438,9 @@ class _GameScreenState extends State<GameScreen> {
     Color statusColor = Colors.blue;
 
     final currentUser = FirebaseAuth.instance.currentUser;
-    final winnerId = gameProvider.winner;
-    final youWon = winnerId == currentUser?.uid;
+    final winnerColor = gameProvider.winner;
+    final playerColor = gameProvider.playerColor.toString().split('.').last;
+    final youWon = winnerColor == playerColor;
     final isGameOver =
         gameProvider.gameStatus != null && gameProvider.gameStatus != 'playing';
 
@@ -470,6 +473,15 @@ class _GameScreenState extends State<GameScreen> {
           statusColor = youWon ? Colors.green : Colors.red;
           break;
       }
+
+      // Add navigation delay when game ends
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => BottomNavBar()),
+              (route) => false); // Navigate to dashboard and clear stack
+        }
+      });
     }
 
     return Container(
@@ -509,20 +521,20 @@ class _GameScreenState extends State<GameScreen> {
                   _confirmResign();
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.handshake),
-                title: const Text('Offer Draw'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _confirmDraw();
-                },
-              ),
+              // ListTile(
+              //   leading: const Icon(Icons.handshake),
+              //   title: const Text('Offer Draw'),
+              //   onTap: () {
+              //     Navigator.pop(context);
+              //     _confirmDraw();
+              //   },
+              // ),
               ListTile(
                 leading: const Icon(Icons.exit_to_app),
                 title: const Text('Leave Game'),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.pop(context);
+                  _confirmLeaveGame();
                 },
               ),
             ],
@@ -579,6 +591,35 @@ class _GameScreenState extends State<GameScreen> {
                 _gameProvider.offerDraw();
               },
               child: const Text('Offer Draw'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _confirmLeaveGame() {
+    print("🎮 GameScreen: Showing leave game confirmation dialog");
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Leave Game'),
+          content: Text(
+              "If you leave, your opponent (${_getOpponentName()}) will win the match.\nAre you sure you want to exit?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                print(
+                    "🎮 GameScreen: Player confirmed leave , that will going to call resign");
+                _gameProvider.resignGame();
+              },
+              child: const Text('Yes, Exit'),
             ),
           ],
         );
