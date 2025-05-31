@@ -2,7 +2,7 @@ import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Providers/WalletProvider/WalletProvider.dart';
 import 'package:chess_cash/Screens/GameScreens/MatchMakingScreen.dart';
-import 'package:chess_cash/Screens/PaidContest/JoinPaidContest.dart';
+import 'package:chess_cash/Screens/PaidMatch/PlayPaidMatch.dart';
 import 'package:chess_cash/Screens/create_contest.dart';
 import 'package:chess_cash/Services/navigation.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +20,7 @@ class Dashboardscreen extends StatefulWidget {
 }
 
 class _DashboardscreenState extends State<Dashboardscreen> {
-  String selectedTime = '3 min'; // Default selected time
+  String selectedTime = '3 min';
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +32,7 @@ class _DashboardscreenState extends State<Dashboardscreen> {
         body: SingleChildScrollView(
           child: Padding(
             padding:
-            const EdgeInsets.only(top: 80, bottom: 20, left: 20, right: 20),
+                const EdgeInsets.only(top: 80, bottom: 20, left: 20, right: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -53,37 +53,40 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                       AppConstants.addMoney,
                       Icons.account_balance_wallet,
                       ColorResources.secondaryColor,
-                          () =>
-                          _showAddCashBottomSheet(context, walletProvider),
+                      () => _showAddCashBottomSheet(context, walletProvider),
                     ),
                     Helper.widthSizedBox(),
                     _buildButton(
                         AppConstants.withdraw,
                         Icons.account_balance_wallet_outlined,
                         ColorResources.secondaryColor,
-                            () =>
-                            _showWithdrawalCashBottomSheet(
-                                context, walletProvider)),
+                        () => _showWithdrawalCashBottomSheet(
+                            context, walletProvider)),
                   ],
                 ),
                 _buildButton(AppConstants.playFreeMatch, Icons.play_arrow,
                     ColorResources.secondaryColor, () {
-                      _startMatchmaking();
-                    }),
+                  _startMatchmaking();
+                }),
                 _buildButton(AppConstants.joinPaidContest, Icons.attach_money,
                     ColorResources.secondaryColor, () {
-                      push(context, const JoinPaidContest());
-                      // Fluttertoast.showToast(msg: "Coming Soon");
-                    }),
+                  push(context, const PlayPaidMatch());
+                }),
                 _buildButton(AppConstants.tournaments, Icons.emoji_events,
                     ColorResources.secondaryColor, () {
-                      push(context, const TournamentsScreen());
-                    }),
+                  push(context, const TournamentsScreen());
+                }),
                 _buildButton(
                     AppConstants.createContest,
                     Icons.compare_arrows_sharp,
                     ColorResources.secondaryColor, () {
-                  push(context, const CreateContest());
+                  // push(context, const CreateContest());
+                }),
+                _buildButton(
+                    AppConstants.playWithFriends,
+                    Icons.people_outline_rounded,
+                    ColorResources.secondaryColor, () {
+                  push(context, const PlayWithFriends());
                 }),
                 Helper.heightSizedBox(20),
                 Container(
@@ -136,53 +139,52 @@ class _DashboardscreenState extends State<Dashboardscreen> {
   }
 
   Widget _buildButton(String text, IconData icon, iconColor, onTap) {
-    return Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
-        margin: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-            border: Border.all(color: ColorResources.secondaryColor),
-            borderRadius: BorderRadius.circular(10)),
-        child: InkWell(
+    return Column(
+      children: [
+        Helper.heightSizedBox(10),
+        InkWell(
           splashColor: Colors.black,
           onTap: onTap,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Icon(
-                icon,
-                color: iconColor,
-                size: 35,
-              ),
-              Helper.widthSizedBox(),
-              Text(
-                text,
-                style: TextStyle(
-                    color: ColorResources.secondaryColor, fontSize: 18),
-              )
-            ],
-          ),
-        ));
+          child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
+              decoration: BoxDecoration(
+                  border: Border.all(color: ColorResources.secondaryColor),
+                  borderRadius: BorderRadius.circular(10)),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Icon(
+                    icon,
+                    color: iconColor,
+                    size: 35,
+                  ),
+                  Helper.widthSizedBox(),
+                  Text(
+                    text,
+                    style: TextStyle(
+                        color: ColorResources.secondaryColor, fontSize: 18),
+                  )
+                ],
+              )),
+        ),
+        Helper.heightSizedBox(10)
+      ],
+    );
   }
 
-  void _showAddCashBottomSheet(BuildContext context,
-      WalletProvider walletProvider) {
+  void _showAddCashBottomSheet(
+      BuildContext context, WalletProvider walletProvider) {
     final focusNode = FocusNode();
 
     showModalBottomSheet(
       constraints: BoxConstraints.tight(
-          Size.fromHeight(MediaQuery
-              .of(context)
-              .size
-              .height / 1.7)),
+          Size.fromHeight(MediaQuery.of(context).size.height / 1.7)),
       context: context,
       isScrollControlled: true,
       builder: (_) {
         return Padding(
           padding: EdgeInsets.only(
-            bottom: MediaQuery
-                .of(context)
-                .viewInsets
-                .bottom,
+            bottom: MediaQuery.of(context).viewInsets.bottom,
             left: 16,
             right: 16,
             top: 16,
@@ -245,25 +247,19 @@ class _DashboardscreenState extends State<Dashboardscreen> {
   TextEditingController withdrawalController = TextEditingController();
   TextEditingController controller = TextEditingController();
 
-  void _showWithdrawalCashBottomSheet(BuildContext context,
-      WalletProvider walletProvider) {
+  void _showWithdrawalCashBottomSheet(
+      BuildContext context, WalletProvider walletProvider) {
     final focusNode = FocusNode();
 
     showModalBottomSheet(
       constraints: BoxConstraints.tight(
-          Size.fromHeight(MediaQuery
-              .of(context)
-              .size
-              .height / 1.5)),
+          Size.fromHeight(MediaQuery.of(context).size.height / 1.5)),
       context: context,
       isScrollControlled: true,
       builder: (_) {
         return Padding(
           padding: EdgeInsets.only(
-            bottom: MediaQuery
-                .of(context)
-                .viewInsets
-                .bottom,
+            bottom: MediaQuery.of(context).viewInsets.bottom,
             left: 16,
             right: 16,
             top: 16,
@@ -298,13 +294,12 @@ class _DashboardscreenState extends State<Dashboardscreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: withdrawalupiController,
-                keyboardType: TextInputType.text,
+                keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
                   hintText: 'e.g. abc@paytm',
                   prefixText: '@ ',
                   border: OutlineInputBorder(),
                 ),
-                autofocus: true,
               ),
               const SizedBox(height: 20),
               ElevatedButton(
@@ -312,14 +307,23 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                     padding: const EdgeInsets.symmetric(vertical: 16)),
                 onPressed: () {
                   final amount = double.tryParse(withdrawalController.text);
-                  final upiID = withdrawalupiController.text;
-                  if (amount != null && upiID.isNotEmpty) {
-                    walletProvider.requestWithdrawal(amount, upiID, context);
-                  } else {
+                  final upiID = withdrawalupiController.text.trim();
+
+                  // UPI validation regex (basic check)
+                  final upiRegExp = RegExp(r'^[\w.-]+@[\w]+$');
+
+                  if (amount == null || amount <= 0) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text('Please enter valid details')),
+                          content: Text('Please enter a valid amount')),
                     );
+                  } else if (!upiRegExp.hasMatch(upiID)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Please enter a valid UPI ID')),
+                    );
+                  } else {
+                    walletProvider.requestWithdrawal(amount, upiID, context);
                   }
                 },
                 child: const Text('PROCEED TO WITHDRAWAL'),

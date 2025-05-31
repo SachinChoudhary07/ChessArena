@@ -15,17 +15,17 @@ class GameHistoryScreen extends StatefulWidget {
 
 class _GameHistoryScreenState extends State<GameHistoryScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  // late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    // _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    // _tabController.dispose();
     super.dispose();
   }
 
@@ -35,23 +35,24 @@ class _GameHistoryScreenState extends State<GameHistoryScreen>
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: const Text(AppConstants.history),
-        bottom: TabBar(
-          labelColor: ColorResources.secondaryColor,
-          indicatorColor: ColorResources.secondaryColor,
-          controller: _tabController,
-          tabs: const [
-            Tab(text: AppConstants.upcoming),
-            Tab(text: AppConstants.completed),
-          ],
-        ),
+        // bottom: TabBar(
+        //   labelColor: ColorResources.secondaryColor,
+        //   indicatorColor: ColorResources.secondaryColor,
+        //   controller: _tabController,
+        //   tabs: const [
+        //     Tab(text: AppConstants.upcoming),
+        //     Tab(text: AppConstants.completed),
+        //   ],
+        // ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _upcomingGameList(AppConstants.upcoming),
-          _buildGameList(AppConstants.completed),
-        ],
-      ),
+      body: _buildGameList(AppConstants.completed),
+      // body: TabBarView(
+      //   controller: _tabController,
+      //   children: [
+      //     _upcomingGameList(AppConstants.upcoming),
+      //     _buildGameList(AppConstants.completed),
+      //   ],
+      // ),
     );
   }
 
@@ -75,6 +76,7 @@ class _GameHistoryScreenState extends State<GameHistoryScreen>
         final games = snapshot.data!.docs;
 
         return ListView.builder(
+          padding: EdgeInsets.symmetric(vertical: 20),
           itemCount: games.length,
           itemBuilder: (context, index) {
             final game = games[index].data() as Map<String, dynamic>;
@@ -104,7 +106,7 @@ class _GameHistoryScreenState extends State<GameHistoryScreen>
                 if (opponentSnapshot.hasData && opponentSnapshot.data!.exists) {
                   final data =
                       opponentSnapshot.data!.data() as Map<String, dynamic>;
-                  opponentName = data['name'] ?? opponentId;
+                  opponentName = data['username'] ?? opponentId;
                 }
 
                 return Container(

@@ -8,14 +8,14 @@ import '../../Constant/color_resources.dart';
 import '../../Constant/ui_helper.dart';
 import '../../Services/navigation.dart';
 
-class CreateContest extends StatefulWidget {
-  const CreateContest({super.key});
+class PlayWithFriends extends StatefulWidget {
+  const PlayWithFriends({super.key});
 
   @override
-  State<CreateContest> createState() => _CreateContestState();
+  State<PlayWithFriends> createState() => _PlayWithFriendsState();
 }
 
-class _CreateContestState extends State<CreateContest> {
+class _PlayWithFriendsState extends State<PlayWithFriends> {
   final timeOptions = ['1 min', '3 min', '5 min', '10 min', '15 min'];
   final entryFees = ['₹50', '₹100', '₹200', '₹500', '₹1000', '₹5000', '₹10000'];
 
@@ -296,7 +296,7 @@ class _CreateContestState extends State<CreateContest> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Create Contest")),
+      appBar: AppBar(title: const Text("Play with Friend")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(

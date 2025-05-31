@@ -49,7 +49,7 @@ class _EloLeaderboardState extends State<EloLeaderboard> {
                         ),
                         title: Text(user['name']),
                         subtitle: Text(
-                            'Elo: ${user['elo']} | Points: ${user['points']}'),
+                            'Elo: ${user['elo'].toStringAsFixed(0)} | Points: ${user['points']}'),
                       ),
                     );
                   },

@@ -31,7 +31,7 @@ class LeaderBoardProvider with ChangeNotifier {
         };
       }).toList();
       _errorMessage = '';
-      _leaderboard.sort((a, b) => (b['elo'] as int).compareTo(a['elo'] as int));
+      _leaderboard.sort((a, b) => (b['elo'] as num).compareTo(a['elo'] as num));
       setLoading(false);
     } catch (e) {
       _errorMessage = 'Error fetching leaderboard: $e';

@@ -404,7 +404,11 @@ class _ProfilescreensState extends State<Profilescreens> {
                   ),
                   Helper.heightSizedBox(16),
                   GestureDetector(
-                    onTap: () {},
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Coming Soon')),
+                      );
+                    },
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       alignment: Alignment.center,

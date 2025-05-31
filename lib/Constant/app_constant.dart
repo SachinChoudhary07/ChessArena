@@ -28,9 +28,10 @@ class AppConstants {
   static const String addMoney = 'Add Money';
   static const String withdraw = 'Withdraw';
   static const String playFreeMatch = 'Play Free Match';
-  static const String joinPaidContest = 'Join Paid Contest';
+  static const String joinPaidContest = 'Play Paid Match';
   static const String tournaments = 'Tournaments';
   static const String createContest = 'Create Contest';
+  static const String playWithFriends = 'Play With Friends';
 
   //Profile Text
   static const String profile = 'Profile';

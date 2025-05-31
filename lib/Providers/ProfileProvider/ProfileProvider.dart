@@ -132,9 +132,9 @@ class ProfileProvider with ChangeNotifier {
 
   Future<void> deleteAccount(BuildContext context) async {
     try {
+      await logout(context);
       await _firestore.collection('users').doc(currentUser!.uid).delete();
       await currentUser!.delete();
-      await logout(context);
     } catch (e) {
       print("Delete account error: $e");
       CustomToast.show("Failed to delete account", bgColor: Colors.red);
