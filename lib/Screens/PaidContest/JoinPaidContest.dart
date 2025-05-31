@@ -125,7 +125,7 @@ class _JoinPaidContestState extends State<JoinPaidContest> {
     final startDate = contest['startDate'] as DateTime;
     final timeUntilStart = startDate.difference(now);
     final isFull = contest['currentParticipants'] >=
-        6; //this limit will come from firebase
+        contest['max_player']; //this limit will come from firebase
     final hasStarted = now.isAfter(startDate.add(const Duration(minutes: 10)));
     final isWithin10Minutes = !hasStarted && timeUntilStart.inMinutes <= 10;
 
