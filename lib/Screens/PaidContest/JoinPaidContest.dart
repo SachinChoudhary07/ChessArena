@@ -62,11 +62,36 @@ class _JoinPaidContestState extends State<JoinPaidContest> {
         return;
       }
 
-      // Update contest document
-      await _firestore.collection('contests').doc(contestId).update({
-        'participants': FieldValue.arrayUnion([user.uid]),
-        'currentParticipants': FieldValue.increment(1),
-      });
+      //here before joining the contest we need to check if user have enough balance
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      final balance = userDoc.data()?['Balance'] ?? 0;
+      final contest =
+          await _firestore.collection('contests').doc(contestId).get();
+      final entryFeeAmount = contest.data()?['entryFee'] ?? 0;
+      if (balance < entryFeeAmount) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Insufficient Balance'),
+            content: Text('You do not have enough balance to join the contest'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context), child: Text('OK'))
+            ],
+          ),
+        );
+        return;
+      } else {
+        //deduct the amount from user
+        await _firestore.collection('users').doc(user.uid).update({
+          'Balance': FieldValue.increment(-entryFeeAmount),
+        });
+        // Update contest document
+        await _firestore.collection('contests').doc(contestId).update({
+          'participants': FieldValue.arrayUnion([user.uid]),
+          'currentParticipants': FieldValue.increment(1),
+        });
+      }
 
       // Refresh the contests list
       await fetchContests();
@@ -88,27 +113,40 @@ class _JoinPaidContestState extends State<JoinPaidContest> {
     final now = DateTime.now();
     final startDate = contest['startDate'] as DateTime;
     final timeUntilStart = startDate.difference(now);
-    final isFull = contest['currentParticipants'] >= 2;
-    final isWithin10Minutes = timeUntilStart.inMinutes <= 10;
+    final isFull = contest['currentParticipants'] >=
+        6; //this limit will come from firebase
+    final hasStarted = now.isAfter(startDate.add(const Duration(minutes: 10)));
+    final isWithin10Minutes = !hasStarted && timeUntilStart.inMinutes <= 10;
 
-    if (isFull && isWithin10Minutes) {
+    if (isWithin10Minutes) {
       return ElevatedButton(
-        onPressed: () {
-          // TODO: Implement start game functionality
-        },
+        onPressed: () {},
         style: ElevatedButton.styleFrom(
           backgroundColor: ColorResources.secondaryColor,
         ),
         child: const Text('Start Game', style: TextStyle(color: Colors.white)),
       );
-    } else if (isFull) {
-      return Text(
-        'Match will start in ${_formatTimeRemaining(timeUntilStart)}',
-        style: TextStyle(color: ColorResources.secondaryColor),
-      );
     } else {
       return InkWell(
-        onTap: () => joinContest(contest['id'], contest['participants']),
+        onTap: () {
+          if (contest['participants'].contains(user!.uid)) {
+            //show a dialog that you have already joined the contest
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text('Already Joined'),
+                content: Text('You have already joined the contest'),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('OK'))
+                ],
+              ),
+            );
+          } else {
+            joinContest(contest['id'], contest['participants']);
+          }
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
