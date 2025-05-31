@@ -86,6 +86,17 @@ class _JoinPaidContestState extends State<JoinPaidContest> {
         await _firestore.collection('users').doc(user.uid).update({
           'Balance': FieldValue.increment(-entryFeeAmount),
         });
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('transactions')
+            .add({
+          'amount': entryFeeAmount,
+          'type': 'Paid Contest',
+          'timestamp': Timestamp.now(),
+          'status': 'success',
+        });
+
         // Update contest document
         await _firestore.collection('contests').doc(contestId).update({
           'participants': FieldValue.arrayUnion([user.uid]),
