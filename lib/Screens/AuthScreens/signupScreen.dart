@@ -53,6 +53,7 @@ class _RegisterPageState extends State<RegisterPage> {
     }
     if (_selectedImage == null) {
       CustomToast.show("Please pick the profile image", bgColor: Colors.red);
+      return;
     }
 
     if (password.length < 6) {
@@ -269,7 +270,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                   },
                               ),
                               const TextSpan(
-                                text: " of this app.",
+                                text: " of Chees4Cash.",
                                 style: TextStyle(color: Colors.white),
                               ),
                             ],

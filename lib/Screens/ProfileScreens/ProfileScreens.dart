@@ -257,7 +257,7 @@ class Profilescreens extends StatefulWidget {
 }
 
 class _ProfilescreensState extends State<Profilescreens> {
-  late TextEditingController _nameController;
+  TextEditingController _nameController = TextEditingController();
 
   @override
   void initState() {

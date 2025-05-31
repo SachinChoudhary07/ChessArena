@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../Constant/ui_helper.dart';
+import '../TournamentScreens/tournaments_screen.dart';
 
 class Dashboardscreen extends StatefulWidget {
   const Dashboardscreen({super.key});
@@ -31,7 +32,7 @@ class _DashboardscreenState extends State<Dashboardscreen> {
         body: SingleChildScrollView(
           child: Padding(
             padding:
-                const EdgeInsets.only(top: 80, bottom: 20, left: 20, right: 20),
+            const EdgeInsets.only(top: 80, bottom: 20, left: 20, right: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -52,27 +53,32 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                       AppConstants.addMoney,
                       Icons.account_balance_wallet,
                       ColorResources.secondaryColor,
-                      () => _showAddCashBottomSheet(context, walletProvider),
+                          () =>
+                          _showAddCashBottomSheet(context, walletProvider),
                     ),
                     Helper.widthSizedBox(),
                     _buildButton(
                         AppConstants.withdraw,
                         Icons.account_balance_wallet_outlined,
                         ColorResources.secondaryColor,
-                        () => _showWithdrawalCashBottomSheet(
-                            context, walletProvider)),
+                            () =>
+                            _showWithdrawalCashBottomSheet(
+                                context, walletProvider)),
                   ],
                 ),
                 _buildButton(AppConstants.playFreeMatch, Icons.play_arrow,
                     ColorResources.secondaryColor, () {
-                  _startMatchmaking();
-                }),
+                      _startMatchmaking();
+                    }),
                 _buildButton(AppConstants.joinPaidContest, Icons.attach_money,
                     ColorResources.secondaryColor, () {
-                  push(context, const JoinPaidContest());
-                }),
+                      push(context, const JoinPaidContest());
+                      // Fluttertoast.showToast(msg: "Coming Soon");
+                    }),
                 _buildButton(AppConstants.tournaments, Icons.emoji_events,
-                    ColorResources.secondaryColor, () {}),
+                    ColorResources.secondaryColor, () {
+                      push(context, const TournamentsScreen());
+                    }),
                 _buildButton(
                     AppConstants.createContest,
                     Icons.compare_arrows_sharp,
@@ -158,19 +164,25 @@ class _DashboardscreenState extends State<Dashboardscreen> {
         ));
   }
 
-  void _showAddCashBottomSheet(
-      BuildContext context, WalletProvider walletProvider) {
+  void _showAddCashBottomSheet(BuildContext context,
+      WalletProvider walletProvider) {
     final focusNode = FocusNode();
 
     showModalBottomSheet(
       constraints: BoxConstraints.tight(
-          Size.fromHeight(MediaQuery.of(context).size.height / 1.7)),
+          Size.fromHeight(MediaQuery
+              .of(context)
+              .size
+              .height / 1.7)),
       context: context,
       isScrollControlled: true,
       builder: (_) {
         return Padding(
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
+            bottom: MediaQuery
+                .of(context)
+                .viewInsets
+                .bottom,
             left: 16,
             right: 16,
             top: 16,
@@ -233,19 +245,25 @@ class _DashboardscreenState extends State<Dashboardscreen> {
   TextEditingController withdrawalController = TextEditingController();
   TextEditingController controller = TextEditingController();
 
-  void _showWithdrawalCashBottomSheet(
-      BuildContext context, WalletProvider walletProvider) {
+  void _showWithdrawalCashBottomSheet(BuildContext context,
+      WalletProvider walletProvider) {
     final focusNode = FocusNode();
 
     showModalBottomSheet(
       constraints: BoxConstraints.tight(
-          Size.fromHeight(MediaQuery.of(context).size.height / 1.5)),
+          Size.fromHeight(MediaQuery
+              .of(context)
+              .size
+              .height / 1.5)),
       context: context,
       isScrollControlled: true,
       builder: (_) {
         return Padding(
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
+            bottom: MediaQuery
+                .of(context)
+                .viewInsets
+                .bottom,
             left: 16,
             right: 16,
             top: 16,
