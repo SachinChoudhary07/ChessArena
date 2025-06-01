@@ -1,5 +1,6 @@
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Providers/LeaderBoardProvider/LeaderBoardProvider.dart';
+import 'package:chess_cash/Widgets/loader.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -27,8 +28,8 @@ class _EloLeaderboardState extends State<EloLeaderboard> {
       appBar: AppBar(
         title: const Text('Elo Leaderboard'),
       ),
-      body: leaderboardProvider.errorMessage.isNotEmpty
-          ? Center(child: Text(leaderboardProvider.errorMessage))
+      body: leaderboardProvider.isLoading
+          ? Center(child: Loader())
           : leaderboardProvider.leaderboard.isEmpty
               ? const Center(child: Text('No Data Found'))
               : ListView.builder(

@@ -314,13 +314,19 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
 
   Future<void> _deductEntryFee(String userId) async {
     final userRef = _firestore.collection('users').doc(userId);
-    final amount = double.parse(widget.amount);
+    final amountString = widget.amount.replaceAll('₹', '').trim();
+    final finalAmount = double.parse(amountString);
+
+    final amount = finalAmount;
 
     await _firestore.runTransaction((transaction) async {
       final userDoc = await transaction.get(userRef);
-      final currentBalance = userDoc.data()?['balance'] ?? 0.0;
+      final currentBalance = userDoc.data()?['Balance'] ?? 0.0;
 
       if (currentBalance < amount) {
+        print("currentBalance");
+        print(currentBalance);
+        print(amount);
         throw Exception('Insufficient balance');
       }
 
