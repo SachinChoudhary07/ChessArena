@@ -1,6 +1,7 @@
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Providers/AuthProvider/AuthProvider.dart';
+import 'package:chess_cash/Providers/CreateTournamentProvider/CreateTournamentProvider.dart';
 import 'package:chess_cash/Providers/LeaderBoardProvider/LeaderBoardProvider.dart';
 import 'package:chess_cash/Providers/ProfileProvider/ProfileProvider.dart';
 import 'package:chess_cash/Providers/WalletProvider/WalletProvider.dart';
@@ -92,7 +93,7 @@ List<SingleChildWidget> providers() {
     ChangeNotifierProvider(create: (context) => ProfileProvider()),
     ChangeNotifierProvider(create: (context) => LeaderBoardProvider()),
     ChangeNotifierProvider(create: (context) => WalletProvider()),
-    // ChangeNotifierProvider(create: (context) => GameProvider()),
+    ChangeNotifierProvider(create: (context) => CreateTournamentProvider()),
     ChangeNotifierProvider(create: (context) => ChessGameProvider()),
   ];
 }

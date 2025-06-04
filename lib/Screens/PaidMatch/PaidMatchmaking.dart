@@ -53,7 +53,7 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
   Future<void> _startMatchmaking() async {
     print("🎮 MatchMaking: Starting matchmaking process");
     final docRef =
-        _firestore.collection('paid_matchmaking_queue').doc(currentUserId);
+    _firestore.collection('paid_matchmaking_queue').doc(currentUserId);
     await docRef.set({
       'uid': currentUserId,
       'elo': currentUserElo,
@@ -76,7 +76,8 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
         .snapshots()
         .listen((snapshot) async {
       print(
-          "🎮 MatchMaking: Queue updated - ${snapshot.docs.length} players in queue");
+          "🎮 MatchMaking: Queue updated - ${snapshot.docs
+              .length} players in queue");
       final now = DateTime.now();
 
       for (var doc in snapshot.docs) {
@@ -91,7 +92,9 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
         if (opponentTime != widget.time || opponentAmount != widget.amount)
           continue;
 
-        final waitingDuration = now.difference(timestamp.toDate()).inSeconds;
+        final waitingDuration = now
+            .difference(timestamp.toDate())
+            .inSeconds;
         final allowedRange = min(100 + (waitingDuration ~/ 30) * 25, 300);
 
         print(
@@ -153,13 +156,19 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
         .get();
 
     final currentUserTimestamp =
-        currentUserDoc.data()?['timestamp'] as Timestamp;
+    currentUserDoc.data()?['timestamp'] as Timestamp;
     final opponentTimestamp = opponentDoc.data()?['timestamp'] as Timestamp;
 
     print(
-        "🎮 GameRoom: Current user wait time: ${DateTime.now().difference(currentUserTimestamp.toDate()).inSeconds}s");
+        "🎮 GameRoom: Current user wait time: ${DateTime
+            .now()
+            .difference(currentUserTimestamp.toDate())
+            .inSeconds}s");
     print(
-        "🎮 GameRoom: Opponent wait time: ${DateTime.now().difference(opponentTimestamp.toDate()).inSeconds}s");
+        "🎮 GameRoom: Opponent wait time: ${DateTime
+            .now()
+            .difference(opponentTimestamp.toDate())
+            .inSeconds}s");
 
     String? gameId;
 
@@ -271,8 +280,8 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
     return board;
   }
 
-  Future<void> _initializeGameData(
-      Map<String, dynamic> roomData, String roomCode) async {
+  Future<void> _initializeGameData(Map<String, dynamic> roomData,
+      String roomCode) async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
@@ -331,7 +340,7 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
       }
 
       transaction.update(userRef, {
-        'balance': currentBalance - amount,
+        'Balance': currentBalance - amount,
       });
     });
   }
@@ -397,7 +406,7 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
                   foregroundColor: Colors.white,
                   side: const BorderSide(color: Colors.orange, width: 1.5),
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+                  const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
