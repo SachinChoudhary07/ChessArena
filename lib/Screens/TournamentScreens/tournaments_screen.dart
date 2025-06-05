@@ -213,6 +213,8 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
         title: const Text('Tournaments'),
       ),
       body: StreamBuilder<QuerySnapshot>(
+        // get only upcoming Tournaments
+
         stream: _firestore.collection('tournaments').snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -237,7 +239,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
                   : null;
               final status = getTournamentStatus(data);
               final players = List<String>.from(data['players'] ?? []);
-              final maxPlayers = data['maxPlayers'] ?? 8;
+              final maxPlayers = data['playerCount'] ?? 8;
               final roundTimes = data['roundTimes'] as Map<dynamic, dynamic>?;
 
               return Card(
@@ -284,7 +286,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
                             'Players: ${players.length}/$maxPlayers',
                             style: const TextStyle(fontSize: 16),
                           ),
-                          if (maxPlayers - players.length <= 2) ...[
+                          if (maxPlayers - players.length <= 1) ...[
                             const SizedBox(width: 8),
                             Text(
                               'Only ${maxPlayers - players.length} slots left!',
@@ -375,6 +377,8 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
                             final hasJoined =
                                 currentPlayers.contains(_auth.currentUser?.uid);
                             final isFull = currentPlayers.length >= maxPlayers;
+                            final hasStarted = startDate != null &&
+                                startDate.isBefore(DateTime.now());
 
                             return ElevatedButton(
                               onPressed: hasJoined || isFull
@@ -399,7 +403,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
                                     : Colors.green,
                               ),
                               child: Text(
-                                hasJoined || isFull
+                                hasJoined || isFull || hasStarted
                                     ? 'View Details'
                                     : 'Join Now',
                                 style: const TextStyle(
