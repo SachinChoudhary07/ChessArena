@@ -30,6 +30,34 @@ class _TournamentWaitingRoomState extends State<TournamentWaitingRoom> {
   bool _navigated = false;
   int _countdown = 0; // for countdown display
 
+  @override
+  void initState() {
+    super.initState();
+    initOnline();
+  }
+
+  initOnline() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+    if (currentUser.uid == widget.player1) {
+      await FirebaseFirestore.instance
+          .collection('tournaments')
+          .doc(widget.tournamentId)
+          .collection('matches')
+          .doc(widget.roomCode)
+          .update({'isPlayer1Present': currentUser.uid == widget.player1});
+    } else {
+      await FirebaseFirestore.instance
+          .collection('tournaments')
+          .doc(widget.tournamentId)
+          .collection('matches')
+          .doc(widget.roomCode)
+          .update({
+        'isPlayer2Present': currentUser.uid == widget.player2,
+      });
+    }
+  }
+
   void _startCountdown(Map<String, dynamic> roomData) {
     _initializeGameData(roomData).then((_) {
       Future.delayed(const Duration(seconds: 3));

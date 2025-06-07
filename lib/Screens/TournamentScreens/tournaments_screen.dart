@@ -24,7 +24,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
     final players = List<String>.from(data['players'] ?? []);
     final maxPlayers = data['playerCount'] ?? 8;
 
-    // if (players.length >= maxPlayers) return 'Full';
+    if (players.length >= maxPlayers) return 'Full';
 
     if (data['winner'] != null || (endDate != null && now.isAfter(endDate)))
       return 'Completed';
@@ -49,7 +49,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
 
       // Get user's current balance
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
-      final userBalance = (userDoc.data()?['Balance'] ?? 0.0) as double;
+      final double userBalance = (userDoc.data()?['Balance'] ?? 0).toDouble();
 
       if (userBalance < entryFee) {
         Fluttertoast.showToast(
@@ -63,17 +63,18 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
 
       // Start a transaction to handle balance deduction and tournament joining
       await _firestore.runTransaction((transaction) async {
-        // Get fresh user data within transaction
+        // ---------- READS SECTION ----------
+        // 1. Get fresh user data
         final freshUserDoc =
             await transaction.get(_firestore.collection('users').doc(user.uid));
-        final currentBalance =
-            (freshUserDoc.data()?['Balance'] ?? 0.0) as double;
+        final double currentBalance =
+            (freshUserDoc.data()?['Balance'] ?? 0).toDouble();
 
         if (currentBalance < entryFee) {
           throw Exception('Insufficient balance');
         }
 
-        // Get tournament data to check if it's still joinable
+        // 2. Get tournament data
         final tournamentDoc = await transaction
             .get(_firestore.collection('tournaments').doc(tournamentId));
         final tournamentData = tournamentDoc.data()!;
@@ -88,7 +89,45 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
           throw Exception('Tournament is full');
         }
 
-        // Deduct entry fee
+        // 3. Get all round-1 matches
+        final roundOneMatches = await _firestore
+            .collection('tournaments')
+            .doc(tournamentId)
+            .collection('matches')
+            .where('round', isEqualTo: 1)
+            .orderBy('matchNumber')
+            .get();
+
+        // 4. Find the first available slot by reading each match
+        DocumentReference? targetMatchRef;
+        String? targetField;
+
+        for (final match in roundOneMatches.docs) {
+          final matchRef = match.reference;
+          final freshSnap = await transaction.get(matchRef);
+          final freshData = freshSnap.data() as Map<String, dynamic>?;
+
+          if (freshData == null) continue;
+
+          if (freshData['player1'] == null) {
+            targetMatchRef = matchRef;
+            targetField = 'player1';
+            break;
+          }
+
+          if (freshData['player2'] == null) {
+            targetMatchRef = matchRef;
+            targetField = 'player2';
+            break;
+          }
+        }
+
+        if (targetMatchRef == null || targetField == null) {
+          throw Exception('Tournament is full');
+        }
+
+        // ---------- WRITES SECTION ----------
+        // 1. Update user's balance and tournaments list
         transaction.update(
           _firestore.collection('users').doc(user.uid),
           {
@@ -97,7 +136,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
           },
         );
 
-        // Add to tournament players
+        // 2. Update tournament's player list
         transaction.update(
           _firestore.collection('tournaments').doc(tournamentId),
           {
@@ -106,36 +145,11 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
           },
         );
 
-        // Find first available match
-        final matchesSnapshot = await _firestore
-            .collection('tournaments')
-            .doc(tournamentId)
-            .collection('matches')
-            .where('player1', isNull: true)
-            .limit(1)
-            .get();
-
-        if (matchesSnapshot.docs.isNotEmpty) {
-          transaction.update(
-            matchesSnapshot.docs.first.reference,
-            {'player1': user.uid},
-          );
-        } else {
-          final matchesSnapshot2 = await _firestore
-              .collection('tournaments')
-              .doc(tournamentId)
-              .collection('matches')
-              .where('player2', isNull: true)
-              .limit(1)
-              .get();
-
-          if (matchesSnapshot2.docs.isNotEmpty) {
-            transaction.update(
-              matchesSnapshot2.docs.first.reference,
-              {'player2': user.uid},
-            );
-          }
-        }
+        // 3. Update the match with the player
+        transaction.update(
+          targetMatchRef,
+          {targetField: user.uid},
+        );
       });
 
       Fluttertoast.showToast(
