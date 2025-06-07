@@ -1,7 +1,6 @@
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Providers/WalletProvider/WalletProvider.dart';
-import 'package:chess_cash/Screens/CreateTournament/createTournament.dart';
 import 'package:chess_cash/Screens/GameScreens/MatchMakingScreen.dart';
 import 'package:chess_cash/Screens/PaidMatch/PlayPaidMatch.dart';
 import 'package:chess_cash/Screens/create_contest.dart';
@@ -81,7 +80,10 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                     AppConstants.createContest,
                     Icons.compare_arrows_sharp,
                     ColorResources.secondaryColor, () {
-                  push(context, const CreateTournament());
+                  // push(context, const CreateTournament());
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Coming Soon')),
+                  );
                 }),
                 _buildButton(
                     AppConstants.playWithFriends,
