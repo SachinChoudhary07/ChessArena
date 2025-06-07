@@ -44,19 +44,23 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
     currentUserElo = 1400;
     print(
         "🎮 MatchMaking: Init - UserID: $currentUserId, ELO: $currentUserElo");
-    _startMatchmaking();
+    _startMatchmaking(0);
   }
 
-  Future<void> _startMatchmaking() async {
-    print("🎮 MatchMaking: Starting matchmaking process");
-    final docRef =
-        _firestore.collection('matchmaking_queue').doc(currentUserId);
-    await docRef.set({
-      'uid': currentUserId,
-      'elo': currentUserElo,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-    print("🎮 MatchMaking: Added to queue - UserID: $currentUserId");
+  Future<void> _startMatchmaking(int retryCount) async {
+    if (retryCount == 0) {
+      print("🎮 MatchMaking: Starting matchmaking process first time");
+      final docRef =
+          _firestore.collection('matchmaking_queue').doc(currentUserId);
+      await docRef.set({
+        'uid': currentUserId,
+        'elo': currentUserElo,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      print("🎮 MatchMaking: Added to queue - UserID: $currentUserId");
+    } else {
+      print("🎮 MatchMaking: Starting matchmaking process second time");
+    }
 
     matchmakingListener = _firestore
         .collection('matchmaking_queue')
@@ -104,6 +108,20 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
 
     final opponentDoc =
         await _firestore.collection('matchmaking_queue').doc(opponentId).get();
+
+    print("🎮 GameRoom: Current User Document Details:");
+    print(currentUserDoc.data());
+    print("🎮 GameRoom: Opponent Document Details:");
+    print(opponentDoc.data());
+
+    if (!opponentDoc.exists) {
+      print(
+          "❌ GameRoom: One of the players is no longer in the queue. Aborting and restarting search.");
+      if (mounted) {
+        _startMatchmaking(1);
+      }
+      return;
+    }
 
     final currentUserTimestamp =
         currentUserDoc.data()?['timestamp'] as Timestamp;

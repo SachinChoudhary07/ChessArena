@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../Widgets/GameEndDialog.dart';
 
 // screens/game_screen.dart
 class GameScreen extends StatefulWidget {
@@ -28,6 +29,13 @@ class _GameScreenState extends State<GameScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeGame();
     });
+  }
+
+  @override
+  void dispose() {
+    print("🎮 GameScreen: Disposing game screen");
+    // _gameProvider.dispose();
+    super.dispose();
   }
 
   String? player1Name;
@@ -542,14 +550,20 @@ class _GameScreenState extends State<GameScreen> {
           break;
       }
 
-      // Add navigation delay when game ends
-      Future.delayed(const Duration(seconds: 2), () {
+      // ✅ Show dialog instead of automatic navigation
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (context) => BottomNavBar()),
-              (route) => false); // Navigate to dashboard and clear stack
+          _showGameEndDialog(gameProvider, youWon);
         }
       });
+      // // Add navigation delay when game ends
+      // Future.delayed(const Duration(seconds: 2), () {
+      //   if (mounted) {
+      //     Navigator.of(context).pushAndRemoveUntil(
+      //         MaterialPageRoute(builder: (context) => BottomNavBar()),
+      //         (route) => false); // Navigate to dashboard and clear stack
+      //   }
+      // });
     }
 
     return Container(
@@ -570,6 +584,42 @@ class _GameScreenState extends State<GameScreen> {
       ),
     );
   }
+
+// Add this new method for the game end dialog
+  void _showGameEndDialog(ChessGameProvider gameProvider, bool youWon) {
+    // Prevent multiple dialogs
+    if (_isShowingGameEndDialog) return;
+    _isShowingGameEndDialog = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Must tap OK to dismiss
+      builder: (BuildContext context) {
+        return GameEndDialog(
+          gameProvider: gameProvider,
+          youWon: youWon,
+          player1Name: player1Name ?? 'Player 1',
+          player2Name: player2Name ?? 'Player 2',
+          roomCode: widget.roomCode,
+          onOkPressed: () {
+            Navigator.of(context).pop(); // Close dialog
+            // Clean up game state
+            final provider =
+                Provider.of<ChessGameProvider>(context, listen: false);
+            provider.resetGameState();
+            // Navigate to home
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => BottomNavBar()),
+              (route) => false,
+            );
+          },
+        );
+      },
+    );
+  }
+
+// Add this flag to prevent multiple dialogs
+  bool _isShowingGameEndDialog = false;
 
   void _showGameMenu(BuildContext context) {
     print("🎮 GameScreen: Opening game menu");

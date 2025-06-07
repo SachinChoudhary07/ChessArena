@@ -70,6 +70,10 @@ class ChessGameProvider with ChangeNotifier {
       String roomCode, String playerId, PieceColor playerColor) {
     print(
         "🎲 GameProvider: Initializing game - Room: $roomCode, Player: $playerId, Color: $playerColor");
+
+    // Reset previous game state first
+    resetGameState();
+
     _roomCode = roomCode;
     _playerId = playerId;
     _playerColor = playerColor;
@@ -136,17 +140,27 @@ class ChessGameProvider with ChangeNotifier {
 
   // Listen to game updates from Firebase
   void _listenToGameUpdates() {
-    print("🎲 GameProvider: Starting game updates listener");
+    print(
+        "🎲 GameProvider: Starting game updates listener for room: $_roomCode");
+
+    // ✅ IMPORTANT: Cancel existing subscription first
+    _gameSubscription?.cancel();
+
     _gameSubscription = _firestore
         .collection('games')
         .doc(_roomCode)
         .snapshots()
         .listen((snapshot) {
       if (snapshot.exists) {
-        print("🎲 GameProvider: Received game update");
+        print("🎲 GameProvider: Received game update for room: $_roomCode");
         final data = snapshot.data() as Map<String, dynamic>;
         _updateGameFromFirestore(data);
+      } else {
+        print(
+            "⚠️ GameProvider: Game document does not exist for room: $_roomCode");
       }
+    }, onError: (error) {
+      print("❌ GameProvider: Error in game listener: $error");
     });
   }
 
@@ -824,6 +838,7 @@ class ChessGameProvider with ChangeNotifier {
     print("🎲 GameProvider: Disposing game provider");
     _gameTimer?.cancel();
     _gameSubscription?.cancel();
+    resetGameState();
     super.dispose();
   }
 
@@ -907,5 +922,41 @@ class ChessGameProvider with ChangeNotifier {
         .collection('users')
         .doc(loserId)
         .update({'eloRating': newLoserElo});
+  }
+
+  // Add this method to ChessGameProvider
+  void resetGameState() {
+    print("🎲 GameProvider: Resetting game state");
+
+    // Cancel existing timers and subscriptions
+    _gameTimer?.cancel();
+    _gameSubscription?.cancel();
+
+    // Reset all game state variables
+    _gameStatus = null;
+    _winner = null;
+    _currentPlayer = PieceColor.white;
+    _selectedPosition = null;
+    _possibleMoves = [];
+    _whiteTimeLeft = 600;
+    _blackTimeLeft = 600;
+    _lastMoveTime = null;
+
+    // Reset promotion state
+    _isPromotionPending = false;
+    _promotionFrom = null;
+    _promotionTo = null;
+    _onPromotionSelected = null;
+
+    // Clear opponent info
+    _opponentId = null;
+    _roomCode = '';
+    _playerId = '';
+    _playerColor = null;
+    _opponentId = null;
+
+    isLoading = false;
+
+    print("🎲 GameProvider: Game state reset complete");
   }
 }
