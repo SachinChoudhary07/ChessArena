@@ -18,14 +18,16 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String getTournamentStatus(Map<String, dynamic> data) {
-    final startDate =
-        (data['startDateTime'] as String?)?.let((date) => DateTime.parse(date));
+    final startDate = (data['startDate'] as Timestamp?)?.toDate();
+    final endDate = (data['endDate'] as Timestamp?)?.toDate();
     final now = DateTime.now();
     final players = List<String>.from(data['players'] ?? []);
-    final maxPlayers = data['maxPlayers'] ?? 8;
+    final maxPlayers = data['playerCount'] ?? 8;
 
-    if (players.length >= maxPlayers) return 'Full';
-    if (data['winner'] != null) return 'Completed';
+    // if (players.length >= maxPlayers) return 'Full';
+
+    if (data['winner'] != null || (endDate != null && now.isAfter(endDate)))
+      return 'Completed';
     if (startDate != null) {
       if (startDate.isBefore(now)) return 'Ongoing';
       return 'Upcoming';
@@ -76,7 +78,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
             .get(_firestore.collection('tournaments').doc(tournamentId));
         final tournamentData = tournamentDoc.data()!;
         final players = List<String>.from(tournamentData['players'] ?? []);
-        final maxPlayers = tournamentData['maxPlayers'] ?? 8;
+        final maxPlayers = tournamentData['playerCount'] ?? 8;
 
         if (players.contains(user.uid)) {
           throw Exception('Already joined this tournament');
@@ -217,16 +219,18 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
 
         stream: _firestore.collection('tournaments').snapshots(),
         builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
           if (snapshot.hasError) {
             return const Center(child: Text('Something went wrong'));
           }
-          if (snapshot.data!.docs.isEmpty) {
+
+          if (snapshot.data?.docs.isEmpty ?? true) {
             return const Center(
               child: Text('No Tournament found'),
             );
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
           }
 
           return ListView.builder(
@@ -234,9 +238,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
             itemBuilder: (context, index) {
               final tournament = snapshot.data!.docs[index];
               final data = tournament.data() as Map<String, dynamic>;
-              final startDate = data['startDateTime'] != null
-                  ? DateTime.parse(data['startDateTime'] as String)
-                  : null;
+              final startDate = (data['startDate'] as Timestamp?)?.toDate();
               final status = getTournamentStatus(data);
               final players = List<String>.from(data['players'] ?? []);
               final maxPlayers = data['playerCount'] ?? 8;
@@ -381,7 +383,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
                                 startDate.isBefore(DateTime.now());
 
                             return ElevatedButton(
-                              onPressed: hasJoined || isFull
+                              onPressed: hasJoined || isFull || hasStarted
                                   ? () {
                                       Navigator.push(
                                         context,

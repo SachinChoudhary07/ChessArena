@@ -347,10 +347,12 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildChessBoard(ChessGameProvider gameProvider) {
     final board = gameProvider.board;
     if (board.length != 8 || board.any((row) => row.length != 8)) {
-      print("board.length");
-      print(board.length);
       return const Center(child: CircularProgressIndicator());
     }
+
+    // Determine if the board needs to be flipped so that the current
+    // player always sees their own pieces at the bottom of the screen.
+    final shouldFlipBoard = gameProvider.playerColor == PieceColor.black;
 
     return Container(
       decoration: BoxDecoration(
@@ -363,8 +365,14 @@ class _GameScreenState extends State<GameScreen> {
         ),
         itemCount: 64,
         itemBuilder: (context, index) {
-          final row = index ~/ 8;
-          final col = index % 8;
+          // UI coordinates drawn by GridView
+          final uiRow = index ~/ 8;
+          final uiCol = index % 8;
+
+          // Convert to actual board coordinates depending on orientation
+          final row = shouldFlipBoard ? 7 - uiRow : uiRow;
+          final col = shouldFlipBoard ? 7 - uiCol : uiCol;
+
           final position = ChessPosition(row, col);
           final piece = board[row][col];
           final isSelected = gameProvider.selectedPosition == position;
@@ -401,74 +409,6 @@ class _GameScreenState extends State<GameScreen> {
       ),
     );
   }
-
-  // Widget _buildChessBoard(ChessGameProvider gameProvider) {
-  //   final board = gameProvider.board;
-  //   if (board.length != 8 || board.any((row) => row.length != 8)) {
-  //     print("board.length");
-  //     print(board.length);
-  //     return const Center(child: CircularProgressIndicator());
-  //   }
-  //
-  //   // Determine if we need to flip the board
-  //   final shouldFlipBoard = gameProvider.playerColor == PieceColor.black;
-  //
-  //   return Container(
-  //     decoration: BoxDecoration(
-  //       border: Border.all(color: Colors.brown, width: 4),
-  //     ),
-  //     child: GridView.builder(
-  //       physics: const NeverScrollableScrollPhysics(),
-  //       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-  //         crossAxisCount: 8,
-  //       ),
-  //       itemCount: 64,
-  //       itemBuilder: (context, index) {
-  //         // Calculate the actual row and column based on board orientation
-  //         final actualRow = shouldFlipBoard ? 7 - (index ~/ 8) : index ~/ 8;
-  //         final actualCol = shouldFlipBoard ? 7 - (index % 8) : index % 8;
-  //
-  //         final position = ChessPosition(actualRow, actualCol);
-  //         final piece = board[actualRow][actualCol];
-  //         final isSelected = gameProvider.selectedPosition == position;
-  //         final isPossibleMove = gameProvider.possibleMoves.contains(position);
-  //         final isWhiteSquare = (actualRow + actualCol) % 2 == 0;
-  //
-  //         return GestureDetector(
-  //           onTap: () {
-  //             // Convert the flipped position back to the original position for move handling
-  //             final originalRow = shouldFlipBoard ? 7 - actualRow : actualRow;
-  //             final originalCol = shouldFlipBoard ? 7 - actualCol : actualCol;
-  //             gameProvider.onSquareTapped(originalRow, originalCol);
-  //           },
-  //           child: Container(
-  //             decoration: BoxDecoration(
-  //               color:
-  //                   _getSquareColor(isWhiteSquare, isSelected, isPossibleMove),
-  //               border: isPossibleMove
-  //                   ? Border.all(color: Colors.yellow, width: 3)
-  //                   : null,
-  //             ),
-  //             child: Center(
-  //               child: piece != null
-  //                   ? _buildPieceWidget(piece)
-  //                   : isPossibleMove
-  //                       ? Container(
-  //                           width: 20,
-  //                           height: 20,
-  //                           decoration: const BoxDecoration(
-  //                             color: Colors.yellow,
-  //                             shape: BoxShape.circle,
-  //                           ),
-  //                         )
-  //                       : null,
-  //             ),
-  //           ),
-  //         );
-  //       },
-  //     ),
-  //   );
-  // }
 
   Color _getSquareColor(
       bool isWhiteSquare, bool isSelected, bool isPossibleMove) {

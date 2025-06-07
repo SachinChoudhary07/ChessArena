@@ -17,7 +17,8 @@ class TournamentDetailsScreen extends StatelessWidget {
     Future<String> getPlayerName(String? uid) async {
       if (uid == null) return 'TBD';
       try {
-        final playerDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+        final playerDoc =
+            await FirebaseFirestore.instance.collection('users').doc(uid).get();
         return playerDoc.data()?['username'] ?? 'Unknown Player';
       } catch (e) {
         return 'Unknown Player';
@@ -77,7 +78,10 @@ class TournamentDetailsScreen extends StatelessWidget {
     }
 
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('tournaments').doc(tournamentId).snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('tournaments')
+          .doc(tournamentId)
+          .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Scaffold(
@@ -117,40 +121,6 @@ class TournamentDetailsScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Tournament Status Card
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Tournament Status',
-                                style: Theme.of(context).textTheme.titleLarge,
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Icon(
-                                    data['status'] == 'ongoing' ? Icons.sports_esports : Icons.schedule,
-                                    color: data['status'] == 'ongoing' ? Colors.green : Colors.orange,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    data['status']?.toString().toUpperCase() ?? 'PENDING',
-                                    style: TextStyle(
-                                      color: data['status'] == 'ongoing' ? Colors.green : Colors.orange,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
                       // Prize Pool Card
                       Card(
                         child: Padding(
@@ -164,7 +134,8 @@ class TournamentDetailsScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 16),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceAround,
                                 children: [
                                   Column(
                                     children: [
@@ -216,8 +187,10 @@ class TournamentDetailsScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 16),
                                 ...roundTimes.entries.map((entry) {
-                                  final roundDateTime = DateTime.parse(entry.value as String);
-                                  final isUpcoming = roundDateTime.isAfter(DateTime.now());
+                                  final roundDateTime =
+                                      DateTime.parse(entry.value as String);
+                                  final isUpcoming =
+                                      roundDateTime.isAfter(DateTime.now());
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 8),
                                     child: Row(
@@ -226,27 +199,36 @@ class TournamentDetailsScreen extends StatelessWidget {
                                           width: 80,
                                           child: Text(
                                             'Round ${entry.key}',
-                                            style: const TextStyle(fontWeight: FontWeight.bold),
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold),
                                           ),
                                         ),
                                         const SizedBox(width: 16),
                                         Text(
-                                          DateFormat('d MMM, h:mm a').format(roundDateTime),
+                                          DateFormat('d MMM, h:mm a')
+                                              .format(roundDateTime),
                                           style: TextStyle(
-                                            color: isUpcoming ? Colors.white : Colors.grey,
+                                            color: isUpcoming
+                                                ? Colors.white
+                                                : Colors.grey,
                                           ),
                                         ),
                                         if (isUpcoming)
                                           Container(
-                                            margin: const EdgeInsets.only(left: 8),
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                            margin:
+                                                const EdgeInsets.only(left: 8),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 2),
                                             decoration: BoxDecoration(
                                               color: Colors.green,
-                                              borderRadius: BorderRadius.circular(12),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                             ),
                                             child: const Text(
                                               'Upcoming',
-                                              style: TextStyle(fontSize: 12, color: Colors.white),
+                                              style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.white),
                                             ),
                                           ),
                                       ],
@@ -263,19 +245,26 @@ class TournamentDetailsScreen extends StatelessWidget {
 
                 // Matches Tab
                 StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance.collection('tournaments').doc(tournamentId).collection('matches').orderBy('round', descending: true).snapshots(),
+                  stream: FirebaseFirestore.instance
+                      .collection('tournaments')
+                      .doc(tournamentId)
+                      .collection('matches')
+                      .orderBy('round', descending: true)
+                      .snapshots(),
                   builder: (context, matchSnapshot) {
                     if (matchSnapshot.hasError) {
                       return const Center(child: Text('Error loading matches'));
                     }
 
-                    if (matchSnapshot.connectionState == ConnectionState.waiting) {
+                    if (matchSnapshot.connectionState ==
+                        ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
 
                     final matches = matchSnapshot.data!.docs;
                     if (matches.isEmpty) {
-                      return const Center(child: Text('No matches scheduled yet'));
+                      return const Center(
+                          child: Text('No matches scheduled yet'));
                     }
 
                     // Group matches by round and sort them
@@ -288,7 +277,7 @@ class TournamentDetailsScreen extends StatelessWidget {
                     }
 
                     // Get max players from tournament data
-                    final maxPlayers = data['maxPlayers'] as int? ?? 8;
+                    final maxPlayers = data['playerCount'] as int? ?? 8;
 
                     // Sort rounds in ascending order for proper display
                     final sortedRounds = matchesByRound.keys.toList()..sort();
@@ -305,7 +294,8 @@ class TournamentDetailsScreen extends StatelessWidget {
                           children: [
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 12, horizontal: 16),
                               margin: const EdgeInsets.only(bottom: 12),
                               decoration: BoxDecoration(
                                 color: Theme.of(context).primaryColor,
@@ -322,9 +312,13 @@ class TournamentDetailsScreen extends StatelessWidget {
                                     ),
                                   ),
                                   const Spacer(),
-                                  if (roundTimes != null && roundTimes[round.toString()] != null)
+                                  if (roundTimes != null &&
+                                      roundTimes[round.toString()] != null)
                                     Text(
-                                      DateFormat('d MMM, h:mm a').format(DateTime.parse(roundTimes[round.toString()] as String)),
+                                      DateFormat('d MMM, h:mm a').format(
+                                          DateTime.parse(
+                                              roundTimes[round.toString()]
+                                                  as String)),
                                       style: const TextStyle(
                                         color: Colors.white70,
                                         fontSize: 14,
@@ -334,7 +328,8 @@ class TournamentDetailsScreen extends StatelessWidget {
                               ),
                             ),
                             ...roundMatches.map((match) {
-                              final matchData = match.data() as Map<String, dynamic>;
+                              final matchData =
+                                  match.data() as Map<String, dynamic>;
                               return Card(
                                 margin: const EdgeInsets.only(bottom: 12),
                                 child: Padding(
@@ -342,28 +337,39 @@ class TournamentDetailsScreen extends StatelessWidget {
                                   child: Column(
                                     children: [
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
                                         children: [
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 4),
                                             decoration: BoxDecoration(
-                                              color: matchData['status'] == 'completed'
+                                              color: matchData['status'] ==
+                                                      'completed'
                                                   ? Colors.green
-                                                  : matchData['status'] == 'ongoing'
+                                                  : matchData['status'] ==
+                                                          'ongoing'
                                                       ? Colors.orange
                                                       : Colors.blue,
-                                              borderRadius: BorderRadius.circular(12),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                             ),
                                             child: Text(
-                                              matchData['status']?.toString().toUpperCase() ?? 'PENDING',
-                                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                                              matchData['status']
+                                                      ?.toString()
+                                                      .toUpperCase() ??
+                                                  'PENDING',
+                                              style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12),
                                             ),
                                           ),
                                         ],
                                       ),
                                       const SizedBox(height: 16),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceAround,
                                         children: [
                                           Column(
                                             children: [
@@ -372,15 +378,30 @@ class TournamentDetailsScreen extends StatelessWidget {
                                               ),
                                               const SizedBox(height: 8),
                                               FutureBuilder<String>(
-                                                future: matchData['player1'] == FirebaseAuth.instance.currentUser?.uid ? Future.value('You') : getPlayerName(matchData['player1']?.toString()),
+                                                future: matchData['player1'] ==
+                                                        FirebaseAuth.instance
+                                                            .currentUser?.uid
+                                                    ? Future.value('You')
+                                                    : getPlayerName(
+                                                        matchData['player1']
+                                                            ?.toString()),
                                                 builder: (context, snapshot) {
-                                                  if (snapshot.connectionState == ConnectionState.waiting) {
+                                                  if (snapshot
+                                                          .connectionState ==
+                                                      ConnectionState.waiting) {
                                                     return const CircularProgressIndicator();
                                                   }
                                                   return Text(
                                                     snapshot.data ?? 'TBD',
                                                     style: TextStyle(
-                                                      color: matchData['player1'] == FirebaseAuth.instance.currentUser?.uid ? Colors.green : Colors.white,
+                                                      color: matchData[
+                                                                  'player1'] ==
+                                                              FirebaseAuth
+                                                                  .instance
+                                                                  .currentUser
+                                                                  ?.uid
+                                                          ? Colors.green
+                                                          : Colors.white,
                                                     ),
                                                   );
                                                 },
@@ -401,15 +422,30 @@ class TournamentDetailsScreen extends StatelessWidget {
                                               ),
                                               const SizedBox(height: 8),
                                               FutureBuilder<String>(
-                                                future: matchData['player2'] == FirebaseAuth.instance.currentUser?.uid ? Future.value('You') : getPlayerName(matchData['player2']?.toString()),
+                                                future: matchData['player2'] ==
+                                                        FirebaseAuth.instance
+                                                            .currentUser?.uid
+                                                    ? Future.value('You')
+                                                    : getPlayerName(
+                                                        matchData['player2']
+                                                            ?.toString()),
                                                 builder: (context, snapshot) {
-                                                  if (snapshot.connectionState == ConnectionState.waiting) {
+                                                  if (snapshot
+                                                          .connectionState ==
+                                                      ConnectionState.waiting) {
                                                     return const CircularProgressIndicator();
                                                   }
                                                   return Text(
                                                     snapshot.data ?? 'TBD',
                                                     style: TextStyle(
-                                                      color: matchData['player2'] == FirebaseAuth.instance.currentUser?.uid ? Colors.green : Colors.white,
+                                                      color: matchData[
+                                                                  'player2'] ==
+                                                              FirebaseAuth
+                                                                  .instance
+                                                                  .currentUser
+                                                                  ?.uid
+                                                          ? Colors.green
+                                                          : Colors.white,
                                                     ),
                                                   );
                                                 },
@@ -421,7 +457,8 @@ class TournamentDetailsScreen extends StatelessWidget {
                                       if (matchData['winner'] != null) ...[
                                         const SizedBox(height: 16),
                                         FutureBuilder<String>(
-                                          future: getPlayerName(matchData['winner']?.toString()),
+                                          future: getPlayerName(
+                                              matchData['winner']?.toString()),
                                           builder: (context, snapshot) {
                                             return Text(
                                               'Winner: ${snapshot.data ?? 'Unknown'}',
@@ -433,8 +470,15 @@ class TournamentDetailsScreen extends StatelessWidget {
                                           },
                                         ),
                                       ],
-                                      if ((matchData['player1'] == FirebaseAuth.instance.currentUser?.uid || matchData['player2'] == FirebaseAuth.instance.currentUser?.uid) &&
-                                          isMatchTimeNear(data['roundTimes'] ?? {}, round)) ...[
+                                      if ((matchData['player1'] ==
+                                                  FirebaseAuth.instance
+                                                      .currentUser?.uid ||
+                                              matchData['player2'] ==
+                                                  FirebaseAuth.instance
+                                                      .currentUser?.uid) &&
+                                          isMatchTimeNear(
+                                              data['roundTimes'] ?? {},
+                                              round)) ...[
                                         const SizedBox(height: 16),
                                         ElevatedButton(
                                           onPressed: () {
@@ -442,7 +486,8 @@ class TournamentDetailsScreen extends StatelessWidget {
                                           },
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.green,
-                                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 32, vertical: 12),
                                           ),
                                           child: const Text(
                                             'Play Match',

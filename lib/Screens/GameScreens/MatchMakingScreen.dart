@@ -37,11 +37,15 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
     init();
   }
 
-  init() {
+  init() async {
     currentUserId = _auth.currentUser!.uid;
     profile = _auth.currentUser?.photoURL ??
         'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT9nPR4_CyTE4xJdV3eDJ3P4rDGs8uvpTEW-qK_-WzU6xfjqg1I1CeyCcPOHztCFtwfbrc&usqp=CAU';
-    currentUserElo = 1400;
+    currentUserElo =
+        (await _firestore.collection('users').doc(currentUserId).get())
+                .data()?['eloRating']
+                ?.round() ??
+            1400;
     print(
         "🎮 MatchMaking: Init - UserID: $currentUserId, ELO: $currentUserElo");
     _startMatchmaking(0);
@@ -56,6 +60,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
         'uid': currentUserId,
         'elo': currentUserElo,
         'timestamp': FieldValue.serverTimestamp(),
+        'match_time': widget.time,
       });
       print("🎮 MatchMaking: Added to queue - UserID: $currentUserId");
     } else {
@@ -76,6 +81,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
         final String opponentId = data['uid'];
         final int opponentElo = data['elo'];
         final Timestamp timestamp = data['timestamp'] ?? Timestamp.now();
+        final String matchTime = data['match_time'] ?? '10';
 
         if (opponentId == currentUserId) continue;
 
@@ -87,7 +93,8 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
         print(
             "🎮 MatchMaking: Wait time: ${waitingDuration}s, Allowed ELO range: ±$allowedRange");
 
-        if ((opponentElo - currentUserElo).abs() <= allowedRange) {
+        if ((opponentElo - currentUserElo).abs() <= allowedRange &&
+            matchTime == widget.time) {
           print("🎮 MatchMaking: Match found! Opponent ID: $opponentId");
           await _createGameRoom(opponentId);
           break;
