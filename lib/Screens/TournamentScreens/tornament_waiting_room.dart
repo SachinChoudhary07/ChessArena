@@ -28,7 +28,7 @@ class TournamentWaitingRoom extends StatefulWidget {
 }
 
 class _TournamentWaitingRoomState extends State<TournamentWaitingRoom> {
-  final bool _navigated = false;
+  bool _navigated = false;
   final int _countdown = 0; // for countdown display
 
   @override
@@ -58,16 +58,34 @@ class _TournamentWaitingRoomState extends State<TournamentWaitingRoom> {
     }
   }
 
-  void _startCountdown(Map<String, dynamic> roomData) {
-    _initializeGameData(roomData).then((_) {
-      Future.delayed(const Duration(seconds: 3));
-      pushReplacement(
-          context,
-          GameScreen(
-            roomCode: widget.roomCode,
-            tournamentId: widget.tournamentId,
-          ));
-    });
+  void _startCountdown(Map<String, dynamic> roomData) async {
+    // Prevent multiple navigations if snapshots keep coming
+    if (_navigated) return;
+    _navigated = true;
+
+    // Only prepare initial game data once
+    if ((roomData['status'] ?? 'pending') != 'ready') {
+      await _initializeGameData(roomData);
+
+      // Mark the match as ready so other listeners know countdown started
+      await FirebaseFirestore.instance
+          .collection('tournaments')
+          .doc(widget.tournamentId)
+          .collection('matches')
+          .doc(widget.roomCode)
+          .update({'status': 'ready'});
+    }
+
+    // Small delay before entering the game
+    await Future.delayed(const Duration(seconds: 3));
+
+    if (!mounted) return;
+    pushReplacement(
+        context,
+        GameScreen(
+          roomCode: widget.roomCode,
+          tournamentId: widget.tournamentId,
+        ));
   }
 
   int parseTimeToSeconds(String? timeString) {
@@ -313,11 +331,14 @@ class _TournamentWaitingRoomState extends State<TournamentWaitingRoom> {
                                   color: Colors.white,
                                 ),
                                 const SizedBox(width: 8),
-                                Text(
-                                  playerName,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                                Expanded(
+                                  child: Text(
+                                    playerName,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                                 const Spacer(),

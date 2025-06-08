@@ -35,6 +35,9 @@ class ChessGameProvider with ChangeNotifier {
   ChessPosition? _promotionFrom;
   ChessPosition? _promotionTo;
 
+  int? _currentRound;
+  int? _currentMatchNumber;
+
   void setLoading(bool value) {
     // isLoading = value;
     // notifyListeners();
@@ -65,9 +68,12 @@ class ChessGameProvider with ChangeNotifier {
 
   bool get isMyTurn => _currentPlayer == _playerColor;
 
+  String? _tournamentId;
+  String? get tournamentId => _tournamentId;
+
   // Initialize the chess game
-  void initializeGame(
-      String roomCode, String playerId, PieceColor playerColor) {
+  void initializeGame(String roomCode, String playerId, PieceColor playerColor,
+      {String? tournamentId, int? round, int? matchNumber}) {
     print(
         "🎲 GameProvider: Initializing game - Room: $roomCode, Player: $playerId, Color: $playerColor");
 
@@ -77,6 +83,9 @@ class ChessGameProvider with ChangeNotifier {
     _roomCode = roomCode;
     _playerId = playerId;
     _playerColor = playerColor;
+    _tournamentId = tournamentId;
+    _currentRound = round;
+    _currentMatchNumber = matchNumber;
     _listenToGameUpdates();
     _startTimer();
     notifyListeners();
@@ -146,11 +155,15 @@ class ChessGameProvider with ChangeNotifier {
     // ✅ IMPORTANT: Cancel existing subscription first
     _gameSubscription?.cancel();
 
-    _gameSubscription = _firestore
-        .collection('games')
-        .doc(_roomCode)
-        .snapshots()
-        .listen((snapshot) {
+    final docRef = tournamentId != null
+        ? _firestore
+            .collection('tournaments')
+            .doc(tournamentId!)
+            .collection('matches')
+            .doc(_roomCode)
+        : _firestore.collection('games').doc(_roomCode);
+
+    _gameSubscription = docRef.snapshots().listen((snapshot) {
       if (snapshot.exists) {
         print("🎲 GameProvider: Received game update for room: $_roomCode");
         final data = snapshot.data() as Map<String, dynamic>;
@@ -757,17 +770,21 @@ class ChessGameProvider with ChangeNotifier {
 
     // Get the winner and loser colors
     final winnerColor = winner == 'white' ? PieceColor.white : PieceColor.black;
+    if (tournamentId == null) {
+      // Update stats for both players
+      _updateUserStats(_playerId, _playerColor == winnerColor);
+      _updateUserStats(_opponentId!, _playerColor != winnerColor);
 
-    // Update stats for both players
-    _updateUserStats(_playerId, _playerColor == winnerColor);
-    _updateUserStats(_opponentId!, _playerColor != winnerColor);
+      //now give the 80% of the entry fee to the winner
+      _updateWinnerBalance(winnerColor, _roomCode);
 
-    //now give the 80% of the entry fee to the winner
-    _updateWinnerBalance(winnerColor, _roomCode);
-
-    // Record game history for both players
-    _recordGameHistory(_playerId, _playerColor == winnerColor, _opponentId!);
-    _recordGameHistory(_opponentId!, _playerColor != winnerColor, _playerId);
+      // Record game history for both players
+      _recordGameHistory(_playerId, _playerColor == winnerColor, _opponentId!);
+      _recordGameHistory(_opponentId!, _playerColor != winnerColor, _playerId);
+    } else {
+      // Tournament game: mark match completed and promote winner
+      _handleTournamentGameEnd(winnerColor, reason);
+    }
 
     // Update ELO ratings (this function already handles both players)
     if (winner != null && reason != 'draw') {
@@ -802,12 +819,18 @@ class ChessGameProvider with ChangeNotifier {
       'lastUpdated': FieldValue.serverTimestamp(),
     };
 
-    _firestore.collection('games').doc(_roomCode).update(data);
+    (tournamentId != null
+            ? _matchesCollection(tournamentId!).doc(_roomCode)
+            : _firestore.collection('games').doc(_roomCode))
+        .update(data);
   }
 
   // Update timers in Firestore
   void _updateTimersInFirestore() {
-    _firestore.collection('games').doc(_roomCode).update({
+    (tournamentId != null
+            ? _matchesCollection(tournamentId!).doc(_roomCode)
+            : _firestore.collection('games').doc(_roomCode))
+        .update({
       'whiteTimeLeft': _whiteTimeLeft,
       'blackTimeLeft': _blackTimeLeft,
     });
@@ -955,8 +978,99 @@ class ChessGameProvider with ChangeNotifier {
     _playerColor = null;
     _opponentId = null;
 
+    _currentRound = null;
+    _currentMatchNumber = null;
+
     isLoading = false;
 
     print("🎲 GameProvider: Game state reset complete");
+  }
+
+  void _handleTournamentGameEnd(PieceColor winnerColor, String reason) async {
+    if (tournamentId == null) return;
+
+    final String winnerId =
+        winnerColor == _playerColor ? _playerId : _opponentId!;
+
+    final matchRef = _matchesCollection(tournamentId!).doc(_roomCode);
+
+    await _firestore.runTransaction((transaction) async {
+      // READS
+      final matchSnap = await transaction.get(matchRef);
+      if (!matchSnap.exists) return;
+
+      final matchData = matchSnap.data() as Map<String, dynamic>;
+      final int round = matchData['round'] ?? _currentRound ?? 1;
+      final int matchNumber =
+          matchData['matchNumber'] ?? _currentMatchNumber ?? 1;
+
+      final tournamentDocRef =
+          _firestore.collection('tournaments').doc(tournamentId);
+      final tournamentSnap = await transaction.get(tournamentDocRef);
+      final int totalRounds = tournamentSnap.data()?['numberOfRounds'] ?? 1;
+
+      int? nextRound;
+      DocumentReference? nextMatchRef;
+      String? nextSlot;
+
+      if (round + 1 <= totalRounds) {
+        nextRound = round + 1;
+
+        // Fetch ALL matches in the next round ordered by matchNumber
+        final nextRoundMatches = await _matchesCollection(tournamentId!)
+            .where('round', isEqualTo: nextRound)
+            .orderBy('matchNumber')
+            .get();
+
+        for (final doc in nextRoundMatches.docs) {
+          final snap = await transaction.get(doc.reference);
+          final data = snap.data() as Map<String, dynamic>? ?? {};
+
+          if (data['player1'] == null) {
+            nextMatchRef = doc.reference;
+            nextSlot = 'player1';
+            break;
+          }
+
+          if (data['player2'] == null) {
+            nextMatchRef = doc.reference;
+            nextSlot = 'player2';
+            break;
+          }
+        }
+      } else {
+        // -----------------------------
+        // FINAL ROUND  – tournament ends
+        // -----------------------------
+
+        // Update tournament document with winner and status
+        transaction.update(
+            tournamentDocRef, {'winnerId': winnerId, 'status': 'completed'});
+
+        // Credit prize amount to winner's wallet
+        final num prize = tournamentSnap.data()?['prizeAmount'] ?? 0;
+        if (prize > 0) {
+          final userRef = _firestore.collection('users').doc(winnerId);
+          transaction.update(userRef, {
+            'Balance': FieldValue.increment(prize.toDouble()),
+          });
+        }
+      }
+
+      // WRITES
+      transaction.update(matchRef, {
+        'status': 'completed',
+        'winner': winnerId,
+      });
+
+      if (nextMatchRef != null && nextSlot != null) {
+        transaction.update(nextMatchRef, {nextSlot: winnerId});
+      }
+    });
+  }
+
+  // Helper to access matches subcollection for a tournament
+  CollectionReference<Map<String, dynamic>> _matchesCollection(String tid) {
+    return _firestore.collection('tournaments').doc(tid).collection('matches');
   }
 }

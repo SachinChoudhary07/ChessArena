@@ -56,13 +56,18 @@ class _GameScreenState extends State<GameScreen> {
     final currentUser = FirebaseAuth.instance.currentUser;
 
     if (currentUser != null) {
-      print("🎮 GameScreen: Fetching game data for room ${widget.roomCode}");
-      final gameDoc = await FirebaseFirestore.instance
-          .collection(widget.tournamentId != null
-              ? 'tournaments/${widget.tournamentId}/matches' // Tournament match path
-              : 'games') // Regular game path
-          .doc(widget.roomCode)
-          .get();
+      print("🎮 GameScreen: Fetching game data for room " + widget.roomCode);
+      CollectionReference<Map<String, dynamic>> gameCollection;
+      if (widget.tournamentId != null) {
+        gameCollection = FirebaseFirestore.instance
+            .collection('tournaments')
+            .doc(widget.tournamentId!)
+            .collection('matches');
+      } else {
+        gameCollection = FirebaseFirestore.instance.collection('games');
+      }
+
+      final gameDoc = await gameCollection.doc(widget.roomCode).get();
 
       if (gameDoc.exists) {
         final data = gameDoc.data() as Map<String, dynamic>;
@@ -105,6 +110,9 @@ class _GameScreenState extends State<GameScreen> {
           widget.roomCode,
           currentUser.uid,
           playerColor,
+          tournamentId: widget.tournamentId,
+          round: data['round'] as int?,
+          matchNumber: data['matchNumber'] as int?,
         );
         print("🎮 GameScreen: Game initialized successfully");
       } else {

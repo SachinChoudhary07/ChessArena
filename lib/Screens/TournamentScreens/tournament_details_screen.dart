@@ -482,7 +482,8 @@ class TournamentDetailsScreen extends StatelessWidget {
                                                       .currentUser?.uid) &&
                                           isMatchTimeNear(
                                               data['roundTimes'] ?? {},
-                                              round)) ...[
+                                              round) &&
+                                          matchData['winnerId'] == null) ...[
                                         const SizedBox(height: 16),
                                         ElevatedButton(
                                           onPressed: () {
