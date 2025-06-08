@@ -331,6 +331,7 @@ class TournamentDetailsScreen extends StatelessWidget {
                               ),
                             ),
                             ...roundMatches.map((match) {
+                              final matchId = match.id;
                               final matchData =
                                   match.data() as Map<String, dynamic>;
                               return Card(
@@ -488,8 +489,7 @@ class TournamentDetailsScreen extends StatelessWidget {
                                             push(
                                                 context,
                                                 TournamentWaitingRoom(
-                                                    roomCode:
-                                                        '${matchData['player1']}-${matchData['player2']}',
+                                                    roomCode: matchId,
                                                     tournamentId: tournamentId,
                                                     player1:
                                                         matchData['player1'],

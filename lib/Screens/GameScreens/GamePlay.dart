@@ -10,8 +10,13 @@ import '../../Widgets/GameEndDialog.dart';
 // screens/game_screen.dart
 class GameScreen extends StatefulWidget {
   final String roomCode;
+  final String? tournamentId; // Optional tournament ID
 
-  const GameScreen({super.key, required this.roomCode});
+  const GameScreen({
+    super.key,
+    required this.roomCode,
+    this.tournamentId, // Add optional parameter
+  });
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -53,7 +58,9 @@ class _GameScreenState extends State<GameScreen> {
     if (currentUser != null) {
       print("🎮 GameScreen: Fetching game data for room ${widget.roomCode}");
       final gameDoc = await FirebaseFirestore.instance
-          .collection('games')
+          .collection(widget.tournamentId != null
+              ? 'tournaments/${widget.tournamentId}/matches' // Tournament match path
+              : 'games') // Regular game path
           .doc(widget.roomCode)
           .get();
 

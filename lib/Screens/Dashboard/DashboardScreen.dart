@@ -3,6 +3,7 @@ import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Providers/WalletProvider/WalletProvider.dart';
 import 'package:chess_cash/Screens/GameScreens/MatchMakingScreen.dart';
 import 'package:chess_cash/Screens/PaidMatch/PlayPaidMatch.dart';
+import 'package:chess_cash/Screens/TournamentScreens/tournaments_screen.dart';
 import 'package:chess_cash/Screens/create_contest.dart';
 import 'package:chess_cash/Services/navigation.dart';
 import 'package:flutter/material.dart';
@@ -73,10 +74,10 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                 }),
                 _buildButton(AppConstants.tournaments, Icons.emoji_events,
                     ColorResources.secondaryColor, () {
-                  // push(context, const TournamentsScreen());
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Coming Soon')),
-                  );
+                  push(context, const TournamentsScreen());
+                  // ScaffoldMessenger.of(context).showSnackBar(
+                  //   const SnackBar(content: Text('Coming Soon')),
+                  // );
                 }),
                 // _buildButton(
                 //     AppConstants.createContest,

@@ -41,28 +41,20 @@ class _TournamentWaitingRoomState extends State<TournamentWaitingRoom> {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
-    final docRef = FirebaseFirestore.instance.collection('tournaments').doc(widget.tournamentId).collection('matches').doc(widget.roomCode);
+    final docRef = FirebaseFirestore.instance
+        .collection('tournaments')
+        .doc(widget.tournamentId)
+        .collection('matches')
+        .doc(widget.roomCode);
 
-    // First check if document exists
+    //check if the current user is in the match
     final docSnapshot = await docRef.get();
-
-    if (!docSnapshot.exists) {
-      // Create the document if it doesn't exist
-      await docRef.set({
-        'player1': widget.player1,
-        'player2': widget.player2,
-        'isPlayer1Present': false,
-        'isPlayer2Present': false,
-        'status': 'pending',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    }
-
-    // Now update the presence
-    if (currentUser.uid == widget.player1) {
-      await docRef.update({'isPlayer1Present': true});
-    } else {
-      await docRef.update({'isPlayer2Present': true});
+    if (docSnapshot.exists) {
+      if (currentUser.uid == widget.player1) {
+        await docRef.update({'isPlayer1Present': true});
+      } else {
+        await docRef.update({'isPlayer2Present': true});
+      }
     }
   }
 
@@ -73,6 +65,7 @@ class _TournamentWaitingRoomState extends State<TournamentWaitingRoom> {
           context,
           GameScreen(
             roomCode: widget.roomCode,
+            tournamentId: widget.tournamentId,
           ));
     });
   }
@@ -124,7 +117,9 @@ class _TournamentWaitingRoomState extends State<TournamentWaitingRoom> {
 
     // Update game document with initial game state
     await FirebaseFirestore.instance
-          .collection('tournaments').doc(widget.tournamentId).collection('matches')
+        .collection('tournaments')
+        .doc(widget.tournamentId)
+        .collection('matches')
         .doc(widget.roomCode)
         .update({
       'boardState': boardMap,
@@ -181,190 +176,207 @@ class _TournamentWaitingRoomState extends State<TournamentWaitingRoom> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Waiting Room"),
-        backgroundColor: ColorResources.primaryColor,
-      ),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('tournaments')
-            .doc(widget.tournamentId)
-            .collection('matches')
-            .doc(widget.roomCode)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return WillPopScope(
+      // Prevent back button navigation
+      onWillPop: () async => false,
+      child: Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading:
+              false, // This removes the back button from AppBar
+          title: const Text("Waiting Room"),
+          backgroundColor: ColorResources.primaryColor,
+        ),
+        body: StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('tournaments')
+              .doc(widget.tournamentId)
+              .collection('matches')
+              .doc(widget.roomCode)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          }
+            if (snapshot.hasError) {
+              return Center(child: Text("Error: ${snapshot.error}"));
+            }
 
-          if (!snapshot.hasData || snapshot.data!.data() == null) {
-            return const Center(
-                child: Text("Waiting for room to be created..."));
-          }
+            if (!snapshot.hasData || snapshot.data!.data() == null) {
+              return const Center(
+                  child: Text("Waiting for room to be created..."));
+            }
 
-          final data = snapshot.data!.data() as Map<String, dynamic>;
-          final player1 = data['player1'];
-          final player2 = data['player2'];
-          final status = data['status'];
-          final gameName = data['gameName'];
+            final data = snapshot.data!.data() as Map<String, dynamic>;
+            final player1 = data['player1'];
+            final player2 = data['player2'];
+            final status = data['status'];
+            final gameName = data['gameName'];
+            final isPlayer1Present = data['isPlayer1Present'] ?? false;
+            final isPlayer2Present = data['isPlayer2Present'] ?? false;
+            print("isPlayer1Present: $isPlayer1Present");
+            print("isPlayer2Present: $isPlayer2Present");
+            print("player1: $player1");
+            print("player2: $player2");
+            print("status: $status");
+            print("gameName: $gameName");
+            print("roomCode: ${widget.roomCode}");
+            print("tournamentId: ${widget.tournamentId}");
+            print("navigated: $_navigated");
+            final players = [player1, if (player2 != null) player2];
 
-          final players = [player1, if (player2 != null) player2];
+            if (isPlayer1Present && isPlayer2Present && !_navigated) {
+              _startCountdown(data);
+            }
 
-          if (status == 'ready' && !_navigated) {
-            _startCountdown(data);
-          }
-
-          return Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  ColorResources.primaryColor,
-                  ColorResources.secondaryColor
-                ],
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.games,
-                  size: 80,
-                  color: Colors.white,
+            return Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    ColorResources.primaryColor,
+                    ColorResources.secondaryColor
+                  ],
                 ),
-                const SizedBox(height: 40),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.games,
+                    size: 80,
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
                   ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        "Waiting for player...",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
+                  const SizedBox(height: 40),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          border:
-                              Border.all(color: ColorResources.primaryColor),
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          "Room Code: ${widget.roomCode}",
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          "Waiting for player...",
                           style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2,
-                              color: ColorResources.secondaryColor),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      ...players.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final playerName = index == 0
-                            ? (widget.player1 ?? 'Player 1')
-                            : (widget.player2 ?? 'Player 2'); // ✅
-                        return Container(
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.symmetric(vertical: 4),
+                        const SizedBox(height: 20),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
-                            color: ColorResources.secondaryColor,
+                            border:
+                                Border.all(color: ColorResources.primaryColor),
+                            color: Colors.grey[100],
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                index == 0
-                                    ? Icons.person
-                                    : Icons.person_outline,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                playerName,
-                                style: const TextStyle(
+                          child: Text(
+                            "Room Code: ${widget.roomCode}",
+                            style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 2,
+                                color: ColorResources.secondaryColor),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        ...players.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final playerName = index == 0
+                              ? (widget.player1 ?? 'Player 1')
+                              : (widget.player2 ?? 'Player 2'); // ✅
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            decoration: BoxDecoration(
+                              color: ColorResources.secondaryColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  index == 0
+                                      ? Icons.person
+                                      : Icons.person_outline,
                                   color: Colors.white,
-                                  fontWeight: FontWeight.bold,
                                 ),
-                              ),
-                              const Spacer(),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color:
-                                      index == 0 ? Colors.white : Colors.black,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  index == 0 ? "WHITE" : "BLACK",
-                                  style: TextStyle(
-                                    color: index == 0
-                                        ? Colors.black
-                                        : Colors.white,
-                                    fontSize: 12,
+                                const SizedBox(width: 8),
+                                Text(
+                                  playerName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              ),
-                            ],
+                                const Spacer(),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: index == 0
+                                        ? Colors.white
+                                        : Colors.black,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    index == 0 ? "WHITE" : "BLACK",
+                                    style: TextStyle(
+                                      color: index == 0
+                                          ? Colors.black
+                                          : Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 20),
+                        if (status == 'ready') ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            _countdown > 0
+                                ? "Game is starting in some time ..."
+                                : "Starting game...",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: ColorResources.secondaryColor,
+                            ),
                           ),
-                        );
-                      }),
-                      const SizedBox(height: 20),
-                      if (status == 'ready') ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          _countdown > 0
-                              ? "Game is starting in some time ..."
-                              : "Starting game...",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: ColorResources.secondaryColor,
+                        ] else ...[
+                          const Loader(),
+                          const SizedBox(height: 10),
+                          Text(
+                            "${players.length}/2 players joined",
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
                           ),
-                        ),
-                      ] else ...[
-                        const Loader(),
-                        const SizedBox(height: 10),
-                        Text(
-                          "${players.length}/2 players joined",
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
