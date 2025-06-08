@@ -17,6 +17,120 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  @override
+  void initState() {
+    super.initState();
+    // Start checking tournaments when screen initializes
+    _startTournamentCheck();
+  }
+
+  void _startTournamentCheck() {
+    // Check tournaments every minute
+    Future.delayed(const Duration(minutes: 1), () {
+      if (mounted) {
+        _checkAndCancelTournaments();
+        _startTournamentCheck();
+      }
+    });
+  }
+
+  Future<void> _checkAndCancelTournaments() async {
+    try {
+      // Get all upcoming tournaments
+      final tournaments = await _firestore.collection('tournaments').where('status', isEqualTo: 'upcoming').get();
+
+      for (var tournament in tournaments.docs) {
+        final data = tournament.data();
+        final startDate = (data['startDate'] as Timestamp?)?.toDate();
+        final players = List<String>.from(data['players'] ?? []);
+        final maxPlayers = data['playerCount'] ?? 8;
+        final entryFee = (data['entryFee'] ?? 0.0).toDouble();
+
+        // Check if tournament starts in less than 30 minutes and has insufficient players
+        if (startDate != null) {
+          final timeUntilStart = startDate.difference(DateTime.now());
+          if (timeUntilStart.inMinutes <= 30 && timeUntilStart.inMinutes > 0 && players.length < maxPlayers / 2) {
+            // Cancel tournament and process refunds
+            await _cancelTournamentAndRefund(
+              tournament.id,
+              players,
+              entryFee,
+              'Tournament cancelled due to insufficient players',
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('Error checking tournaments: $e');
+    }
+  }
+
+  Future<void> _cancelTournamentAndRefund(
+    String tournamentId,
+    List<String> players,
+    double entryFee,
+    String reason,
+  ) async {
+    try {
+      // Use transaction to ensure all operations complete
+      await _firestore.runTransaction((transaction) async {
+        // Update tournament status
+        final tournamentRef = _firestore.collection('tournaments').doc(tournamentId);
+        transaction.update(tournamentRef, {
+          'status': 'cancelled',
+          'cancelReason': reason,
+          'cancelledAt': FieldValue.serverTimestamp(),
+        });
+
+        // Process refunds for each player
+        for (String playerId in players) {
+          final userRef = _firestore.collection('users').doc(playerId);
+          final userDoc = await transaction.get(userRef);
+
+          if (userDoc.exists) {
+            // Refund entry fee
+            transaction.update(userRef, {
+              'Balance': FieldValue.increment(entryFee),
+            });
+
+            // Add transaction record
+            final transactionRef = _firestore.collection('users').doc(playerId).collection('transactions').doc();
+
+            transaction.set(transactionRef, {
+              'amount': entryFee,
+              'type': 'Tournament Refund',
+              'description': 'Refund for cancelled tournament: $tournamentId',
+              'timestamp': FieldValue.serverTimestamp(),
+              'status': 'completed',
+              'tournamentId': tournamentId,
+            });
+          }
+        }
+
+        // Delete all tournament matches
+        final matchesSnapshot = await _firestore.collection('tournaments').doc(tournamentId).collection('matches').get();
+
+        for (var match in matchesSnapshot.docs) {
+          transaction.delete(match.reference);
+        }
+      });
+
+      // Show toast notification
+      Fluttertoast.showToast(
+        msg: "Tournament cancelled and refunds processed",
+        backgroundColor: Colors.orange,
+        textColor: Colors.white,
+      );
+    } catch (e) {
+      print('Error cancelling tournament: $e');
+      Fluttertoast.showToast(
+        msg: "Error processing tournament cancellation",
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
+    }
+  }
+
   String getTournamentStatus(Map<String, dynamic> data) {
     final startDate = (data['startDate'] as Timestamp?)?.toDate();
     final endDate = (data['endDate'] as Timestamp?)?.toDate();
@@ -24,6 +138,9 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
     final players = List<String>.from(data['players'] ?? []);
     final maxPlayers = data['playerCount'] ?? 8;
 
+    // Check for cancelled status first
+    if (data['status'] == 'cancelled') return 'Cancelled';
+    
     if (players.length >= maxPlayers) return 'Full';
 
     if (data['winner'] != null || (endDate != null && now.isAfter(endDate)))
@@ -81,6 +198,11 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
         final players = List<String>.from(tournamentData['players'] ?? []);
         final maxPlayers = tournamentData['playerCount'] ?? 8;
 
+        // Check if tournament is cancelled
+        if (tournamentData['status'] == 'cancelled') {
+          throw Exception('This tournament has been cancelled');
+        }
+
         if (players.contains(user.uid)) {
           throw Exception('Already joined this tournament');
         }
@@ -105,7 +227,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
         for (final match in roundOneMatches.docs) {
           final matchRef = match.reference;
           final freshSnap = await transaction.get(matchRef);
-          final freshData = freshSnap.data() as Map<String, dynamic>?;
+          final freshData = freshSnap.data();
 
           if (freshData == null) continue;
 
@@ -135,6 +257,18 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
             'tournaments': FieldValue.arrayUnion([tournamentId])
           },
         );
+
+        // Add transaction record for entry fee
+        final transactionRef = _firestore.collection('users').doc(user.uid).collection('transactions').doc();
+
+        transaction.set(transactionRef, {
+          'amount': -entryFee,
+          'type': 'Tournament Entry',
+          'description': 'Entry fee for tournament: $tournamentId',
+          'timestamp': FieldValue.serverTimestamp(),
+          'status': 'completed',
+          'tournamentId': tournamentId,
+        });
 
         // 2. Update tournament's player list
         transaction.update(
@@ -343,7 +477,9 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
                                     ? Icons.emoji_events
                                     : status == 'Full'
                                         ? Icons.block
-                                        : Icons.schedule,
+                                        : status == 'Cancelled'
+                                            ? Icons.cancel
+                                            : Icons.schedule,
                             size: 20,
                             color: status == 'Ongoing'
                                 ? Colors.green
@@ -351,7 +487,9 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
                                     ? Colors.blue
                                     : status == 'Full'
                                         ? Colors.red
-                                        : Colors.orange,
+                                        : status == 'Cancelled'
+                                            ? Colors.red
+                                            : Colors.orange,
                           ),
                           const SizedBox(width: 8),
                           Text(
@@ -364,10 +502,26 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
                                       ? Colors.blue
                                       : status == 'Full'
                                           ? Colors.red
-                                          : Colors.orange,
+                                          : status == 'Cancelled'
+                                              ? Colors.red
+                                              : Colors.orange,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
+                          if (status == 'Cancelled') ...[
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                data['cancelReason'] ?? 'Tournament cancelled',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.red,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 16),
