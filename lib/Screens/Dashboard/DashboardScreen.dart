@@ -10,7 +10,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../Constant/ui_helper.dart';
-import '../TournamentScreens/tournaments_screen.dart';
 
 class Dashboardscreen extends StatefulWidget {
   const Dashboardscreen({super.key});
@@ -74,17 +73,20 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                 }),
                 _buildButton(AppConstants.tournaments, Icons.emoji_events,
                     ColorResources.secondaryColor, () {
-                  push(context, const TournamentsScreen());
-                }),
-                _buildButton(
-                    AppConstants.createContest,
-                    Icons.compare_arrows_sharp,
-                    ColorResources.secondaryColor, () {
-                  // push(context, const CreateTournament());
+                  // push(context, const TournamentsScreen());
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Coming Soon')),
                   );
                 }),
+                // _buildButton(
+                //     AppConstants.createContest,
+                //     Icons.compare_arrows_sharp,
+                //     ColorResources.secondaryColor, () {
+                //   // push(context, const CreateTournament());
+                //   ScaffoldMessenger.of(context).showSnackBar(
+                //     const SnackBar(content: Text('Coming Soon')),
+                //   );
+                // }),
                 _buildButton(
                     AppConstants.playWithFriends,
                     Icons.people_outline_rounded,

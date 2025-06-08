@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 
 class TournamentWaitingRoom extends StatefulWidget {
   final String roomCode;
+
   final String tournamentId;
   final String player1;
   final String player2;
@@ -27,8 +28,8 @@ class TournamentWaitingRoom extends StatefulWidget {
 }
 
 class _TournamentWaitingRoomState extends State<TournamentWaitingRoom> {
-  bool _navigated = false;
-  int _countdown = 0; // for countdown display
+  final bool _navigated = false;
+  final int _countdown = 0; // for countdown display
 
   @override
   void initState() {
@@ -39,22 +40,29 @@ class _TournamentWaitingRoomState extends State<TournamentWaitingRoom> {
   initOnline() async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
-    if (currentUser.uid == widget.player1) {
-      await FirebaseFirestore.instance
-          .collection('tournaments')
-          .doc(widget.tournamentId)
-          .collection('matches')
-          .doc(widget.roomCode)
-          .update({'isPlayer1Present': currentUser.uid == widget.player1});
-    } else {
-      await FirebaseFirestore.instance
-          .collection('tournaments')
-          .doc(widget.tournamentId)
-          .collection('matches')
-          .doc(widget.roomCode)
-          .update({
-        'isPlayer2Present': currentUser.uid == widget.player2,
+
+    final docRef = FirebaseFirestore.instance.collection('tournaments').doc(widget.tournamentId).collection('matches').doc(widget.roomCode);
+
+    // First check if document exists
+    final docSnapshot = await docRef.get();
+
+    if (!docSnapshot.exists) {
+      // Create the document if it doesn't exist
+      await docRef.set({
+        'player1': widget.player1,
+        'player2': widget.player2,
+        'isPlayer1Present': false,
+        'isPlayer2Present': false,
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
       });
+    }
+
+    // Now update the presence
+    if (currentUser.uid == widget.player1) {
+      await docRef.update({'isPlayer1Present': true});
+    } else {
+      await docRef.update({'isPlayer2Present': true});
     }
   }
 
@@ -116,7 +124,7 @@ class _TournamentWaitingRoomState extends State<TournamentWaitingRoom> {
 
     // Update game document with initial game state
     await FirebaseFirestore.instance
-        .collection('games')
+          .collection('tournaments').doc(widget.tournamentId).collection('matches')
         .doc(widget.roomCode)
         .update({
       'boardState': boardMap,
@@ -180,7 +188,9 @@ class _TournamentWaitingRoomState extends State<TournamentWaitingRoom> {
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
-            .collection('games')
+            .collection('tournaments')
+            .doc(widget.tournamentId)
+            .collection('matches')
             .doc(widget.roomCode)
             .snapshots(),
         builder: (context, snapshot) {

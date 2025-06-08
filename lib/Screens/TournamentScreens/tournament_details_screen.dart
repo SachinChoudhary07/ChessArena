@@ -1,8 +1,11 @@
+import 'dart:math' show log;
+
+import 'package:chess_cash/Screens/TournamentScreens/tornament_waiting_room.dart';
+import 'package:chess_cash/services/navigation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'dart:math' show log;
 
 class TournamentDetailsScreen extends StatelessWidget {
   final String tournamentId;
@@ -482,7 +485,16 @@ class TournamentDetailsScreen extends StatelessWidget {
                                         const SizedBox(height: 16),
                                         ElevatedButton(
                                           onPressed: () {
-                                            // Navigate to the game screen
+                                            push(
+                                                context,
+                                                TournamentWaitingRoom(
+                                                    roomCode:
+                                                        '${matchData['player1']}-${matchData['player2']}',
+                                                    tournamentId: tournamentId,
+                                                    player1:
+                                                        matchData['player1'],
+                                                    player2:
+                                                        matchData['player2']));
                                           },
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.green,
