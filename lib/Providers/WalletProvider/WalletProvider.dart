@@ -22,10 +22,13 @@ class WalletProvider extends ChangeNotifier {
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
-    fetchUserBalance();
+    // fetchUserBalance();
   }
 
+  bool isLoading = false;
+
   void fetchUserBalance() async {
+    isLoading = true;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       final userDoc =
@@ -33,6 +36,7 @@ class WalletProvider extends ChangeNotifier {
       _balance = (userDoc.data()?['Balance'] ?? 0).toDouble();
       notifyListeners();
     }
+    isLoading = false;
   }
 
   void openCheckout(String amount, BuildContext context) {

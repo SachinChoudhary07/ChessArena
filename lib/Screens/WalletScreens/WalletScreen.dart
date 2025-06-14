@@ -11,12 +11,27 @@ import 'package:provider/provider.dart';
 import '../../Providers/WalletProvider/WalletProvider.dart';
 import '../../Widgets/loader.dart';
 
-class WalletScreen extends StatelessWidget {
+class WalletScreen extends StatefulWidget {
+  const WalletScreen({super.key});
+
+  @override
+  State<WalletScreen> createState() => _WalletScreenState();
+}
+
+class _WalletScreenState extends State<WalletScreen> {
   final TextEditingController controller = TextEditingController();
+
   final TextEditingController withdrawalController = TextEditingController();
+
   final TextEditingController withdrawalupiController = TextEditingController();
 
-  WalletScreen({super.key});
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<WalletProvider>(context, listen: false).fetchUserBalance();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +103,8 @@ class WalletScreen extends StatelessWidget {
                         .orderBy('timestamp', descending: true)
                         .snapshots(),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                      if (snapshot.connectionState == ConnectionState.waiting ||
+                          walletProvider.isLoading) {
                         return const Center(child: Loader());
                       }
                       if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -190,7 +206,7 @@ class WalletScreen extends StatelessWidget {
 
     showModalBottomSheet(
       constraints: BoxConstraints.tight(
-          Size.fromHeight(MediaQuery.of(context).size.height / 1.7)),
+          Size.fromHeight(MediaQuery.of(context).size.height / 1.4)),
       context: context,
       isScrollControlled: true,
       builder: (_) {
@@ -223,6 +239,26 @@ class WalletScreen extends StatelessWidget {
                 ),
                 autofocus: true,
               ),
+              const SizedBox(height: 16),
+              const Text(
+                'Quick Select',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                alignment: WrapAlignment.spaceEvenly,
+                spacing: 8,
+                runSpacing: 5,
+                children: [
+                  _buildAmountChip('50'),
+                  _buildAmountChip('100'),
+                  _buildAmountChip('200'),
+                  _buildAmountChip('500'),
+                  _buildAmountChip('1000'),
+                  _buildAmountChip('2000'),
+                  _buildAmountChip('5000'),
+                ],
+              ),
               const SizedBox(height: 20),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -253,6 +289,20 @@ class WalletScreen extends StatelessWidget {
     );
 
     focusNode.requestFocus();
+  }
+
+  Widget _buildAmountChip(String amount) {
+    return ActionChip(
+      label: Text('₹$amount'),
+      onPressed: () {
+        controller.text = amount;
+      },
+      backgroundColor: ColorResources.secondaryColor.withOpacity(0.1),
+      labelStyle: TextStyle(
+        color: ColorResources.secondaryColor,
+        fontWeight: FontWeight.bold,
+      ),
+    );
   }
 
   void _showWithdrawalCashBottomSheet(
@@ -288,7 +338,7 @@ class WalletScreen extends StatelessWidget {
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 decoration: const InputDecoration(
-                  hintText: 'e.g. 100',
+                  hintText: '100',
                   prefixText: '₹ ',
                   border: OutlineInputBorder(),
                 ),
@@ -304,7 +354,7 @@ class WalletScreen extends StatelessWidget {
                 controller: withdrawalupiController,
                 keyboardType: TextInputType.text,
                 decoration: const InputDecoration(
-                  hintText: 'e.g. abc@paytm',
+                  hintText: 'abc@paytm',
                   prefixText: '@ ',
                   border: OutlineInputBorder(),
                 ),
