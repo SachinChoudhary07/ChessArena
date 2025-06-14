@@ -509,15 +509,6 @@ class ChessGameProvider with ChangeNotifier {
     return moves;
   }
 
-  // Calculate queen moves (combination of rook and bishop)
-  List<ChessPosition> _calculateQueenMoves(
-      ChessPosition position, ChessPiece piece) {
-    return [
-      ..._calculateRookMoves(position, piece),
-      ..._calculateBishopMoves(position, piece),
-    ];
-  }
-
   // Calculate king moves
   List<ChessPosition> _calculateKingMoves(
       ChessPosition position, ChessPiece piece) {
@@ -535,6 +526,22 @@ class ChessGameProvider with ChangeNotifier {
             moves.add(newPos);
           }
         }
+      }
+    }
+
+    // ---------------------------
+    // Castling moves (added)
+    // ---------------------------
+    // Only if king has not moved and king is not currently in check
+    if (!piece.hasMoved && !_isKingInCheck(piece.color)) {
+      // King-side castling (short) -> move king to G-file (col 6)
+      if (_canCastle(piece.color, kingSide: true)) {
+        moves.add(ChessPosition(position.row, 6));
+      }
+
+      // Queen-side castling (long) -> move king to C-file (col 2)
+      if (_canCastle(piece.color, kingSide: false)) {
+        moves.add(ChessPosition(position.row, 2));
       }
     }
 
@@ -618,7 +625,16 @@ class ChessGameProvider with ChangeNotifier {
       case PieceType.queen:
         return _calculateQueenMoves(position, piece);
       case PieceType.king:
-        return _calculateKingMoves(position, piece);
+        // For attack purposes, king only controls adjacent squares; castling is not an attack
+        List<ChessPosition> kingAttacks = [];
+        for (int r = -1; r <= 1; r++) {
+          for (int c = -1; c <= 1; c++) {
+            if (r == 0 && c == 0) continue;
+            final pos = ChessPosition(position.row + r, position.col + c);
+            if (pos.isValid()) kingAttacks.add(pos);
+          }
+        }
+        return kingAttacks;
     }
   }
 
@@ -639,6 +655,16 @@ class ChessGameProvider with ChangeNotifier {
     return attacks;
   }
 
+  // Calculate queen moves (combination of rook and bishop)
+  List<ChessPosition> _calculateQueenMoves(
+      ChessPosition position, ChessPiece piece) {
+    // Queen moves are the union of rook and bishop moves
+    return [
+      ..._calculateRookMoves(position, piece),
+      ..._calculateBishopMoves(position, piece),
+    ];
+  }
+
   // Make a move
   Future<void> _makeMove(ChessPosition from, ChessPosition to) async {
     print("🎲 GameProvider: Processing move from $from to $to");
@@ -646,6 +672,18 @@ class ChessGameProvider with ChangeNotifier {
     final capturedPiece = _board[to.row][to.col];
 
     if (movingPiece == null) return;
+
+    // -------------------------------------------------
+    // Detect and execute CASTLING before other checks
+    // -------------------------------------------------
+    final bool isCastlingMove = movingPiece.type == PieceType.king &&
+        from.row == to.row &&
+        (from.col - to.col).abs() == 2;
+
+    if (isCastlingMove) {
+      _performCastling(from, to, movingPiece);
+      return;
+    }
 
     // Check for pawn promotion before making the move
     if (movingPiece.type == PieceType.pawn) {
@@ -1072,5 +1110,87 @@ class ChessGameProvider with ChangeNotifier {
   // Helper to access matches subcollection for a tournament
   CollectionReference<Map<String, dynamic>> _matchesCollection(String tid) {
     return _firestore.collection('tournaments').doc(tid).collection('matches');
+  }
+
+  // -------------------------------------------------------------
+  // Castling helpers
+  // -------------------------------------------------------------
+
+  bool _isSquareUnderAttack(ChessPosition pos, PieceColor byColor) {
+    for (int row = 0; row < 8; row++) {
+      for (int col = 0; col < 8; col++) {
+        final attacker = _board[row][col];
+        if (attacker != null && attacker.color == byColor) {
+          final attacks =
+              _calculateAttackSquares(ChessPosition(row, col), attacker);
+          if (attacks.contains(pos)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  bool _canCastle(PieceColor color, {required bool kingSide}) {
+    final opponentColor =
+        color == PieceColor.white ? PieceColor.black : PieceColor.white;
+    final int row = color == PieceColor.white ? 7 : 0;
+
+    // King and rook starting columns
+    const int kingCol = 4;
+    final int rookCol = kingSide ? 7 : 0;
+
+    final kingPiece = _board[row][kingCol];
+    if (kingPiece == null || kingPiece.hasMoved) return false;
+
+    final rookPiece = _board[row][rookCol];
+    if (rookPiece == null ||
+        rookPiece.type != PieceType.rook ||
+        rookPiece.hasMoved) {
+      return false;
+    }
+
+    // Squares between king and rook must be empty
+    final int start = min(kingCol, rookCol) + 1;
+    final int end = max(kingCol, rookCol) - 1;
+    for (int col = start; col <= end; col++) {
+      if (_board[row][col] != null) return false;
+    }
+
+    // King may not be in check and squares it passes through cannot be under attack
+    final List<int> kingPathCols = kingSide ? [5, 6] : [3, 2];
+    for (final col in [
+      ...[kingCol],
+      ...kingPathCols
+    ]) {
+      if (_isSquareUnderAttack(ChessPosition(row, col), opponentColor)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  void _performCastling(
+      ChessPosition from, ChessPosition to, ChessPiece kingPiece) {
+    print("🎲 GameProvider: Performing castling move from $from to $to");
+
+    final row = from.row;
+    final bool kingSide = to.col == 6; // true for short castle
+    final int rookFromCol = kingSide ? 7 : 0;
+    final int rookToCol = kingSide ? 5 : 3;
+
+    // Move rook on the board
+    final rookPiece = _board[row][rookFromCol];
+    if (rookPiece == null || rookPiece.type != PieceType.rook) {
+      print("⚠️ Castling error: Rook not found at expected square");
+    } else {
+      _board[row][rookToCol] = rookPiece.copyWith(hasMoved: true);
+      _board[row][rookFromCol] = null;
+    }
+
+    // Now move the king using existing helper (this also toggles turn etc.)
+    _completeMoveAfterPromotion(from, to, kingPiece, null);
   }
 }
