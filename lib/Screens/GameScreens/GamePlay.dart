@@ -455,12 +455,17 @@ class _GameScreenState extends State<GameScreen> {
           final isPossibleMove = gameProvider.possibleMoves.contains(position);
           final isWhiteSquare = (row + col) % 2 == 0;
 
+          final isKingInCheckSquare = gameProvider.kingInCheck != null &&
+              gameProvider.kingInCheck == position;
+
           return GestureDetector(
             onTap: () => gameProvider.onSquareTapped(row, col),
             child: Container(
               decoration: BoxDecoration(
-                color:
-                    _getSquareColor(isWhiteSquare, isSelected, isPossibleMove),
+                color: isKingInCheckSquare
+                    ? const Color.fromARGB(255, 187, 87, 87)
+                    : _getSquareColor(
+                        isWhiteSquare, isSelected, isPossibleMove),
                 border: isPossibleMove
                     ? Border.all(color: Colors.yellow, width: 2)
                     : null,

@@ -74,6 +74,31 @@ class ChessGameProvider with ChangeNotifier {
   String? _tournamentId;
   String? get tournamentId => _tournamentId;
 
+  // Getter to expose position of king currently in check (if any)
+  ChessPosition? get kingInCheck {
+    if (_isKingInCheck(PieceColor.white)) {
+      return _findKingPosition(PieceColor.white);
+    }
+    if (_isKingInCheck(PieceColor.black)) {
+      return _findKingPosition(PieceColor.black);
+    }
+    return null;
+  }
+
+  ChessPosition? _findKingPosition(PieceColor color) {
+    for (int r = 0; r < 8; r++) {
+      for (int c = 0; c < 8; c++) {
+        final piece = _board[r][c];
+        if (piece != null &&
+            piece.type == PieceType.king &&
+            piece.color == color) {
+          return ChessPosition(r, c);
+        }
+      }
+    }
+    return null;
+  }
+
   // Initialize the chess game
   void initializeGame(String roomCode, String playerId, PieceColor playerColor,
       {String? tournamentId, int? round, int? matchNumber}) {
