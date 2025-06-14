@@ -38,6 +38,9 @@ class ChessGameProvider with ChangeNotifier {
   int? _currentRound;
   int? _currentMatchNumber;
 
+  // Threefold repetition tracking
+  final Map<String, int> _positionCounts = {};
+
   void setLoading(bool value) {
     // isLoading = value;
     // notifyListeners();
@@ -738,6 +741,7 @@ class ChessGameProvider with ChangeNotifier {
     _promotionTo = null;
 
     _checkGameEndConditions();
+    _updateThreefoldRepetition();
     _updateGameInFirestore(move);
 
     notifyListeners();
@@ -1021,6 +1025,9 @@ class ChessGameProvider with ChangeNotifier {
 
     isLoading = false;
 
+    // Clear repetition tracker
+    _positionCounts.clear();
+
     print("🎲 GameProvider: Game state reset complete");
   }
 
@@ -1192,5 +1199,84 @@ class ChessGameProvider with ChangeNotifier {
 
     // Now move the king using existing helper (this also toggles turn etc.)
     _completeMoveAfterPromotion(from, to, kingPiece, null);
+  }
+
+  // -------------------------------------------------------------
+  // Three-fold repetition logic
+  // -------------------------------------------------------------
+
+  void _updateThreefoldRepetition() {
+    final key = _generatePositionKey();
+    final count = (_positionCounts[key] ?? 0) + 1;
+    _positionCounts[key] = count;
+
+    if (count >= 3 && (_gameStatus == null || _gameStatus == 'playing')) {
+      print("🎲 GameProvider: Threefold repetition detected – draw declared");
+      _endGame(null, 'draw');
+    }
+  }
+
+  String _generatePositionKey() {
+    final buffer = StringBuffer();
+
+    // Board layout
+    for (int row = 0; row < 8; row++) {
+      for (int col = 0; col < 8; col++) {
+        final piece = _board[row][col];
+        if (piece == null) {
+          buffer.write('.');
+        } else {
+          final symbol = _pieceToChar(piece);
+          buffer.write(symbol);
+        }
+      }
+      buffer.write('/');
+    }
+
+    // Side to move
+    buffer.write(_currentPlayer == PieceColor.white ? 'w' : 'b');
+
+    // Castling rights summary (KQkq style)
+    buffer.write(_castlingRightsString());
+
+    return buffer.toString();
+  }
+
+  String _pieceToChar(ChessPiece piece) {
+    final map = {
+      PieceType.king: 'k',
+      PieceType.queen: 'q',
+      PieceType.rook: 'r',
+      PieceType.bishop: 'b',
+      PieceType.knight: 'n',
+      PieceType.pawn: 'p',
+    };
+    final char = map[piece.type]!;
+    return piece.color == PieceColor.white ? char.toUpperCase() : char;
+  }
+
+  String _castlingRightsString() {
+    final rights = StringBuffer();
+
+    // White rights
+    final wRow = 7;
+    if (_board[wRow][4]?.type == PieceType.king && !_board[wRow][4]!.hasMoved) {
+      if (_board[wRow][7]?.type == PieceType.rook && !_board[wRow][7]!.hasMoved)
+        rights.write('K');
+      if (_board[wRow][0]?.type == PieceType.rook && !_board[wRow][0]!.hasMoved)
+        rights.write('Q');
+    }
+
+    // Black rights
+    final bRow = 0;
+    if (_board[bRow][4]?.type == PieceType.king && !_board[bRow][4]!.hasMoved) {
+      if (_board[bRow][7]?.type == PieceType.rook && !_board[bRow][7]!.hasMoved)
+        rights.write('k');
+      if (_board[bRow][0]?.type == PieceType.rook && !_board[bRow][0]!.hasMoved)
+        rights.write('q');
+    }
+
+    if (rights.isEmpty) rights.write('-');
+    return rights.toString();
   }
 }
