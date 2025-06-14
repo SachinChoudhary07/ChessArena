@@ -1,3 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chess_cash/Constant/app_constant.dart';
+import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Providers/gameProvider/GameProvider.dart';
 import 'package:chess_cash/Widgets/bottomNavBar.dart';
 import 'package:chess_cash/Widgets/loader.dart';
@@ -5,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../Widgets/GameEndDialog.dart';
 
 // screens/game_screen.dart
@@ -24,7 +28,7 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   late ChessGameProvider _gameProvider;
-  bool _isInitialized = false;
+  final bool _isInitialized = false;
   bool _isShowingPromotionDialog = false;
 
   @override
@@ -46,6 +50,10 @@ class _GameScreenState extends State<GameScreen> {
   String? player1Name;
   String? player2Name;
   String? gameName = '';
+  String? player1Image;
+  String? player2Image;
+  num player1Elo = 0.0;
+  num player2Elo = 0.0;
 
   Future<void> _initializeGame() async {
     print("🎮 GameScreen: Starting game initialization");
@@ -56,7 +64,7 @@ class _GameScreenState extends State<GameScreen> {
     final currentUser = FirebaseAuth.instance.currentUser;
 
     if (currentUser != null) {
-      print("🎮 GameScreen: Fetching game data for room " + widget.roomCode);
+      print("🎮 GameScreen: Fetching game data for room ${widget.roomCode}");
       CollectionReference<Map<String, dynamic>> gameCollection;
       if (widget.tournamentId != null) {
         gameCollection = FirebaseFirestore.instance
@@ -90,6 +98,11 @@ class _GameScreenState extends State<GameScreen> {
         player2Name = player2Snapshot.data()?['username'] ?? 'Player 2';
         gameName = data['gameName'] ?? 'Chess Match';
         print("🎮 GameScreen: Players loaded - $player1Name vs $player2Name");
+
+        player1Image = player1Snapshot.data()?['profileImage'] ?? '';
+        player2Image = player2Snapshot.data()?['profileImage'] ?? '';
+        player1Elo = player1Snapshot.data()?['eloRating'];
+        player2Elo = player2Snapshot.data()?['eloRating'];
 
         PieceColor playerColor;
         if (player1UID == currentUser.uid) {
@@ -239,8 +252,14 @@ class _GameScreenState extends State<GameScreen> {
     return WillPopScope(
       onWillPop: _onBackPressed,
       child: Scaffold(
+        // backgroundColor: Colors.brown.shade100,
         appBar: AppBar(
-          title: Text('$gameName - ${widget.roomCode}'),
+          // backgroundColor: Colors.transparent,
+          centerTitle: true,
+          title: const Text(
+            AppConstants.appName,
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.more_vert),
@@ -251,7 +270,7 @@ class _GameScreenState extends State<GameScreen> {
         body: Consumer<ChessGameProvider>(
           builder: (context, gameProvider, child) {
             if (gameProvider.isLoading) {
-              return Loader();
+              return const Loader();
             }
 
             // Show promotion dialog if needed
@@ -264,7 +283,6 @@ class _GameScreenState extends State<GameScreen> {
 
             return Column(
               children: [
-                // Opponent info and timer
                 _buildPlayerInfo(
                   isOpponent: true,
                   timeLeft: gameProvider.playerColor == PieceColor.white
@@ -291,8 +309,6 @@ class _GameScreenState extends State<GameScreen> {
                       : gameProvider.blackTimeLeft,
                   isActive: gameProvider.isMyTurn,
                 ),
-
-                // Game status
                 _buildGameStatus(gameProvider),
               ],
             );
@@ -307,46 +323,91 @@ class _GameScreenState extends State<GameScreen> {
     required int timeLeft,
     required bool isActive,
   }) {
+    final gameProvider = Provider.of<ChessGameProvider>(context, listen: false);
+    final isWhitePlayer = gameProvider.playerColor == PieceColor.white;
+
+    final playerName = isOpponent
+        ? (isWhitePlayer
+            ? (player2Name ?? 'Opponent')
+            : (player1Name ?? 'Opponent'))
+        : (isWhitePlayer ? (player1Name ?? 'You') : (player2Name ?? 'You'));
+
+    final playerElo = isOpponent
+        ? (isWhitePlayer ? (player2Elo ?? 0) : (player1Elo ?? 0))
+        : (isWhitePlayer ? (player1Elo ?? 0) : (player2Elo ?? 0));
+
+    final playerImage = isOpponent
+        ? (isWhitePlayer ? (player2Image ?? '') : (player1Image ?? ''))
+        : (isWhitePlayer ? (player1Image ?? '') : (player2Image ?? ''));
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isActive
-            ? Colors.green.withOpacity(0.2)
-            : Colors.grey.withOpacity(0.1),
-        border: Border.all(
-          color: isActive ? Colors.green : Colors.grey,
-          width: 2,
-        ),
+        color: Colors.transparent,
+        // border: Border.all(
+        //   color: isActive ? Colors.green : Colors.grey,
+        //   width: 2,
+        // ),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            isOpponent
-                ? (Provider.of<ChessGameProvider>(context, listen: false)
-                            .playerColor ==
-                        PieceColor.white
-                    ? (player2Name ?? 'Opponent')
-                    : (player1Name ?? 'Opponent'))
-                : (Provider.of<ChessGameProvider>(context, listen: false)
-                            .playerColor ==
-                        PieceColor.white
-                    ? (player1Name ?? 'You')
-                    : (player2Name ?? 'You')),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+          Container(
+            width: 45,
+            height: 45,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isActive ? Colors.green : Colors.grey,
+                width: 2,
+              ),
+            ),
+            child: ClipOval(
+              child: CachedNetworkImage(
+                imageUrl: playerImage,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Image.asset(
+                  'assets/images/pawn_image.jpg',
+                  fit: BoxFit.cover,
+                ),
+                errorWidget: (context, url, error) => const Icon(Icons.person),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  playerName,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'ELO: ${playerElo.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: timeLeft < 60 ? Colors.red : Colors.blue,
-              borderRadius: BorderRadius.circular(8),
-            ),
+                color: timeLeft < 60 ? Colors.red : Colors.black12,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: ColorResources.secondaryColor)),
             child: Text(
-              Provider.of<ChessGameProvider>(context, listen: false)
-                  .formatTime(timeLeft),
+              gameProvider.formatTime(timeLeft),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -401,7 +462,7 @@ class _GameScreenState extends State<GameScreen> {
                 color:
                     _getSquareColor(isWhiteSquare, isSelected, isPossibleMove),
                 border: isPossibleMove
-                    ? Border.all(color: Colors.yellow, width: 3)
+                    ? Border.all(color: Colors.yellow, width: 2)
                     : null,
               ),
               child: Center(
@@ -409,8 +470,8 @@ class _GameScreenState extends State<GameScreen> {
                     ? _buildPieceWidget(piece)
                     : isPossibleMove
                         ? Container(
-                            width: 20,
-                            height: 20,
+                            width: 14,
+                            height: 14,
                             decoration: const BoxDecoration(
                               color: Colors.yellow,
                               shape: BoxShape.circle,
@@ -437,7 +498,7 @@ class _GameScreenState extends State<GameScreen> {
     return Text(
       pieceSymbol,
       style: TextStyle(
-        fontSize: 32,
+        fontSize: 35,
         color: piece.color == PieceColor.white ? Colors.white : Colors.black,
         shadows: piece.color == PieceColor.white
             ? [const Shadow(color: Colors.black, blurRadius: 2)]
