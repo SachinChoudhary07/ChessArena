@@ -26,12 +26,13 @@ class LeaderBoardProvider with ChangeNotifier {
         return {
           'profilePictureUrl': data['profileImage'] ?? '',
           'name': data['username'] ?? 'Unknown',
-          'elo': data['eloRating'] ?? 0,
+          'eloRating': data['eloRating'] ?? 0,
           'points': data['ranking'] ?? 0,
         };
       }).toList();
       _errorMessage = '';
-      _leaderboard.sort((a, b) => (b['elo'] as num).compareTo(a['elo'] as num));
+      _leaderboard.sort(
+          (a, b) => (b['eloRating'] as num).compareTo(a['eloRating'] as num));
       setLoading(false);
     } catch (e) {
       _errorMessage = 'Error fetching leaderboard: $e';

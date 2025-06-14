@@ -3,6 +3,7 @@ import 'package:chess_cash/Providers/LeaderBoardProvider/LeaderBoardProvider.dar
 import 'package:chess_cash/Widgets/loader.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class EloLeaderboard extends StatefulWidget {
   const EloLeaderboard({super.key});
@@ -29,7 +30,7 @@ class _EloLeaderboardState extends State<EloLeaderboard> {
         title: const Text('Elo Leaderboard'),
       ),
       body: leaderboardProvider.isLoading
-          ? Center(child: Loader())
+          ? const Center(child: Loader())
           : leaderboardProvider.leaderboard.isEmpty
               ? const Center(child: Text('No Data Found'))
               : ListView.builder(
@@ -45,12 +46,24 @@ class _EloLeaderboardState extends State<EloLeaderboard> {
                               Border.all(color: ColorResources.secondaryColor)),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundImage:
-                              NetworkImage(user['profilePictureUrl']),
+                          radius: 25,
+                          child: ClipOval(
+                            child: CachedNetworkImage(
+                              imageUrl: user['profilePictureUrl'] ?? '',
+                              fit: BoxFit.cover,
+                              width: 50,
+                              height: 50,
+                              placeholder: (context, url) => Image.asset(
+                                'assets/images/pawn_image.jpg',
+                                fit: BoxFit.cover,
+                              ),
+                              errorWidget: (context, url, error) => const Icon(Icons.error),
+                            ),
+                          ),
                         ),
                         title: Text(user['name']),
                         subtitle: Text(
-                            'Elo: ${user['elo'].toStringAsFixed(0)} | Points: ${user['points']}'),
+                            'Elo: ${user['eloRating'].toStringAsFixed(0)} | Points: ${user['points']}'),
                       ),
                     );
                   },

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../Providers/CreateTournamentProvider/CreateTournamentProvider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class TournamentDetails extends StatelessWidget {
   final String tournamentId;
@@ -78,7 +79,20 @@ class TournamentDetails extends StatelessWidget {
                         final user = snapshot.data!.docs[index].data() as Map<String, dynamic>;
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundImage: NetworkImage(user['photoURL'] ?? ''),
+                            radius: 25,
+                            child: ClipOval(
+                              child: CachedNetworkImage(
+                                imageUrl: user['photoURL'] ?? '',
+                                fit: BoxFit.cover,
+                                width: 50,
+                                height: 50,
+                                placeholder: (context, url) => Image.asset(
+                                  'assets/images/pawn_image.jpg',
+                                  fit: BoxFit.cover,
+                                ),
+                                errorWidget: (context, url, error) => const Icon(Icons.error),
+                              ),
+                            ),
                           ),
                           title: Text(user['displayName'] ?? 'Unknown Player'),
                         );

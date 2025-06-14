@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:chess_cash/Constant/app_constant.dart';
+import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Screens/GameScreens/GamePlay.dart';
 import 'package:chess_cash/Services/navigation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class PaidMatchmaking extends StatefulWidget {
   final String time;
@@ -22,49 +24,67 @@ class PaidMatchmaking extends StatefulWidget {
   State<PaidMatchmaking> createState() => _PaidMatchmakingState();
 }
 
-class _PaidMatchmakingState extends State<PaidMatchmaking> {
+class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProviderStateMixin {
   bool isSearching = true;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   late String currentUserId;
-  late String profile;
+  String? profile;
+  String? currentUserName;
   late int currentUserElo;
 
   StreamSubscription? matchmakingListener;
+  late AnimationController _searchAnimationController;
+  late Animation<double> _searchAnimation;
 
   @override
   void initState() {
     super.initState();
-    print("🎮 MatchMaking: Screen Initialized");
-    init();
+    _initializeAnimation();
+    _initializeUserData();
   }
 
-  init() {
+  void _initializeAnimation() {
+    _searchAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _searchAnimation = Tween<double>(begin: -0.1, end: 0.1).animate(
+      CurvedAnimation(
+        parent: _searchAnimationController,
+        curve: Curves.easeInCirc,
+      ),
+    );
+
+    _searchAnimationController.repeat(reverse: true);
+  }
+
+  Future<void> _initializeUserData() async {
     currentUserId = _auth.currentUser!.uid;
-    profile = _auth.currentUser?.photoURL ??
-        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT9nPR4_CyTE4xJdV3eDJ3P4rDGs8uvpTEW-qK_-WzU6xfjqg1I1CeyCcPOHztCFtwfbrc&usqp=CAU';
-    currentUserElo = 1400;
-    print(
-        "🎮 MatchMaking: Init - UserID: $currentUserId, ELO: $currentUserElo");
+    final userDoc = await _firestore.collection('users').doc(currentUserId).get();
+    final userData = userDoc.data() ?? {};
+
+    setState(() {
+      profile = userData['profileImage']?.toString();
+      currentUserElo = userData['eloRating']?.round() ?? 0;
+      currentUserName = userData['username']?.toString();
+    });
+    
     _startMatchmaking(0);
   }
 
   Future<void> _startMatchmaking(int retryCount) async {
     if (retryCount == 0) {
-      print("🎮 MatchMaking: Starting matchmaking process first time");
-      final docRef =
-          _firestore.collection('paid_matchmaking_queue').doc(currentUserId);
+      final docRef = _firestore.collection('paid_matchmaking_queue').doc(currentUserId);
       await docRef.set({
         'uid': currentUserId,
-        'elo': currentUserElo,
+        'eloRating': currentUserElo,
         'timestamp': FieldValue.serverTimestamp(),
         'time': widget.time,
         'amount': widget.amount,
       });
-      print("🎮 MatchMaking: Added to queue - UserID: $currentUserId");
-    } else {
-      print("🎮 MatchMaking: Starting matchmaking process second time");
     }
 
     // Start timeout timer
@@ -79,32 +99,23 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
         .orderBy('timestamp')
         .snapshots()
         .listen((snapshot) async {
-      print(
-          "🎮 MatchMaking: Queue updated - ${snapshot.docs.length} players in queue");
       final now = DateTime.now();
 
       for (var doc in snapshot.docs) {
         final data = doc.data();
         final String opponentId = data['uid'];
-        final int opponentElo = data['elo'];
+        final int opponentElo = data['eloRating'];
         final Timestamp timestamp = data['timestamp'] ?? Timestamp.now();
         final String opponentTime = data['time'];
         final String opponentAmount = data['amount'];
 
         if (opponentId == currentUserId) continue;
-        if (opponentTime != widget.time || opponentAmount != widget.amount)
-          continue;
+        if (opponentTime != widget.time || opponentAmount != widget.amount) continue;
 
         final waitingDuration = now.difference(timestamp.toDate()).inSeconds;
         final allowedRange = min(100 + (waitingDuration ~/ 30) * 25, 300);
 
-        print(
-            "🎮 MatchMaking: Checking opponent - ID: $opponentId, ELO: $opponentElo");
-        print(
-            "🎮 MatchMaking: Wait time: ${waitingDuration}s, Allowed ELO range: ±$allowedRange");
-
         if ((opponentElo - currentUserElo).abs() <= allowedRange) {
-          print("🎮 MatchMaking: Match found! Opponent ID: $opponentId");
           await _createGameRoom(opponentId);
           break;
         }
@@ -125,10 +136,8 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
   }
 
   Future<void> _createGameRoom(String opponentId) async {
-    print("🎮 GameRoom: Starting room creation with opponent: $opponentId");
     isSearching = false;
     await matchmakingListener?.cancel();
-    print("🎮 GameRoom: Matchmaking listener cancelled");
 
     final currentUserDoc = await _firestore
         .collection('paid_matchmaking_queue')
@@ -141,29 +150,19 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
         .get();
 
     if (!opponentDoc.exists) {
-      print(
-          "❌ GameRoom: One of the players is no longer in the queue. Aborting and restarting search.");
       if (mounted) {
         _startMatchmaking(1);
       }
       return;
     }
 
-    final currentUserTimestamp =
-        currentUserDoc.data()?['timestamp'] as Timestamp;
+    final currentUserTimestamp = currentUserDoc.data()?['timestamp'] as Timestamp;
     final opponentTimestamp = opponentDoc.data()?['timestamp'] as Timestamp;
 
-    print(
-        "🎮 GameRoom: Current user wait time: ${DateTime.now().difference(currentUserTimestamp.toDate()).inSeconds}s");
-    print(
-        "🎮 GameRoom: Opponent wait time: ${DateTime.now().difference(opponentTimestamp.toDate()).inSeconds}s");
-
-    // Deduct entry fee from both players
     try {
       await _deductEntryFee(currentUserId);
       await _deductEntryFee(opponentId);
     } catch (e) {
-      print("❌ GameRoom: Failed to deduct entry fee - $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -177,27 +176,19 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
     String? gameId;
 
     if (currentUserTimestamp.compareTo(opponentTimestamp) < 0) {
-      print("🎮 GameRoom: Current user creating game (waited longer)");
       final gameDoc = await _firestore.collection('games').add({
         'player1': currentUserId,
         'player2': opponentId,
         'status': 'ready',
         'createdAt': FieldValue.serverTimestamp(),
-        'time': widget.time, // Using widget.time instead of timeLimit
+        'time': widget.time,
+        'amount': widget.amount,
       });
       gameId = gameDoc.id;
-      print("🎮 GameRoom: Game created with ID: $gameId");
     } else {
-      await _firestore
-          .collection('paid_matchmaking_queue')
-          .doc(currentUserId)
-          .delete();
-      await _firestore
-          .collection('paid_matchmaking_queue')
-          .doc(opponentId)
-          .delete();
-      print("🎮 GameRoom: Both players removed from queue");
-      print("🎮 GameRoom: Waiting for opponent to create game");
+      await _firestore.collection('paid_matchmaking_queue').doc(currentUserId).delete();
+      await _firestore.collection('paid_matchmaking_queue').doc(opponentId).delete();
+      
       await Future.delayed(const Duration(milliseconds: 500));
 
       final querySnapshot = await _firestore
@@ -211,15 +202,10 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
 
       if (querySnapshot.docs.isNotEmpty) {
         gameId = querySnapshot.docs.first.id;
-        print("🎮 GameRoom: Found and joining game with ID: $gameId");
-      } else {
-        print("❌ GameRoom: Failed to find game to join");
       }
     }
 
     if (gameId != null && mounted) {
-      print("🎮 GameRoom: Navigating to game screen with ID: $gameId");
-
       final roomData = {
         'player1': currentUserId,
         'player2': opponentId,
@@ -228,7 +214,6 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
       };
       _startCountdown(roomData, gameId);
     } else {
-      print("❌ GameRoom: Failed to create/join game");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -284,19 +269,15 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
     return board;
   }
 
-  Future<void> _initializeGameData(
-      Map<String, dynamic> roomData, String roomCode) async {
+  Future<void> _initializeGameData(Map<String, dynamic> roomData, String roomCode) async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
-    // Determine player colors
     final isPlayer1 = roomData['player1'] == currentUser.uid;
     final playerColor = isPlayer1 ? 'white' : 'black';
 
-    // Setup initial board state
     final initialBoardState = _createInitialBoardState();
 
-    // Convert 2D board to flat map (Firestore-compatible)
     Map<String, dynamic> boardMap = {};
     for (int row = 0; row < 8; row++) {
       for (int col = 0; col < 8; col++) {
@@ -307,11 +288,9 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
       }
     }
 
-    // Parse time string to seconds
     final timeInMinutes = int.parse(widget.time.split(' ')[0]);
     final timeInSeconds = timeInMinutes * 60;
 
-    // Update game document with initial game state
     await FirebaseFirestore.instance.collection('games').doc(roomCode).update({
       'boardState': boardMap,
       'currentPlayer': 'white',
@@ -322,6 +301,7 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
       'player2Color': 'black',
       'gameStarted': true,
       'lastUpdated': FieldValue.serverTimestamp(),
+      'amount': widget.amount,
     });
   }
 
@@ -330,28 +310,23 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
     final amountString = widget.amount.replaceAll('₹', '').trim();
     final finalAmount = double.parse(amountString);
 
-    final amount = finalAmount;
-
     await _firestore.runTransaction((transaction) async {
       final userDoc = await transaction.get(userRef);
       final currentBalance = userDoc.data()?['Balance'] ?? 0.0;
 
-      if (currentBalance < amount) {
-        print("currentBalance");
-        print(currentBalance);
-        print(amount);
+      if (currentBalance < finalAmount) {
         throw Exception('Insufficient balance');
       }
 
       transaction.update(userRef, {
-        'Balance': currentBalance - amount,
+        'Balance': currentBalance - finalAmount,
       });
     });
   }
 
   @override
   void dispose() {
-    // print("🎮 MatchMaking: Disposing screen - cleaning up");
+    _searchAnimationController.dispose();
     _firestore.collection('paid_matchmaking_queue').doc(currentUserId).delete();
     matchmakingListener?.cancel();
     super.dispose();
@@ -364,23 +339,30 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
         child: Column(
           children: [
             const SizedBox(height: 100),
-            const Text(
-              AppConstants.waitingText,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
+            const Padding(
+              padding: EdgeInsets.all(18.0),
+              child: Text(
+                AppConstants.waitingText,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(height: 100),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildPlayerCard(AppConstants.you, profile),
-                const Text(
+                _buildPlayerCard(
+                  currentUserName ?? AppConstants.you,
+                  profile ?? 'assets/images/pawn_image.jpg',
+                ),
+                Text(
                   "VS",
                   style: TextStyle(
-                    color: Colors.purple,
+                    color: ColorResources.secondaryColor,
                     fontWeight: FontWeight.bold,
                     fontSize: 22,
                   ),
@@ -389,34 +371,7 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
               ],
             ),
             const Spacer(),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 40),
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  await _firestore
-                      .collection('paid_matchmaking_queue')
-                      .doc(currentUserId)
-                      .delete();
-                  await matchmakingListener?.cancel();
-
-                  if (mounted) {
-                    Navigator.pop(context);
-                  }
-                },
-                icon: const Icon(Icons.close),
-                label: const Text(AppConstants.cancel),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.orange, width: 1.5),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
+            _buildCancelButton(),
           ],
         ),
       ),
@@ -430,19 +385,27 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
           height: 100,
           width: 100,
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.orange, width: 3),
+            border: Border.all(color: ColorResources.secondaryColor, width: 3),
             borderRadius: BorderRadius.circular(12),
-            image: DecorationImage(
-              image: NetworkImage(imagePath),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(9),
+            child: CachedNetworkImage(
+              imageUrl: imagePath,
               fit: BoxFit.cover,
+              placeholder: (context, url) => Image.asset(
+                'assets/images/pawn_image.jpg',
+                fit: BoxFit.cover,
+              ),
+              errorWidget: (context, url, error) => const Icon(Icons.error),
             ),
           ),
         ),
         const SizedBox(height: 10),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.orange,
+          style: TextStyle(
+            color: ColorResources.secondaryColor,
             fontWeight: FontWeight.bold,
             fontSize: 16,
           ),
@@ -458,14 +421,21 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
           height: 100,
           width: 100,
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.purple, width: 3),
+            border: Border.all(color: ColorResources.secondaryColor, width: 3),
             borderRadius: BorderRadius.circular(12),
-            color: Colors.purple.shade800,
           ),
-          child: const Icon(
-            Icons.search,
-            color: Colors.white,
-            size: 40,
+          child: AnimatedBuilder(
+            animation: _searchAnimation,
+            builder: (context, child) {
+              return Transform.rotate(
+                angle: _searchAnimation.value,
+                child: Icon(
+                  Icons.search,
+                  color: ColorResources.secondaryColor,
+                  size: 45,
+                ),
+              );
+            },
           ),
         ),
         const SizedBox(height: 10),
@@ -478,5 +448,33 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> {
         ),
       ],
     );
+  }
+
+  Widget _buildCancelButton() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 40),
+      child: ElevatedButton.icon(
+        onPressed: _handleCancel,
+        icon: const Icon(Icons.close),
+        label: const Text(AppConstants.cancel),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          side: const BorderSide(color: Colors.orange, width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleCancel() async {
+    await _firestore.collection('paid_matchmaking_queue').doc(currentUserId).delete();
+    await matchmakingListener?.cancel();
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 }

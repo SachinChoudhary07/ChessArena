@@ -61,6 +61,7 @@ dependencies:
   firebase_app_check: ^0.3.2+5
   chess:
   tuple: ^2.0.2
+  cached_network_image: ^3.4.1
 
 
 

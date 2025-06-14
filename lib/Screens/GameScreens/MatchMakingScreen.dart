@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:math';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chess_cash/Constant/app_constant.dart';
+import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Screens/GameScreens/GamePlay.dart';
 import 'package:chess_cash/Services/navigation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,7 +11,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class MatchMakingScreen extends StatefulWidget {
-  final String time; // Renamed from timeLimit to time for consistency
+  final String time;
 
   const MatchMakingScreen({
     super.key,
@@ -19,35 +22,56 @@ class MatchMakingScreen extends StatefulWidget {
   State<MatchMakingScreen> createState() => _MatchMakingScreenState();
 }
 
-class _MatchMakingScreenState extends State<MatchMakingScreen> {
+class _MatchMakingScreenState extends State<MatchMakingScreen>
+    with SingleTickerProviderStateMixin {
   bool isSearching = true;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   late String currentUserId;
-  late String profile;
+  String? profile;
+  String? currentUserName;
   late int currentUserElo;
 
   StreamSubscription? matchmakingListener;
+  late AnimationController _searchAnimationController;
+  late Animation<double> _searchAnimation;
 
   @override
   void initState() {
     super.initState();
-    print("🎮 MatchMaking: Screen Initialized");
-    init();
+    _initializeAnimation();
+    _initializeUserData();
   }
 
-  init() async {
+  void _initializeAnimation() {
+    _searchAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _searchAnimation = Tween<double>(begin: -0.1, end: 0.1).animate(
+      CurvedAnimation(
+        parent: _searchAnimationController,
+        curve: Curves.easeInCirc,
+      ),
+    );
+
+    _searchAnimationController.repeat(reverse: true);
+  }
+
+  Future<void> _initializeUserData() async {
     currentUserId = _auth.currentUser!.uid;
-    profile = _auth.currentUser?.photoURL ??
-        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT9nPR4_CyTE4xJdV3eDJ3P4rDGs8uvpTEW-qK_-WzU6xfjqg1I1CeyCcPOHztCFtwfbrc&usqp=CAU';
-    currentUserElo =
-        (await _firestore.collection('users').doc(currentUserId).get())
-                .data()?['eloRating']
-                ?.round() ??
-            1400;
-    print(
-        "🎮 MatchMaking: Init - UserID: $currentUserId, ELO: $currentUserElo");
+    final userDoc =
+        await _firestore.collection('users').doc(currentUserId).get();
+    final userData = userDoc.data() ?? {};
+
+    setState(() {
+      profile = userData['profileImage']?.toString();
+      currentUserElo = userData['eloRating']?.round() ?? 0;
+      currentUserName = userData['username']?.toString();
+    });
+
     _startMatchmaking(0);
   }
 
@@ -58,7 +82,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
           _firestore.collection('matchmaking_queue').doc(currentUserId);
       await docRef.set({
         'uid': currentUserId,
-        'elo': currentUserElo,
+        'eloRating': currentUserElo,
         'timestamp': FieldValue.serverTimestamp(),
         'match_time': widget.time,
       });
@@ -79,7 +103,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
       for (var doc in snapshot.docs) {
         final data = doc.data();
         final String opponentId = data['uid'];
-        final int opponentElo = data['elo'];
+        final int opponentElo = data['eloRating'];
         final Timestamp timestamp = data['timestamp'] ?? Timestamp.now();
         final String matchTime = data['match_time'] ?? '10';
 
@@ -289,8 +313,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
 
   @override
   void dispose() {
-    // print("🎮 MatchMaking: Disposing screen - cleaning up");
-    // _firestore.collection('matchmaking_queue').doc(currentUserId).delete();
+    _searchAnimationController.dispose();
     matchmakingListener?.cancel();
     super.dispose();
   }
@@ -302,23 +325,30 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
         child: Column(
           children: [
             const SizedBox(height: 100),
-            const Text(
-              AppConstants.waitingText,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
+            const Padding(
+              padding: EdgeInsets.all(18.0),
+              child: Text(
+                AppConstants.waitingText,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 100),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildPlayerCard(AppConstants.you, profile),
-                const Text(
+                _buildPlayerCard(
+                  currentUserName ?? AppConstants.you,
+                  profile ??
+                      'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.cgtrader.com%2Ffree-3d-models%2Fsports%2Fgame%2Fchess-variant-king-and-pawn&psig=AOvVaw2SEgsrVl4UrkrWf9X9i8mR&ust=1749959845126000&source=images&cd=vfe&opi=89978449&ved=0CBQQjRxqFwoTCKiEstuC8I0DFQAAAAAdAAAAABAE',
+                ),
+                Text(
                   "VS",
                   style: TextStyle(
-                    color: Colors.purple,
+                    color: ColorResources.secondaryColor,
                     fontWeight: FontWeight.bold,
                     fontSize: 22,
                   ),
@@ -327,34 +357,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
               ],
             ),
             const Spacer(),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 40),
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  await _firestore
-                      .collection('matchmaking_queue')
-                      .doc(currentUserId)
-                      .delete();
-                  await matchmakingListener?.cancel();
-
-                  if (mounted) {
-                    Navigator.pop(context);
-                  }
-                },
-                icon: const Icon(Icons.close),
-                label: const Text(AppConstants.cancel),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.orange, width: 1.5),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
+            _buildCancelButton(),
           ],
         ),
       ),
@@ -368,19 +371,27 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
           height: 100,
           width: 100,
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.orange, width: 3),
+            border: Border.all(color: ColorResources.secondaryColor, width: 3),
             borderRadius: BorderRadius.circular(12),
-            image: DecorationImage(
-              image: NetworkImage(imagePath),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(9),
+            child: CachedNetworkImage(
+              imageUrl: imagePath,
               fit: BoxFit.cover,
+              placeholder: (context, url) => Image.asset(
+                'assets/images/pawn_image.jpg',
+                fit: BoxFit.cover,
+              ),
+              errorWidget: (context, url, error) => const Icon(Icons.error),
             ),
           ),
         ),
         const SizedBox(height: 10),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.orange,
+          style: TextStyle(
+            color: ColorResources.secondaryColor,
             fontWeight: FontWeight.bold,
             fontSize: 16,
           ),
@@ -396,14 +407,22 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
           height: 100,
           width: 100,
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.purple, width: 3),
+            border: Border.all(color: ColorResources.secondaryColor, width: 3),
             borderRadius: BorderRadius.circular(12),
-            color: Colors.purple.shade800,
+            // color: Colors.purple.shade800,
           ),
-          child: const Icon(
-            Icons.search,
-            color: Colors.white,
-            size: 40,
+          child: AnimatedBuilder(
+            animation: _searchAnimation,
+            builder: (context, child) {
+              return Transform.rotate(
+                angle: _searchAnimation.value,
+                child: Icon(
+                  Icons.search,
+                  color: ColorResources.secondaryColor,
+                  size: 45,
+                ),
+              );
+            },
           ),
         ),
         const SizedBox(height: 10),
@@ -416,5 +435,36 @@ class _MatchMakingScreenState extends State<MatchMakingScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildCancelButton() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 40),
+      child: ElevatedButton.icon(
+        onPressed: _handleCancel,
+        icon: const Icon(Icons.close),
+        label: const Text(AppConstants.cancel),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          side: const BorderSide(color: Colors.orange, width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleCancel() async {
+    await _firestore
+        .collection('matchmaking_queue')
+        .doc(currentUserId)
+        .delete();
+    await matchmakingListener?.cancel();
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 }
