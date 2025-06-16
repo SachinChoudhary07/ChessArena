@@ -499,35 +499,20 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildPieceWidget(ChessPiece piece) {
-    final pieceSymbol = _getPieceSymbol(piece);
-    return Text(
-      pieceSymbol,
-      style: TextStyle(
-        fontSize: 35,
-        color: piece.color == PieceColor.white ? Colors.white : Colors.black,
-        shadows: piece.color == PieceColor.white
-            ? [const Shadow(color: Colors.black, blurRadius: 2)]
-            : [const Shadow(color: Colors.white, blurRadius: 2)],
-      ),
+    final imagePath = _getPieceImagePath(piece);
+    return Image.asset(
+      imagePath,
+      fit: BoxFit.contain,
+      width: 40,
+      height: 40,
     );
   }
 
-  String _getPieceSymbol(ChessPiece piece) {
-    final isWhite = piece.color == PieceColor.white;
-    switch (piece.type) {
-      case PieceType.king:
-        return isWhite ? '♔' : '♚';
-      case PieceType.queen:
-        return isWhite ? '♕' : '♛';
-      case PieceType.rook:
-        return isWhite ? '♖' : '♜';
-      case PieceType.bishop:
-        return isWhite ? '♗' : '♝';
-      case PieceType.knight:
-        return isWhite ? '♘' : '♞';
-      case PieceType.pawn:
-        return isWhite ? '♙' : '♟';
-    }
+  String _getPieceImagePath(ChessPiece piece) {
+    final colorPrefix = piece.color == PieceColor.white ? 'White' : 'Black';
+    final pieceType = piece.type.toString().split('.').last;
+    return 'assets/${piece.color == PieceColor.white ? 'white_peice' : 'black_peice'}/'
+        '${colorPrefix}_${pieceType[0].toUpperCase()}${pieceType.substring(1)}.png';
   }
 
   Widget _buildGameStatus(ChessGameProvider gameProvider) {
@@ -795,6 +780,7 @@ class _GameScreenState extends State<GameScreen> {
     PieceColor color,
     ChessGameProvider gameProvider,
   ) {
+    final imagePath = _getPieceImagePath(ChessPiece(type: type, color: color));
     return GestureDetector(
       onTap: () {
         Navigator.of(context).pop();
@@ -808,15 +794,11 @@ class _GameScreenState extends State<GameScreen> {
           color: Colors.white,
         ),
         child: Center(
-          child: Text(
-            _getPieceSymbol(ChessPiece(type: type, color: color)),
-            style: TextStyle(
-              fontSize: 32,
-              color: color == PieceColor.white ? Colors.white : Colors.black,
-              shadows: color == PieceColor.white
-                  ? [const Shadow(color: Colors.black, blurRadius: 2)]
-                  : [const Shadow(color: Colors.white, blurRadius: 2)],
-            ),
+          child: Image.asset(
+            imagePath,
+            fit: BoxFit.contain,
+            width: 40,
+            height: 40,
           ),
         ),
       ),

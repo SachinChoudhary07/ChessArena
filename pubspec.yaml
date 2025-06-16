@@ -91,6 +91,8 @@ flutter:
   assets:
     - assets/Icons/splash_Icon.png
     - assets/images/
+    - assets/black_peice/
+    - assets/white_peice/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

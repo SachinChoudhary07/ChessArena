@@ -807,7 +807,7 @@ class ChessGameProvider with ChangeNotifier {
         _endGame(null, 'stalemate');
       }
     } else if (isInCheck) {
-      print("🎲 GameProvider: ${_currentPlayer} is in check!");
+      print("🎲 GameProvider: $_currentPlayer is in check!");
     }
   }
 
@@ -1094,7 +1094,7 @@ class ChessGameProvider with ChangeNotifier {
 
         for (final doc in nextRoundMatches.docs) {
           final snap = await transaction.get(doc.reference);
-          final data = snap.data() as Map<String, dynamic>? ?? {};
+          final data = snap.data() ?? {};
 
           if (data['player1'] == null) {
             nextMatchRef = doc.reference;
@@ -1284,7 +1284,7 @@ class ChessGameProvider with ChangeNotifier {
     final rights = StringBuffer();
 
     // White rights
-    final wRow = 7;
+    const wRow = 7;
     if (_board[wRow][4]?.type == PieceType.king && !_board[wRow][4]!.hasMoved) {
       if (_board[wRow][7]?.type == PieceType.rook && !_board[wRow][7]!.hasMoved)
         rights.write('K');
@@ -1293,7 +1293,7 @@ class ChessGameProvider with ChangeNotifier {
     }
 
     // Black rights
-    final bRow = 0;
+    const bRow = 0;
     if (_board[bRow][4]?.type == PieceType.king && !_board[bRow][4]!.hasMoved) {
       if (_board[bRow][7]?.type == PieceType.rook && !_board[bRow][7]!.hasMoved)
         rights.write('k');
