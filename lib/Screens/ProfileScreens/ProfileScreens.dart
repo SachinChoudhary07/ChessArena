@@ -1,13 +1,14 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Constant/ui_helper.dart';
 import 'package:chess_cash/Providers/ProfileProvider/ProfileProvider.dart';
+import 'package:chess_cash/Screens/AuthScreens/changePasswordScreen.dart';
 import 'package:chess_cash/Screens/LeaderBoard/EloLeaderBoard.dart';
 import 'package:chess_cash/Services/navigation.dart';
 import 'package:chess_cash/Widgets/loader.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 class Profilescreens extends StatefulWidget {
   const Profilescreens({super.key});
@@ -22,9 +23,11 @@ class _ProfilescreensState extends State<Profilescreens> {
   @override
   void initState() {
     super.initState();
-    final provider = Provider.of<ProfileProvider>(context, listen: false);
-    provider.fetchUserProfile().then((_) {
-      _nameController = TextEditingController(text: provider.name ?? '');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<ProfileProvider>(context, listen: false);
+      provider.fetchUserProfile().then((_) {
+        _nameController = TextEditingController(text: provider.name ?? '');
+      });
     });
   }
 
@@ -108,7 +111,8 @@ class _ProfilescreensState extends State<Profilescreens> {
                                 'assets/images/pawn_image.jpg',
                                 fit: BoxFit.cover,
                               ),
-                              errorWidget: (context, url, error) => const Icon(Icons.error),
+                              errorWidget: (context, url, error) =>
+                                  const Icon(Icons.error),
                             ),
                           ),
                         ),
@@ -167,6 +171,29 @@ class _ProfilescreensState extends State<Profilescreens> {
                       ),
                       child: Text(
                         AppConstants.updateProfile,
+                        style: TextStyle(color: ColorResources.secondaryColor),
+                      ),
+                    ),
+                  ),
+                  Helper.heightSizedBox(16),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ChangePasswordScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        border:
+                            Border.all(color: ColorResources.secondaryColor),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Change Password',
                         style: TextStyle(color: ColorResources.secondaryColor),
                       ),
                     ),

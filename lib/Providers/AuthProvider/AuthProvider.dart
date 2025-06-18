@@ -166,7 +166,7 @@ class AutProvider with ChangeNotifier {
       await _setLoginState(true);
       setLoading(false);
       CustomToast.show(AppConstants.registrationSuccess, bgColor: Colors.green);
-      push(context, LoginPage());
+      push(context, const LoginPage());
       notifyListeners();
     } on FirebaseAuthException catch (e) {
       setLoading(false);
@@ -183,20 +183,20 @@ class AutProvider with ChangeNotifier {
   String verificationId = '';
 
   void resendOtp(String phoneNumber, BuildContext context) {
-    FirebaseAuth _auth = FirebaseAuth.instance;
+    FirebaseAuth auth = FirebaseAuth.instance;
     try {
       // Show loading UI
       isLoading = true;
       notifyListeners();
 
-      _auth.verifyPhoneNumber(
+      auth.verifyPhoneNumber(
         phoneNumber: "+91$phoneNumber",
         timeout: const Duration(seconds: 60),
 
         // Auto verify (e.g., for Android sometimes auto SMS detection)
         verificationCompleted: (PhoneAuthCredential credential) async {
           // Optionally sign in directly if auto-complete works
-          await _auth.signInWithCredential(credential);
+          await auth.signInWithCredential(credential);
           isLoading = false;
           notifyListeners();
         },
@@ -352,5 +352,33 @@ class AutProvider with ChangeNotifier {
         message = AppConstants.authFailed;
     }
     CustomToast.show(message, bgColor: Colors.red);
+  }
+
+  Future<String?> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+      return null; // Success
+    } on FirebaseAuthException catch (e) {
+      return e.message ?? 'Failed to send password reset email.';
+    } catch (e) {
+      return 'Failed to send password reset email.';
+    }
+  }
+
+  Future<String?> changePassword(String currentPassword, String newPassword) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null || user.email == null) {
+        return 'No user is currently signed in.';
+      }
+      final cred = EmailAuthProvider.credential(email: user.email!, password: currentPassword);
+      await user.reauthenticateWithCredential(cred);
+      await user.updatePassword(newPassword);
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return e.message ?? 'Failed to change password.';
+    } catch (e) {
+      return 'Failed to change password.';
+    }
   }
 }

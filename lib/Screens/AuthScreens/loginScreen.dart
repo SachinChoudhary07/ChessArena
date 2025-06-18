@@ -1,6 +1,8 @@
 import 'package:chess_cash/Constant/app_constant.dart';
+import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Constant/ui_helper.dart';
 import 'package:chess_cash/Providers/AuthProvider/AuthProvider.dart';
+import 'package:chess_cash/Screens/AuthScreens/forgotPasswordScreen.dart';
 import 'package:chess_cash/Screens/AuthScreens/signupScreen.dart';
 import 'package:chess_cash/Services/navigation.dart';
 import 'package:chess_cash/Widgets/customTextField.dart';
@@ -27,11 +29,11 @@ class _LoginPageState extends State<LoginPage> {
       builder: (context, authProvider, child) {
         return Scaffold(
           backgroundColor: Colors.black,
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            title: const Text(AppConstants.login),
-            backgroundColor: Colors.black,
-          ),
+          // appBar: AppBar(
+          //   automaticallyImplyLeading: false,
+          //   title: const Text(AppConstants.login),
+          //   backgroundColor: Colors.black,
+          // ),
           body: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -39,12 +41,14 @@ class _LoginPageState extends State<LoginPage> {
                 key: _formKey,
                 child: Column(
                   children: [
+                    Helper.heightSizedBox(40),
                     Image.asset(
-                      AppConstants.loginSignupImage,
-                      color: Colors.white,
-                      height: 140,
+                      AppConstants.splashIcon,
+                      // color: Colors.white,
+                      height: 250,
+                      width: 200,
                     ),
-                    Helper.heightSizedBox(20),
+                    // Helper.heightSizedBox(10),
 
                     /// Email Field
                     CustomTextField(
@@ -63,7 +67,7 @@ class _LoginPageState extends State<LoginPage> {
                       },
                     ),
 
-                    Helper.heightSizedBox(10),
+                    Helper.heightSizedBox(20),
 
                     /// Password Field
                     CustomTextField(
@@ -81,7 +85,24 @@ class _LoginPageState extends State<LoginPage> {
                       },
                     ),
 
-                    const SizedBox(height: 20),
+                    Helper.heightSizedBox(20),
+                    Align(
+                        alignment: Alignment.centerRight,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ForgotPasswordScreen(),
+                                ));
+                          },
+                          child: const Text(
+                            "Forgot Password",
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        )),
+                    Helper.heightSizedBox(20),
 
                     authProvider.isLoading
                         ? const Padding(
@@ -101,7 +122,12 @@ class _LoginPageState extends State<LoginPage> {
                                   }
                                 },
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.amber,
+                                  shape: ContinuousRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10)),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 40),
+                                  backgroundColor:
+                                      ColorResources.secondaryColor,
                                 ),
                                 child: const Text(
                                   AppConstants.login,

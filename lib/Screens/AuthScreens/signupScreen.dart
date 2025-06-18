@@ -51,10 +51,6 @@ class _RegisterPageState extends State<RegisterPage> {
       CustomToast.show("Enter a valid email", bgColor: Colors.red);
       return;
     }
-    if (_selectedImage == null) {
-      CustomToast.show("Please pick the profile image", bgColor: Colors.red);
-      return;
-    }
 
     if (password.length < 6) {
       CustomToast.show("Password must be at least 6 characters",
@@ -74,7 +70,7 @@ class _RegisterPageState extends State<RegisterPage> {
       push(
         context,
         Otpscreen(
-          imagePath: _selectedImage!.path,
+          imagePath: _selectedImage?.path ?? 'assets/images/pawn_image.jpg',
           email: email,
           number: phoneNumberController.text,
           password: password,
@@ -119,7 +115,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       radius: 60,
                       backgroundImage: _selectedImage != null
                           ? FileImage(File(_selectedImage!.path))
-                          : null,
+                          : const AssetImage('assets/images/pawn_image.jpg') as ImageProvider,
                       backgroundColor: Colors.grey.shade800,
                       child: _selectedImage == null
                           ? const Icon(Icons.camera_alt,
