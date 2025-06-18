@@ -14,6 +14,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final TextEditingController _newController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
   bool _isLoading = false;
+  final ValueNotifier<bool> _isCurrentVisible = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _isNewVisible = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _isConfirmVisible = ValueNotifier<bool>(false);
 
   void _submit() async {
     final current = _currentController.text.trim();
@@ -72,31 +75,70 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
         child: Column(
           children: [
-            TextField(
-              controller: _currentController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Current Password',
-                border: OutlineInputBorder(),
-              ),
+            ValueListenableBuilder<bool>(
+              valueListenable: _isCurrentVisible,
+              builder: (context, isVisible, child) {
+                return TextField(
+                  controller: _currentController,
+                  obscureText: !isVisible,
+                  decoration: InputDecoration(
+                    labelText: 'Current Password',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        isVisible ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        _isCurrentVisible.value = !_isCurrentVisible.value;
+                      },
+                    ),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 20),
-            TextField(
-              controller: _newController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'New Password',
-                border: OutlineInputBorder(),
-              ),
+            ValueListenableBuilder<bool>(
+              valueListenable: _isNewVisible,
+              builder: (context, isVisible, child) {
+                return TextField(
+                  controller: _newController,
+                  obscureText: !isVisible,
+                  decoration: InputDecoration(
+                    labelText: 'New Password',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        isVisible ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        _isNewVisible.value = !_isNewVisible.value;
+                      },
+                    ),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 20),
-            TextField(
-              controller: _confirmController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Confirm New Password',
-                border: OutlineInputBorder(),
-              ),
+            ValueListenableBuilder<bool>(
+              valueListenable: _isConfirmVisible,
+              builder: (context, isVisible, child) {
+                return TextField(
+                  controller: _confirmController,
+                  obscureText: !isVisible,
+                  decoration: InputDecoration(
+                    labelText: 'Confirm New Password',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        isVisible ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        _isConfirmVisible.value = !_isConfirmVisible.value;
+                      },
+                    ),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 30),
             SizedBox(

@@ -22,6 +22,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController passwordController = TextEditingController();
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final ValueNotifier<bool> _isPasswordVisible = ValueNotifier<bool>(false);
 
   @override
   Widget build(BuildContext context) {
@@ -70,18 +71,32 @@ class _LoginPageState extends State<LoginPage> {
                     Helper.heightSizedBox(20),
 
                     /// Password Field
-                    CustomTextField(
-                      controller: passwordController,
-                      label: AppConstants.password,
-                      obscureText: true,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Password is required';
-                        }
-                        if (value.length < 6) {
-                          return 'Password must be at least 6 characters';
-                        }
-                        return null;
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _isPasswordVisible,
+                      builder: (context, isVisible, child) {
+                        return CustomTextField(
+                          controller: passwordController,
+                          label: AppConstants.password,
+                          obscureText: !isVisible,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              isVisible ? Icons.visibility : Icons.visibility_off,
+                              color: Colors.white,
+                            ),
+                            onPressed: () {
+                              _isPasswordVisible.value = !_isPasswordVisible.value;
+                            },
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Password is required';
+                            }
+                            if (value.length < 6) {
+                              return 'Password must be at least 6 characters';
+                            }
+                            return null;
+                          },
+                        );
                       },
                     ),
 
