@@ -89,9 +89,7 @@ class ChessGameProvider with ChangeNotifier {
     for (int r = 0; r < 8; r++) {
       for (int c = 0; c < 8; c++) {
         final piece = _board[r][c];
-        if (piece != null &&
-            piece.type == PieceType.king &&
-            piece.color == color) {
+        if (piece != null && piece.type == PieceType.king && piece.color == color) {
           return ChessPosition(r, c);
         }
       }
@@ -100,10 +98,8 @@ class ChessGameProvider with ChangeNotifier {
   }
 
   // Initialize the chess game
-  void initializeGame(String roomCode, String playerId, PieceColor playerColor,
-      {String? tournamentId, int? round, int? matchNumber}) {
-    print(
-        "🎲 GameProvider: Initializing game - Room: $roomCode, Player: $playerId, Color: $playerColor");
+  void initializeGame(String roomCode, String playerId, PieceColor playerColor, {String? tournamentId, int? round, int? matchNumber}) {
+    print("🎲 GameProvider: Initializing game - Room: $roomCode, Player: $playerId, Color: $playerColor");
 
     // Reset previous game state first
     resetGameState();
@@ -125,48 +121,30 @@ class ChessGameProvider with ChangeNotifier {
     _board = List.generate(8, (row) => List.generate(8, (col) => null));
 
     // Place pieces in starting positions
-    _placePiece(
-        0, 0, ChessPiece(type: PieceType.rook, color: PieceColor.black));
-    _placePiece(
-        0, 1, ChessPiece(type: PieceType.knight, color: PieceColor.black));
-    _placePiece(
-        0, 2, ChessPiece(type: PieceType.bishop, color: PieceColor.black));
-    _placePiece(
-        0, 3, ChessPiece(type: PieceType.queen, color: PieceColor.black));
-    _placePiece(
-        0, 4, ChessPiece(type: PieceType.king, color: PieceColor.black));
-    _placePiece(
-        0, 5, ChessPiece(type: PieceType.bishop, color: PieceColor.black));
-    _placePiece(
-        0, 6, ChessPiece(type: PieceType.knight, color: PieceColor.black));
-    _placePiece(
-        0, 7, ChessPiece(type: PieceType.rook, color: PieceColor.black));
+    _placePiece(0, 0, ChessPiece(type: PieceType.rook, color: PieceColor.black));
+    _placePiece(0, 1, ChessPiece(type: PieceType.knight, color: PieceColor.black));
+    _placePiece(0, 2, ChessPiece(type: PieceType.bishop, color: PieceColor.black));
+    _placePiece(0, 3, ChessPiece(type: PieceType.queen, color: PieceColor.black));
+    _placePiece(0, 4, ChessPiece(type: PieceType.king, color: PieceColor.black));
+    _placePiece(0, 5, ChessPiece(type: PieceType.bishop, color: PieceColor.black));
+    _placePiece(0, 6, ChessPiece(type: PieceType.knight, color: PieceColor.black));
+    _placePiece(0, 7, ChessPiece(type: PieceType.rook, color: PieceColor.black));
 
     for (int col = 0; col < 8; col++) {
-      _placePiece(
-          1, col, ChessPiece(type: PieceType.pawn, color: PieceColor.black));
+      _placePiece(1, col, ChessPiece(type: PieceType.pawn, color: PieceColor.black));
     }
 
-    _placePiece(
-        7, 0, ChessPiece(type: PieceType.rook, color: PieceColor.white));
-    _placePiece(
-        7, 1, ChessPiece(type: PieceType.knight, color: PieceColor.white));
-    _placePiece(
-        7, 2, ChessPiece(type: PieceType.bishop, color: PieceColor.white));
-    _placePiece(
-        7, 3, ChessPiece(type: PieceType.queen, color: PieceColor.white));
-    _placePiece(
-        7, 4, ChessPiece(type: PieceType.king, color: PieceColor.white));
-    _placePiece(
-        7, 5, ChessPiece(type: PieceType.bishop, color: PieceColor.white));
-    _placePiece(
-        7, 6, ChessPiece(type: PieceType.knight, color: PieceColor.white));
-    _placePiece(
-        7, 7, ChessPiece(type: PieceType.rook, color: PieceColor.white));
+    _placePiece(7, 0, ChessPiece(type: PieceType.rook, color: PieceColor.white));
+    _placePiece(7, 1, ChessPiece(type: PieceType.knight, color: PieceColor.white));
+    _placePiece(7, 2, ChessPiece(type: PieceType.bishop, color: PieceColor.white));
+    _placePiece(7, 3, ChessPiece(type: PieceType.queen, color: PieceColor.white));
+    _placePiece(7, 4, ChessPiece(type: PieceType.king, color: PieceColor.white));
+    _placePiece(7, 5, ChessPiece(type: PieceType.bishop, color: PieceColor.white));
+    _placePiece(7, 6, ChessPiece(type: PieceType.knight, color: PieceColor.white));
+    _placePiece(7, 7, ChessPiece(type: PieceType.rook, color: PieceColor.white));
 
     for (int col = 0; col < 8; col++) {
-      _placePiece(
-          6, col, ChessPiece(type: PieceType.pawn, color: PieceColor.white));
+      _placePiece(6, col, ChessPiece(type: PieceType.pawn, color: PieceColor.white));
     }
     print("🎲 GameProvider: Chess board initialized with starting positions");
   }
@@ -177,19 +155,12 @@ class ChessGameProvider with ChangeNotifier {
 
   // Listen to game updates from Firebase
   void _listenToGameUpdates() {
-    print(
-        "🎲 GameProvider: Starting game updates listener for room: $_roomCode");
+    print("🎲 GameProvider: Starting game updates listener for room: $_roomCode");
 
     // ✅ IMPORTANT: Cancel existing subscription first
     _gameSubscription?.cancel();
 
-    final docRef = tournamentId != null
-        ? _firestore
-            .collection('tournaments')
-            .doc(tournamentId!)
-            .collection('matches')
-            .doc(_roomCode)
-        : _firestore.collection('games').doc(_roomCode);
+    final docRef = tournamentId != null ? _firestore.collection('tournaments').doc(tournamentId!).collection('matches').doc(_roomCode) : _firestore.collection('games').doc(_roomCode);
 
     _gameSubscription = docRef.snapshots().listen((snapshot) {
       if (snapshot.exists) {
@@ -197,8 +168,7 @@ class ChessGameProvider with ChangeNotifier {
         final data = snapshot.data() as Map<String, dynamic>;
         _updateGameFromFirestore(data);
       } else {
-        print(
-            "⚠️ GameProvider: Game document does not exist for room: $_roomCode");
+        print("⚠️ GameProvider: Game document does not exist for room: $_roomCode");
       }
     }, onError: (error) {
       print("❌ GameProvider: Error in game listener: $error");
@@ -225,8 +195,7 @@ class ChessGameProvider with ChangeNotifier {
     }
 
     // Update game state
-    _currentPlayer =
-        data['currentPlayer'] == 'white' ? PieceColor.white : PieceColor.black;
+    _currentPlayer = data['currentPlayer'] == 'white' ? PieceColor.white : PieceColor.black;
     _gameStatus = data['gameStatus'];
     _winner = data['winner'];
     _whiteTimeLeft = data['whiteTimeLeft'] ?? 600;
@@ -239,11 +208,9 @@ class ChessGameProvider with ChangeNotifier {
       _opponentId = data['player2'];
     }
 
-    print(
-        "🎲 GameProvider: Game state updated - Current Player: $_currentPlayer, Status: $_gameStatus");
+    print("🎲 GameProvider: Game state updated - Current Player: $_currentPlayer, Status: $_gameStatus");
     if (_gameStatus != 'playing') {
-      print(
-          "🎲 GameProvider: Game ended - Winner: $_winner, Reason: $_gameStatus");
+      print("🎲 GameProvider: Game ended - Winner: $_winner, Reason: $_gameStatus");
     }
 
     notifyListeners();
@@ -279,8 +246,7 @@ class ChessGameProvider with ChangeNotifier {
   // Handle piece selection and moves
   void onSquareTapped(int row, int col) {
     if (!isMyTurn || _gameStatus != 'playing') {
-      print(
-          "🎲 GameProvider: Invalid move - Not player's turn or game not active");
+      print("🎲 GameProvider: Invalid move - Not player's turn or game not active");
       return;
     }
 
@@ -293,10 +259,8 @@ class ChessGameProvider with ChangeNotifier {
       if (piece != null && piece.color == _playerColor) {
         _selectedPosition = position;
         _possibleMoves = _calculatePossibleMoves(position);
-        print(
-            "🎲 GameProvider: Piece selected - Type: ${piece.type}, Color: ${piece.color}");
-        print(
-            "🎲 GameProvider: Possible moves calculated: ${_possibleMoves.length}");
+        print("🎲 GameProvider: Piece selected - Type: ${piece.type}, Color: ${piece.color}");
+        print("🎲 GameProvider: Possible moves calculated: ${_possibleMoves.length}");
         notifyListeners();
       }
     } else {
@@ -309,8 +273,7 @@ class ChessGameProvider with ChangeNotifier {
       }
 
       if (_possibleMoves.contains(position)) {
-        print(
-            "🎲 GameProvider: Making move from $_selectedPosition to $position");
+        print("🎲 GameProvider: Making move from $_selectedPosition to $position");
         _makeMove(_selectedPosition!, position);
       } else if (piece != null && piece.color == _playerColor) {
         print("🎲 GameProvider: Selecting different piece");
@@ -330,13 +293,11 @@ class ChessGameProvider with ChangeNotifier {
   List<ChessPosition> _calculatePossibleMoves(ChessPosition position) {
     final piece = _board[position.row][position.col];
     if (piece == null) {
-      print(
-          "❌ GameProvider: Attempted to calculate moves for empty square at $position");
+      print("❌ GameProvider: Attempted to calculate moves for empty square at $position");
       return [];
     }
 
-    print(
-        "🎲 GameProvider: Calculating moves for ${piece.type} at position $position");
+    print("🎲 GameProvider: Calculating moves for ${piece.type} at position $position");
     List<ChessPosition> moves = [];
 
     switch (piece.type) {
@@ -367,11 +328,8 @@ class ChessGameProvider with ChangeNotifier {
     }
 
     // Filter out moves that would put own king in check
-    final validMoves = moves
-        .where((move) => !_wouldBeInCheckAfterMove(position, move))
-        .toList();
-    print(
-        "🎲 GameProvider: After check validation - ${validMoves.length} legal moves from ${moves.length} potential moves");
+    final validMoves = moves.where((move) => !_wouldBeInCheckAfterMove(position, move)).toList();
+    print("🎲 GameProvider: After check validation - ${validMoves.length} legal moves from ${moves.length} potential moves");
 
     if (validMoves.isEmpty && moves.isNotEmpty) {
       print("⚠️ GameProvider: All potential moves were blocked due to check");
@@ -381,37 +339,29 @@ class ChessGameProvider with ChangeNotifier {
   }
 
   // Calculate pawn moves
-  List<ChessPosition> _calculatePawnMoves(
-      ChessPosition position, ChessPiece piece) {
-    print(
-        "🎲 GameProvider: Calculating pawn moves for ${piece.color} at row ${position.row}, col ${position.col}");
+  List<ChessPosition> _calculatePawnMoves(ChessPosition position, ChessPiece piece) {
+    print("🎲 GameProvider: Calculating pawn moves for ${piece.color} at row ${position.row}, col ${position.col}");
     List<ChessPosition> moves = [];
     final direction = piece.color == PieceColor.white ? -1 : 1;
     final startRow = piece.color == PieceColor.white ? 6 : 1;
 
     // Check if pawn has reached the last rank
-    if ((piece.color == PieceColor.white && position.row == 0) ||
-        (piece.color == PieceColor.black && position.row == 7)) {
+    if ((piece.color == PieceColor.white && position.row == 0) || (piece.color == PieceColor.black && position.row == 7)) {
       print("🎲 GameProvider: Pawn at promotion square - should be promoted");
       return moves; // No moves possible, should be promoted
     }
 
     // Forward move
     final oneForward = ChessPosition(position.row + direction, position.col);
-    if (oneForward.isValid() &&
-        _board[oneForward.row][oneForward.col] == null) {
-      print(
-          "🎲 GameProvider: Adding forward move to ${oneForward.row},${oneForward.col}");
+    if (oneForward.isValid() && _board[oneForward.row][oneForward.col] == null) {
+      print("🎲 GameProvider: Adding forward move to ${oneForward.row},${oneForward.col}");
       moves.add(oneForward);
 
       // Two squares forward from starting position
       if (position.row == startRow) {
-        final twoForward =
-            ChessPosition(position.row + 2 * direction, position.col);
-        if (twoForward.isValid() &&
-            _board[twoForward.row][twoForward.col] == null) {
-          print(
-              "🎲 GameProvider: Adding double forward move to ${twoForward.row},${twoForward.col}");
+        final twoForward = ChessPosition(position.row + 2 * direction, position.col);
+        if (twoForward.isValid() && _board[twoForward.row][twoForward.col] == null) {
+          print("🎲 GameProvider: Adding double forward move to ${twoForward.row},${twoForward.col}");
           moves.add(twoForward);
         }
       }
@@ -419,13 +369,11 @@ class ChessGameProvider with ChangeNotifier {
 
     // Diagonal captures
     for (int colOffset in [-1, 1]) {
-      final capturePos =
-          ChessPosition(position.row + direction, position.col + colOffset);
+      final capturePos = ChessPosition(position.row + direction, position.col + colOffset);
       if (capturePos.isValid()) {
         final targetPiece = _board[capturePos.row][capturePos.col];
         if (targetPiece != null && targetPiece.color != piece.color) {
-          print(
-              "🎲 GameProvider: Adding diagonal capture move to ${capturePos.row},${capturePos.col}");
+          print("🎲 GameProvider: Adding diagonal capture move to ${capturePos.row},${capturePos.col}");
           moves.add(capturePos);
         }
       }
@@ -436,8 +384,7 @@ class ChessGameProvider with ChangeNotifier {
   }
 
   // Calculate rook moves
-  List<ChessPosition> _calculateRookMoves(
-      ChessPosition position, ChessPiece piece) {
+  List<ChessPosition> _calculateRookMoves(ChessPosition position, ChessPiece piece) {
     List<ChessPosition> moves = [];
 
     // Horizontal and vertical directions
@@ -472,8 +419,7 @@ class ChessGameProvider with ChangeNotifier {
   }
 
   // Calculate knight moves
-  List<ChessPosition> _calculateKnightMoves(
-      ChessPosition position, ChessPiece piece) {
+  List<ChessPosition> _calculateKnightMoves(ChessPosition position, ChessPiece piece) {
     List<ChessPosition> moves = [];
 
     final knightMoves = [
@@ -488,8 +434,7 @@ class ChessGameProvider with ChangeNotifier {
     ];
 
     for (final move in knightMoves) {
-      final newPos =
-          ChessPosition(position.row + move[0], position.col + move[1]);
+      final newPos = ChessPosition(position.row + move[0], position.col + move[1]);
       if (newPos.isValid()) {
         final targetPiece = _board[newPos.row][newPos.col];
         if (targetPiece == null || targetPiece.color != piece.color) {
@@ -502,8 +447,7 @@ class ChessGameProvider with ChangeNotifier {
   }
 
   // Calculate bishop moves
-  List<ChessPosition> _calculateBishopMoves(
-      ChessPosition position, ChessPiece piece) {
+  List<ChessPosition> _calculateBishopMoves(ChessPosition position, ChessPiece piece) {
     List<ChessPosition> moves = [];
 
     // Diagonal directions
@@ -538,16 +482,14 @@ class ChessGameProvider with ChangeNotifier {
   }
 
   // Calculate king moves
-  List<ChessPosition> _calculateKingMoves(
-      ChessPosition position, ChessPiece piece) {
+  List<ChessPosition> _calculateKingMoves(ChessPosition position, ChessPiece piece) {
     List<ChessPosition> moves = [];
 
     for (int rowOffset = -1; rowOffset <= 1; rowOffset++) {
       for (int colOffset = -1; colOffset <= 1; colOffset++) {
         if (rowOffset == 0 && colOffset == 0) continue;
 
-        final newPos =
-            ChessPosition(position.row + rowOffset, position.col + colOffset);
+        final newPos = ChessPosition(position.row + rowOffset, position.col + colOffset);
         if (newPos.isValid()) {
           final targetPiece = _board[newPos.row][newPos.col];
           if (targetPiece == null || targetPiece.color != piece.color) {
@@ -593,8 +535,7 @@ class ChessGameProvider with ChangeNotifier {
     _board[to.row][to.col] = originalPiece;
 
     if (isInCheck) {
-      print(
-          "⚠️ GameProvider: Move from $from to $to would leave/put king in check");
+      print("⚠️ GameProvider: Move from $from to $to would leave/put king in check");
     }
 
     return isInCheck;
@@ -607,9 +548,7 @@ class ChessGameProvider with ChangeNotifier {
     for (int row = 0; row < 8; row++) {
       for (int col = 0; col < 8; col++) {
         final piece = _board[row][col];
-        if (piece != null &&
-            piece.type == PieceType.king &&
-            piece.color == kingColor) {
+        if (piece != null && piece.type == PieceType.king && piece.color == kingColor) {
           kingPosition = ChessPosition(row, col);
           break;
         }
@@ -624,8 +563,7 @@ class ChessGameProvider with ChangeNotifier {
       for (int col = 0; col < 8; col++) {
         final piece = _board[row][col];
         if (piece != null && piece.color != kingColor) {
-          final attacks =
-              _calculateAttackSquares(ChessPosition(row, col), piece);
+          final attacks = _calculateAttackSquares(ChessPosition(row, col), piece);
           if (attacks.contains(kingPosition)) {
             return true;
           }
@@ -637,8 +575,7 @@ class ChessGameProvider with ChangeNotifier {
   }
 
   // Calculate squares that a piece attacks (similar to possible moves but ignores check)
-  List<ChessPosition> _calculateAttackSquares(
-      ChessPosition position, ChessPiece piece) {
+  List<ChessPosition> _calculateAttackSquares(ChessPosition position, ChessPiece piece) {
     // Similar to _calculatePossibleMoves but without the check validation
     // This is used internally for check detection
     switch (piece.type) {
@@ -667,14 +604,12 @@ class ChessGameProvider with ChangeNotifier {
   }
 
   // Calculate pawn attacks (only diagonal, not forward moves)
-  List<ChessPosition> _calculatePawnAttacks(
-      ChessPosition position, ChessPiece piece) {
+  List<ChessPosition> _calculatePawnAttacks(ChessPosition position, ChessPiece piece) {
     List<ChessPosition> attacks = [];
     final direction = piece.color == PieceColor.white ? -1 : 1;
 
     for (int colOffset in [-1, 1]) {
-      final attackPos =
-          ChessPosition(position.row + direction, position.col + colOffset);
+      final attackPos = ChessPosition(position.row + direction, position.col + colOffset);
       if (attackPos.isValid()) {
         attacks.add(attackPos);
       }
@@ -684,8 +619,7 @@ class ChessGameProvider with ChangeNotifier {
   }
 
   // Calculate queen moves (combination of rook and bishop)
-  List<ChessPosition> _calculateQueenMoves(
-      ChessPosition position, ChessPiece piece) {
+  List<ChessPosition> _calculateQueenMoves(ChessPosition position, ChessPiece piece) {
     // Queen moves are the union of rook and bishop moves
     return [
       ..._calculateRookMoves(position, piece),
@@ -704,9 +638,7 @@ class ChessGameProvider with ChangeNotifier {
     // -------------------------------------------------
     // Detect and execute CASTLING before other checks
     // -------------------------------------------------
-    final bool isCastlingMove = movingPiece.type == PieceType.king &&
-        from.row == to.row &&
-        (from.col - to.col).abs() == 2;
+    final bool isCastlingMove = movingPiece.type == PieceType.king && from.row == to.row && (from.col - to.col).abs() == 2;
 
     if (isCastlingMove) {
       _performCastling(from, to, movingPiece);
@@ -715,9 +647,7 @@ class ChessGameProvider with ChangeNotifier {
 
     // Check for pawn promotion before making the move
     if (movingPiece.type == PieceType.pawn) {
-      final isPromotion =
-          (movingPiece.color == PieceColor.white && to.row == 0) ||
-              (movingPiece.color == PieceColor.black && to.row == 7);
+      final isPromotion = (movingPiece.color == PieceColor.white && to.row == 0) || (movingPiece.color == PieceColor.black && to.row == 7);
 
       if (isPromotion) {
         print("🎲 GameProvider: Pawn promotion pending at ${to.row},${to.col}");
@@ -733,13 +663,10 @@ class ChessGameProvider with ChangeNotifier {
   }
 
   // Complete the move after promotion (if any)
-  void _completeMoveAfterPromotion(ChessPosition from, ChessPosition to,
-      ChessPiece movingPiece, ChessPiece? capturedPiece,
-      {PieceType? promotionType}) {
+  void _completeMoveAfterPromotion(ChessPosition from, ChessPosition to, ChessPiece movingPiece, ChessPiece? capturedPiece, {PieceType? promotionType}) {
     if (promotionType != null) {
       print("🎲 GameProvider: Promoting pawn to $promotionType");
-      movingPiece = ChessPiece(
-          type: promotionType, color: movingPiece.color, hasMoved: true);
+      movingPiece = ChessPiece(type: promotionType, color: movingPiece.color, hasMoved: true);
     }
 
     final move = ChessMove(
@@ -754,9 +681,7 @@ class ChessGameProvider with ChangeNotifier {
     _board[to.row][to.col] = movingPiece.copyWith(hasMoved: true);
     _board[from.row][from.col] = null;
 
-    _currentPlayer = _currentPlayer == PieceColor.white
-        ? PieceColor.black
-        : PieceColor.white;
+    _currentPlayer = _currentPlayer == PieceColor.white ? PieceColor.black : PieceColor.white;
     print("🎲 GameProvider: Turn changed to $_currentPlayer");
 
     _selectedPosition = null;
@@ -780,9 +705,7 @@ class ChessGameProvider with ChangeNotifier {
       final capturedPiece = _board[_promotionTo!.row][_promotionTo!.col];
 
       if (movingPiece != null) {
-        _completeMoveAfterPromotion(
-            _promotionFrom!, _promotionTo!, movingPiece, capturedPiece,
-            promotionType: promotionType);
+        _completeMoveAfterPromotion(_promotionFrom!, _promotionTo!, movingPiece, capturedPiece, promotionType: promotionType);
       }
     }
   }
@@ -886,18 +809,12 @@ class ChessGameProvider with ChangeNotifier {
       'lastUpdated': FieldValue.serverTimestamp(),
     };
 
-    (tournamentId != null
-            ? _matchesCollection(tournamentId!).doc(_roomCode)
-            : _firestore.collection('games').doc(_roomCode))
-        .update(data);
+    (tournamentId != null ? _matchesCollection(tournamentId!).doc(_roomCode) : _firestore.collection('games').doc(_roomCode)).update(data);
   }
 
   // Update timers in Firestore
   void _updateTimersInFirestore() {
-    (tournamentId != null
-            ? _matchesCollection(tournamentId!).doc(_roomCode)
-            : _firestore.collection('games').doc(_roomCode))
-        .update({
+    (tournamentId != null ? _matchesCollection(tournamentId!).doc(_roomCode) : _firestore.collection('games').doc(_roomCode)).update({
       'whiteTimeLeft': _whiteTimeLeft,
       'blackTimeLeft': _blackTimeLeft,
     });
@@ -938,44 +855,32 @@ class ChessGameProvider with ChangeNotifier {
     await userRef.update({
       'gamesPlayed': FieldValue.increment(1),
       'gamesWon': isWinner ? FieldValue.increment(1) : FieldValue.increment(0),
-      'gamesLost':
-          !isWinner ? FieldValue.increment(1) : FieldValue.increment(0),
+      'gamesLost': !isWinner ? FieldValue.increment(1) : FieldValue.increment(0),
       'lastGamePlayed': FieldValue.serverTimestamp(),
     });
   }
 
-  Future<void> _updateWinnerBalance(
-      PieceColor winnerColor, String roomCode) async {
+  Future<void> _updateWinnerBalance(PieceColor winnerColor, String roomCode) async {
     final winnerId = winnerColor == PieceColor.white ? _playerId : _opponentId!;
     final loserId = winnerColor == PieceColor.white ? _opponentId! : _playerId;
     final entryFee = await _firestore.collection('games').doc(roomCode).get();
     final entryFeeAmount = entryFee.data()?['entryFee'] ?? 0;
     if (entryFeeAmount > 0) {
       final winnerAmount = entryFeeAmount * 0.8;
-      await _firestore
-          .collection('users')
-          .doc(winnerId)
-          .update({'Balance': FieldValue.increment(winnerAmount)});
+      await _firestore.collection('users').doc(winnerId).update({'Balance': FieldValue.increment(winnerAmount)});
 
-      print(
-          "💰 GameProvider: Updated winner's balance with prize money: $winnerAmount");
+      print("💰 GameProvider: Updated winner's balance with prize money: $winnerAmount");
     } else {
       print("💰 GameProvider: No entry fee found for the game");
     }
   }
 
 // Add to GameProvider.dart
-  Future<void> _recordGameHistory(
-      String userId, bool isWinner, String opponentName) async {
+  Future<void> _recordGameHistory(String userId, bool isWinner, String opponentName) async {
     final entryFee = await _firestore.collection('games').doc(_roomCode).get();
     final entryFeeAmount = entryFee.data()?['entryFee'] ?? 0;
 
-    await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('gamehistory')
-        .doc(_roomCode)
-        .set({
+    await _firestore.collection('users').doc(userId).collection('gamehistory').doc(_roomCode).set({
       'datetime': FieldValue.serverTimestamp(),
       'entry_fees': entryFeeAmount.toInt(), // Get from game data
       'game_name': 'Chess Match',
@@ -986,32 +891,50 @@ class ChessGameProvider with ChangeNotifier {
   }
 
 // Add to GameProvider.dart
+  /// Updates Elo ratings for both winner and loser based on the new rating system:
+  ///
+  /// 1. Equal Elo ratings: Winner gets +15, Loser gets -15
+  /// 2. Upset win (winner has lower Elo): Winner gets +20, Loser gets -20
+  /// 3. Expected win (winner has higher Elo): Winner gets +10, Loser gets -10
+  ///
+  /// Examples:
+  /// - Player A (1200) vs Player B (1200), A wins → A: 1215, B: 1185
+  /// - Player A (1150) vs Player B (1250), A wins → A: 1170, B: 1230
+  /// - Player A (1300) vs Player B (1200), A wins → A: 1310, B: 1190
   Future<void> _updateEloRatings(String winnerId, String loserId) async {
-    const K = 32; // ELO K-factor
-
     final winnerDoc = await _firestore.collection('users').doc(winnerId).get();
     final loserDoc = await _firestore.collection('users').doc(loserId).get();
 
     final winnerElo = winnerDoc.data()?['eloRating'] ?? 1200;
     final loserElo = loserDoc.data()?['eloRating'] ?? 1200;
 
-    // Calculate expected scores
-    final expectedWinner = 1.0 / (1.0 + pow(10, (loserElo - winnerElo) / 400));
-    final expectedLoser = 1.0 / (1.0 + pow(10, (winnerElo - loserElo) / 400));
+    int eloChange;
+
+    // Implement the specific Elo rating conditions
+    if (winnerElo == loserElo) {
+      // Both players have equal Elo: Winner gets +15, Loser gets -15
+      eloChange = 15;
+      print("🎯 Elo Update: Equal ratings - Winner: +15, Loser: -15");
+    } else if (winnerElo < loserElo) {
+      // Winner has lower Elo than opponent (upset win): Winner gets +20, Loser gets -20
+      eloChange = 20;
+      print("🎯 Elo Update: Upset win - Winner: +20, Loser: -20");
+    } else {
+      // Winner has higher Elo than opponent (expected win): Winner gets +10, Loser gets -10
+      eloChange = 10;
+      print("🎯 Elo Update: Expected win - Winner: +10, Loser: -10");
+    }
 
     // Calculate new ratings
-    final newWinnerElo = winnerElo + K * (1 - expectedWinner);
-    final newLoserElo = loserElo + K * (0 - expectedLoser);
+    final newWinnerElo = winnerElo + eloChange;
+    final newLoserElo = loserElo - eloChange;
+
+    print("🎯 Elo Update: Winner $winnerId: $winnerElo → $newWinnerElo (+$eloChange)");
+    print("🎯 Elo Update: Loser $loserId: $loserElo → $newLoserElo (-$eloChange)");
 
     // Update ratings
-    await _firestore
-        .collection('users')
-        .doc(winnerId)
-        .update({'eloRating': newWinnerElo});
-    await _firestore
-        .collection('users')
-        .doc(loserId)
-        .update({'eloRating': newLoserElo});
+    await _firestore.collection('users').doc(winnerId).update({'eloRating': newWinnerElo});
+    await _firestore.collection('users').doc(loserId).update({'eloRating': newLoserElo});
   }
 
   // Add this method to ChessGameProvider
@@ -1059,8 +982,7 @@ class ChessGameProvider with ChangeNotifier {
   void _handleTournamentGameEnd(PieceColor winnerColor, String reason) async {
     if (tournamentId == null) return;
 
-    final String winnerId =
-        winnerColor == _playerColor ? _playerId : _opponentId!;
+    final String winnerId = winnerColor == _playerColor ? _playerId : _opponentId!;
 
     final matchRef = _matchesCollection(tournamentId!).doc(_roomCode);
 
@@ -1071,11 +993,9 @@ class ChessGameProvider with ChangeNotifier {
 
       final matchData = matchSnap.data() as Map<String, dynamic>;
       final int round = matchData['round'] ?? _currentRound ?? 1;
-      final int matchNumber =
-          matchData['matchNumber'] ?? _currentMatchNumber ?? 1;
+      final int matchNumber = matchData['matchNumber'] ?? _currentMatchNumber ?? 1;
 
-      final tournamentDocRef =
-          _firestore.collection('tournaments').doc(tournamentId);
+      final tournamentDocRef = _firestore.collection('tournaments').doc(tournamentId);
       final tournamentSnap = await transaction.get(tournamentDocRef);
       final int totalRounds = tournamentSnap.data()?['numberOfRounds'] ?? 1;
 
@@ -1087,10 +1007,7 @@ class ChessGameProvider with ChangeNotifier {
         nextRound = round + 1;
 
         // Fetch ALL matches in the next round ordered by matchNumber
-        final nextRoundMatches = await _matchesCollection(tournamentId!)
-            .where('round', isEqualTo: nextRound)
-            .orderBy('matchNumber')
-            .get();
+        final nextRoundMatches = await _matchesCollection(tournamentId!).where('round', isEqualTo: nextRound).orderBy('matchNumber').get();
 
         for (final doc in nextRoundMatches.docs) {
           final snap = await transaction.get(doc.reference);
@@ -1114,8 +1031,7 @@ class ChessGameProvider with ChangeNotifier {
         // -----------------------------
 
         // Update tournament document with winner and status
-        transaction.update(
-            tournamentDocRef, {'winnerId': winnerId, 'status': 'completed'});
+        transaction.update(tournamentDocRef, {'winnerId': winnerId, 'status': 'completed'});
 
         // Credit prize amount to winner's wallet
         final num prize = tournamentSnap.data()?['prizeAmount'] ?? 0;
@@ -1153,8 +1069,7 @@ class ChessGameProvider with ChangeNotifier {
       for (int col = 0; col < 8; col++) {
         final attacker = _board[row][col];
         if (attacker != null && attacker.color == byColor) {
-          final attacks =
-              _calculateAttackSquares(ChessPosition(row, col), attacker);
+          final attacks = _calculateAttackSquares(ChessPosition(row, col), attacker);
           if (attacks.contains(pos)) {
             return true;
           }
@@ -1165,8 +1080,7 @@ class ChessGameProvider with ChangeNotifier {
   }
 
   bool _canCastle(PieceColor color, {required bool kingSide}) {
-    final opponentColor =
-        color == PieceColor.white ? PieceColor.black : PieceColor.white;
+    final opponentColor = color == PieceColor.white ? PieceColor.black : PieceColor.white;
     final int row = color == PieceColor.white ? 7 : 0;
 
     // King and rook starting columns
@@ -1177,9 +1091,7 @@ class ChessGameProvider with ChangeNotifier {
     if (kingPiece == null || kingPiece.hasMoved) return false;
 
     final rookPiece = _board[row][rookCol];
-    if (rookPiece == null ||
-        rookPiece.type != PieceType.rook ||
-        rookPiece.hasMoved) {
+    if (rookPiece == null || rookPiece.type != PieceType.rook || rookPiece.hasMoved) {
       return false;
     }
 
@@ -1204,8 +1116,7 @@ class ChessGameProvider with ChangeNotifier {
     return true;
   }
 
-  void _performCastling(
-      ChessPosition from, ChessPosition to, ChessPiece kingPiece) {
+  void _performCastling(ChessPosition from, ChessPosition to, ChessPiece kingPiece) {
     print("🎲 GameProvider: Performing castling move from $from to $to");
 
     final row = from.row;
@@ -1286,19 +1197,15 @@ class ChessGameProvider with ChangeNotifier {
     // White rights
     const wRow = 7;
     if (_board[wRow][4]?.type == PieceType.king && !_board[wRow][4]!.hasMoved) {
-      if (_board[wRow][7]?.type == PieceType.rook && !_board[wRow][7]!.hasMoved)
-        rights.write('K');
-      if (_board[wRow][0]?.type == PieceType.rook && !_board[wRow][0]!.hasMoved)
-        rights.write('Q');
+      if (_board[wRow][7]?.type == PieceType.rook && !_board[wRow][7]!.hasMoved) rights.write('K');
+      if (_board[wRow][0]?.type == PieceType.rook && !_board[wRow][0]!.hasMoved) rights.write('Q');
     }
 
     // Black rights
     const bRow = 0;
     if (_board[bRow][4]?.type == PieceType.king && !_board[bRow][4]!.hasMoved) {
-      if (_board[bRow][7]?.type == PieceType.rook && !_board[bRow][7]!.hasMoved)
-        rights.write('k');
-      if (_board[bRow][0]?.type == PieceType.rook && !_board[bRow][0]!.hasMoved)
-        rights.write('q');
+      if (_board[bRow][7]?.type == PieceType.rook && !_board[bRow][7]!.hasMoved) rights.write('k');
+      if (_board[bRow][0]?.type == PieceType.rook && !_board[bRow][0]!.hasMoved) rights.write('q');
     }
 
     if (rights.isEmpty) rights.write('-');

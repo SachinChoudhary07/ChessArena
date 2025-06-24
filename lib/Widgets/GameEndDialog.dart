@@ -31,6 +31,9 @@ class _GameEndDialogState extends State<GameEndDialog> {
   Map<String, dynamic>? gameData;
   double? prizeAmount;
   int? eloChange;
+  int? currentUserElo;
+  int? opponentElo;
+  String? eloContext; // To explain why the Elo change is what it is
 
   @override
   void initState() {
@@ -52,10 +55,59 @@ class _GameEndDialogState extends State<GameEndDialog> {
         prizeAmount = entryFee > 0 ? entryFee * 0.8 : 0;
       }
 
-      // Calculate ELO change (simplified)
-      eloChange = widget.youWon
-          ? (widget.gameProvider.gameStatus == 'resignation' ? 15 : 20)
-          : -(widget.gameProvider.gameStatus == 'resignation' ? 10 : 15);
+      // Get current user and opponent Elo ratings to calculate proper Elo change
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        final gameData = gameDoc.data();
+        final player1UID = gameData?['player1'];
+        final player2UID = gameData?['player2'];
+
+        // Determine which player is the current user
+        final isPlayer1 = player1UID == currentUser.uid;
+        final currentUserId = currentUser.uid;
+        final opponentId = isPlayer1 ? player2UID : player1UID;
+
+        // Get both players' Elo ratings
+        final currentUserDoc = await FirebaseFirestore.instance.collection('users').doc(currentUserId).get();
+        final opponentDoc = await FirebaseFirestore.instance.collection('users').doc(opponentId).get();
+
+        final currentUserElo = currentUserDoc.data()?['eloRating'] ?? 1200;
+        final opponentElo = opponentDoc.data()?['eloRating'] ?? 1200;
+
+        // Store Elo ratings for display
+        this.currentUserElo = currentUserElo.toInt();
+        this.opponentElo = opponentElo.toInt();
+
+        // Calculate Elo change based on the new system
+        // 1. Equal ratings: ±15 points
+        // 2. Upset win/loss: ±20 points (lower-rated player wins or higher-rated player loses)
+        // 3. Expected win/loss: ±10 points (higher-rated player wins or lower-rated player loses)
+        if (widget.youWon) {
+          // Current user won
+          if (currentUserElo == opponentElo) {
+            eloChange = 15; // Equal ratings
+            eloContext = "Equal ratings - standard win";
+          } else if (currentUserElo < opponentElo) {
+            eloChange = 20; // Upset win
+            eloContext = "Upset win against higher-rated opponent";
+          } else {
+            eloChange = 10; // Expected win
+            eloContext = "Expected win against lower-rated opponent";
+          }
+        } else {
+          // Current user lost
+          if (currentUserElo == opponentElo) {
+            eloChange = -15; // Equal ratings
+            eloContext = "Equal ratings - standard loss";
+          } else if (currentUserElo < opponentElo) {
+            eloChange = -10; // Expected loss
+            eloContext = "Expected loss against higher-rated opponent";
+          } else {
+            eloChange = -20; // Upset loss
+            eloContext = "Upset loss against lower-rated opponent";
+          }
+        }
+      }
 
       if (mounted) setState(() {});
     } catch (e) {
@@ -159,11 +211,43 @@ class _GameEndDialogState extends State<GameEndDialog> {
                     ),
                   ],
                   if (eloChange != null) ...[
+                    const Divider(height: 20),
                     _buildDetailRow(
-                      'ELO Rating',
+                      'Your ELO',
+                      '$currentUserElo',
+                      valueColor: Colors.blue,
+                    ),
+                    _buildDetailRow(
+                      'Opponent ELO',
+                      '$opponentElo',
+                      valueColor: Colors.orange,
+                    ),
+                    _buildDetailRow(
+                      'ELO Change',
                       '${eloChange! >= 0 ? '+' : ''}$eloChange',
                       valueColor: eloChange! >= 0 ? Colors.green : Colors.red,
                     ),
+                    if (eloContext != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                        ),
+                        child: Text(
+                          eloContext!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue[700],
+                            fontStyle: FontStyle.italic,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
                   ],
                 ],
               ),

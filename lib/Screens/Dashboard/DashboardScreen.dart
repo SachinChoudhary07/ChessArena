@@ -1,5 +1,6 @@
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
+import 'package:chess_cash/Screens/CreateTournament/createTournament.dart';
 import 'package:chess_cash/Screens/GameScreens/MatchMakingScreen.dart';
 import 'package:chess_cash/Screens/PaidMatch/PlayPaidMatch.dart';
 import 'package:chess_cash/Screens/TournamentScreens/tournaments_screen.dart';
@@ -119,12 +120,9 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                 }),
                 _buildButton(
                     AppConstants.createContest,
-                    Icons.compare_arrows_sharp,
+                    Icons.compare_arrows_sharp, 
                     ColorResources.secondaryColor, () {
-                  // push(context, const CreateTournament());
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Coming Soon')),
-                  );
+                  push(context, const CreateTournament());
                 }),
                 _buildButton(
                     AppConstants.playWithFriends,

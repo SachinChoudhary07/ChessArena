@@ -146,34 +146,6 @@ class _GameScreenState extends State<GameScreen> {
 
   Future<bool> _onBackPressed() async {
     return false;
-    print("🎮 GameScreen: Back button pressed, showing confirmation dialog");
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Leave Match?"),
-        content: Text(
-          "If you leave, your opponent (${_getOpponentName()}) will win the match.\nAre you sure you want to exit?",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Yes, Exit"),
-          ),
-        ],
-      ),
-    );
-
-    if (result == true) {
-      print("🎮 GameScreen: User confirmed exit, handling player exit");
-      await _handlePlayerExit();
-      return true;
-    }
-
-    return false;
   }
 
   Future<void> _handlePlayerExit() async {
