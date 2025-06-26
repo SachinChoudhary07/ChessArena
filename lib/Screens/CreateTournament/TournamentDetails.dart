@@ -80,7 +80,7 @@ class TournamentDetails extends StatelessWidget {
     }
 
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('users_tournaments').doc(tournamentId).snapshots(),
+      stream: FirebaseFirestore.instance.collection('tournaments').doc(tournamentId).snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Scaffold(
@@ -288,27 +288,13 @@ class TournamentDetails extends StatelessWidget {
                                 width: double.infinity,
                                 margin: const EdgeInsets.only(bottom: 24),
                                 child: ElevatedButton(
-                                  onPressed: () async {
-                                    try {
-                                      await context.read<CreateTournamentProvider>().joinTournament(tournamentId);
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Successfully joined tournament!'),
-                                            backgroundColor: Colors.green,
-                                          ),
-                                        );
-                                      }
-                                    } catch (e) {
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(e.toString()),
-                                            backgroundColor: Colors.red,
-                                          ),
-                                        );
-                                      }
-                                    }
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Tournament joining functionality not available'),
+                                        backgroundColor: Colors.orange,
+                                      ),
+                                    );
                                   },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: ColorResources.primaryColor,
@@ -479,7 +465,7 @@ class TournamentDetails extends StatelessWidget {
 
                 // Matches Tab
                 StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance.collection('users_tournaments').doc(tournamentId).collection('matches').orderBy('round', descending: true).snapshots(),
+                  stream: FirebaseFirestore.instance.collection('tournaments').doc(tournamentId).collection('matches').orderBy('round', descending: true).snapshots(),
                   builder: (context, matchSnapshot) {
                     if (matchSnapshot.hasError) {
                       return const Center(child: Text('Error loading matches'));
@@ -494,41 +480,15 @@ class TournamentDetails extends StatelessWidget {
                     print('TournamentDetails: Tournament data: $tournament');
 
                     if (matches.isEmpty) {
-                      return Center(
+                      return const Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.sports_esports, size: 64, color: Colors.grey),
-                            const SizedBox(height: 16),
-                            const Text('No matches scheduled yet', style: TextStyle(fontSize: 16)),
-                            const SizedBox(height: 8),
-                            const Text('Matches will be created when players join', style: TextStyle(fontSize: 14, color: Colors.grey)),
-                            const SizedBox(height: 24),
-                            ElevatedButton(
-                              onPressed: () async {
-                                try {
-                                  await context.read<CreateTournamentProvider>().generateMatchesForTournament(tournamentId);
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Matches generated successfully!'),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error generating matches: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              child: const Text('Generate Matches'),
-                            ),
+                            Icon(Icons.sports_esports, size: 64, color: Colors.grey),
+                            SizedBox(height: 16),
+                            Text('No matches scheduled yet', style: TextStyle(fontSize: 16)),
+                            SizedBox(height: 8),
+                            Text('Matches will be created when players join', style: TextStyle(fontSize: 14, color: Colors.grey)),
                           ],
                         ),
                       );
