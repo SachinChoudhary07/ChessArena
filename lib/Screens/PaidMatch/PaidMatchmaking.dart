@@ -38,11 +38,22 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
   late AnimationController _searchAnimationController;
   late Animation<double> _searchAnimation;
 
+  // New variables for user-friendly messaging
+  String _searchStatus = "Searching for opponent...";
+  String _searchSubStatus = "Please wait while we find a suitable match";
+  bool _showNoPlayersMessage = false;
+  int _waitingTimeSeconds = 0;
+  Timer? _waitingTimer;
+  bool _isAutoCancelling = false;
+  int _autoCancelCountdown = 6;
+  Timer? _countdownTimer;
+
   @override
   void initState() {
     super.initState();
     _initializeAnimation();
     _initializeUserData();
+    _startWaitingTimer();
   }
 
   void _initializeAnimation() {
@@ -100,6 +111,10 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
         .snapshots()
         .listen((snapshot) async {
       final now = DateTime.now();
+      
+      // Check if there are any other players in the queue
+      bool foundSuitableOpponent = false;
+      int availableOpponents = 0;
 
       for (var doc in snapshot.docs) {
         final data = doc.data();
@@ -111,13 +126,31 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
 
         if (opponentId == currentUserId) continue;
         if (opponentTime != widget.time || opponentAmount != widget.amount) continue;
+        
+        availableOpponents++;
 
         final waitingDuration = now.difference(timestamp.toDate()).inSeconds;
         final allowedRange = min(100 + (waitingDuration ~/ 30) * 25, 300);
 
         if ((opponentElo - currentUserElo).abs() <= allowedRange) {
+          foundSuitableOpponent = true;
           await _createGameRoom(opponentId);
           break;
+        }
+      }
+      
+      // Update status based on available opponents
+      if (mounted) {
+        if (availableOpponents == 0) {
+          setState(() {
+            _searchStatus = "Searching for opponent...";
+            _searchSubStatus = "You're the first player! Waiting for others to join...";
+          });
+        } else if (!foundSuitableOpponent && availableOpponents > 0) {
+          setState(() {
+            _searchStatus = "Players available but not suitable";
+            _searchSubStatus = "Found $availableOpponents players, but none match your skill level.";
+          });
         }
       }
     });
@@ -138,6 +171,19 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
   Future<void> _createGameRoom(String opponentId) async {
     isSearching = false;
     await matchmakingListener?.cancel();
+    
+    // Reset search status when match is found
+    if (mounted) {
+      setState(() {
+        _searchStatus = "Match found!";
+        _searchSubStatus = "Setting up your game...";
+        _showNoPlayersMessage = false;
+        _isAutoCancelling = false;
+      });
+    }
+
+    // Cancel any ongoing auto-cancellation
+    _countdownTimer?.cancel();
 
     final currentUserDoc = await _firestore
         .collection('paid_matchmaking_queue')
@@ -151,6 +197,10 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
 
     if (!opponentDoc.exists) {
       if (mounted) {
+        setState(() {
+          _searchStatus = "Searching for opponent...";
+          _searchSubStatus = "Please wait while we find a suitable match";
+        });
         _startMatchmaking(1);
       }
       return;
@@ -162,6 +212,17 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
     try {
       await _deductEntryFee(currentUserId);
       await _deductEntryFee(opponentId);
+      
+      // Show success message after entry fee deduction
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Entry fee of ${widget.amount} deducted successfully!'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -329,6 +390,8 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
     _searchAnimationController.dispose();
     _firestore.collection('paid_matchmaking_queue').doc(currentUserId).delete();
     matchmakingListener?.cancel();
+    _waitingTimer?.cancel();
+    _countdownTimer?.cancel();
     super.dispose();
   }
 
@@ -339,19 +402,100 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
         child: Column(
           children: [
             const SizedBox(height: 100),
-            const Padding(
-              padding: EdgeInsets.all(18.0),
-              child: Text(
-                AppConstants.waitingText,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+            Padding(
+              padding: const EdgeInsets.all(18.0),
+              child: Column(
+                children: [
+                  Text(
+                    _searchStatus,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _searchSubStatus,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (_showNoPlayersMessage) ...[
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        border: Border.all(color: Colors.orange, width: 1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          const Icon(
+                            Icons.info_outline,
+                            color: Colors.orange,
+                            size: 24,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "Suggestions:",
+                            style: TextStyle(
+                              color: Colors.orange,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "• Try a different amount (₹10, ₹20, ₹50)\n• Check back in a few minutes",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
+                          if (_isAutoCancelling) ...[
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                border: Border.all(color: Colors.red, width: 1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.timer,
+                                    color: Colors.red,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "Returning to dashboard in $_autoCancelCountdown seconds",
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            const SizedBox(height: 100),
+            const SizedBox(height: 50),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -454,7 +598,7 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
     return Padding(
       padding: const EdgeInsets.only(bottom: 40),
       child: ElevatedButton.icon(
-        onPressed: _handleCancel,
+        onPressed: _handleManualCancel,
         icon: const Icon(Icons.close),
         label: const Text(AppConstants.cancel),
         style: ElevatedButton.styleFrom(
@@ -473,8 +617,70 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
   Future<void> _handleCancel() async {
     await _firestore.collection('paid_matchmaking_queue').doc(currentUserId).delete();
     await matchmakingListener?.cancel();
+    _waitingTimer?.cancel();
+    _countdownTimer?.cancel();
+    
     if (mounted) {
       Navigator.pop(context);
     }
+  }
+
+  Future<void> _handleManualCancel() async {
+    // Reset auto-cancellation flag to prevent automatic cancellation
+    _isAutoCancelling = false;
+    _countdownTimer?.cancel();
+    await _handleCancel();
+  }
+
+  void _startWaitingTimer() {
+    _waitingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _waitingTimeSeconds++;
+        });
+        _updateSearchStatus();
+      }
+    });
+  }
+
+  void _updateSearchStatus() {
+    if (_waitingTimeSeconds >= 30 && !_showNoPlayersMessage) {
+      setState(() {
+        _searchStatus = "Still searching...";
+        _searchSubStatus = "We're expanding our search to find you a match";
+      });
+    }
+
+    if (_waitingTimeSeconds >= 60 && !_showNoPlayersMessage) {
+      setState(() {
+        _searchStatus = "No players available right now";
+        _searchSubStatus = "Try again in a few minutes or try a different amount";
+        _showNoPlayersMessage = true;
+      });
+
+      // Automatically cancel after showing no players message
+      _autoCancelAfterDelay();
+    }
+  }
+
+  void _autoCancelAfterDelay() async {
+    _isAutoCancelling = true;
+    _autoCancelCountdown = 6;
+
+    // Start countdown timer
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted && _isAutoCancelling) {
+        setState(() {
+          _autoCancelCountdown--;
+        });
+
+        if (_autoCancelCountdown <= 0) {
+          timer.cancel();
+          _handleCancel();
+        }
+      } else {
+        timer.cancel();
+      }
+    });
   }
 }

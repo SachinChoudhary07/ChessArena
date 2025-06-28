@@ -1,3 +1,4 @@
+import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -140,11 +141,10 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
 
     // Check for cancelled status first
     if (data['status'] == 'cancelled') return 'Cancelled';
-    
+
     if (players.length >= maxPlayers) return 'Full';
 
-    if (data['winner'] != null || (endDate != null && now.isAfter(endDate)))
-      return 'Completed';
+    if (data['winner'] != null || (endDate != null && now.isAfter(endDate))) return 'Completed';
     if (startDate != null) {
       if (startDate.isBefore(now)) return 'Ongoing';
       return 'Upcoming';
@@ -170,8 +170,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
 
       if (userBalance < entryFee) {
         Fluttertoast.showToast(
-          msg:
-              "Insufficient balance! Need ₹${entryFee.toStringAsFixed(2)} to join",
+          msg: "Insufficient balance! Need ₹${entryFee.toStringAsFixed(2)} to join",
           backgroundColor: Colors.red,
           textColor: Colors.white,
         );
@@ -182,18 +181,15 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
       await _firestore.runTransaction((transaction) async {
         // ---------- READS SECTION ----------
         // 1. Get fresh user data
-        final freshUserDoc =
-            await transaction.get(_firestore.collection('users').doc(user.uid));
-        final double currentBalance =
-            (freshUserDoc.data()?['Balance'] ?? 0).toDouble();
+        final freshUserDoc = await transaction.get(_firestore.collection('users').doc(user.uid));
+        final double currentBalance = (freshUserDoc.data()?['Balance'] ?? 0).toDouble();
 
         if (currentBalance < entryFee) {
           throw Exception('Insufficient balance');
         }
 
         // 2. Get tournament data
-        final tournamentDoc = await transaction
-            .get(_firestore.collection('tournaments').doc(tournamentId));
+        final tournamentDoc = await transaction.get(_firestore.collection('tournaments').doc(tournamentId));
         final tournamentData = tournamentDoc.data()!;
         final players = List<String>.from(tournamentData['players'] ?? []);
         final maxPlayers = tournamentData['playerCount'] ?? 8;
@@ -212,13 +208,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
         }
 
         // 3. Get all round-1 matches
-        final roundOneMatches = await _firestore
-            .collection('tournaments')
-            .doc(tournamentId)
-            .collection('matches')
-            .where('round', isEqualTo: 1)
-            .orderBy('matchNumber')
-            .get();
+        final roundOneMatches = await _firestore.collection('tournaments').doc(tournamentId).collection('matches').where('round', isEqualTo: 1).orderBy('matchNumber').get();
 
         // 4. Find the first available slot by reading each match
         DocumentReference? targetMatchRef;
@@ -302,8 +292,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
   }
 
   Widget _buildRoundTimes(Map<dynamic, dynamic>? roundTimes) {
-    if (roundTimes == null || roundTimes.isEmpty)
-      return const SizedBox.shrink();
+    if (roundTimes == null || roundTimes.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,9 +332,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
                 Text(
                   DateFormat('d MMM, h:mm a').format(roundDateTime),
                   style: TextStyle(
-                    color: roundDateTime.isBefore(DateTime.now())
-                        ? Colors.grey
-                        : Colors.white,
+                    color: roundDateTime.isBefore(DateTime.now()) ? Colors.grey : Colors.white,
                   ),
                 ),
               ],
@@ -365,7 +352,8 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
       body: StreamBuilder<QuerySnapshot>(
         // get only upcoming Tournaments
 
-        stream: _firestore.collection('tournaments').snapshots(),
+// get this data in descending order
+        stream: _firestore.collection('tournaments').orderBy('createdAt', descending: true).snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -393,109 +381,125 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
               final roundTimes = data['roundTimes'] as Map<dynamic, dynamic>?;
 
               return Card(
-                margin: const EdgeInsets.all(12.0),
-                elevation: 4,
+                color: Colors.black,
+                margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 0),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                elevation: 0,
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(18.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Tournament Name
-                      Text(
-                        data['name'] ?? 'Unnamed Tournament',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Entry Fee and Prize Amount
                       Row(
                         children: [
-                          Icon(Icons.monetization_on,
-                              size: 20, color: Colors.green[700]),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Entry: ₹${data['entryFee']?.toString() ?? '0'} | Prize: ₹${data['prizeAmount']?.toString() ?? '0'}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.green,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          Icon(
+                            data['name'].toString().toLowerCase().contains('rush') ? Icons.emoji_events : Icons.emoji_events, // Use a chess icon if available
+                            color: Colors.yellow[700],
+                            size: 22,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Player Count
-                      Row(
-                        children: [
-                          const Icon(Icons.group, size: 20),
                           const SizedBox(width: 8),
-                          Text(
-                            'Players: ${players.length}/$maxPlayers',
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          if (maxPlayers - players.length <= 1) ...[
-                            const SizedBox(width: 8),
-                            Text(
-                              'Only ${maxPlayers - players.length} slots left!',
+                          Expanded(
+                            child: Text(
+                              data['name'] ?? 'Unnamed Tournament',
                               style: const TextStyle(
-                                color: Colors.red,
+                                color: Color(0xFFFFD600),
                                 fontWeight: FontWeight.bold,
+                                fontSize: 19,
+                                letterSpacing: 0.2,
                               ),
                             ),
-                          ],
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
+
+                      // Entry Fee
+                      Row(
+                        children: [
+                          Icon(Icons.attach_money, color: Colors.green[400], size: 18),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Entry: ₹${data['entryFee']?.toStringAsFixed(0) ?? '0'}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+
+                      // Prize Pool
+                      Row(
+                        children: [
+                          Icon(Icons.account_balance_wallet, color: Colors.green[400], size: 18),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Prize pool: ₹${data['prizeAmount']?.toStringAsFixed(0) ?? '0'}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+
+                      // Players
+                      Row(
+                        children: [
+                          Icon(Icons.group, color: Colors.yellow[700], size: 18),
+                          const SizedBox(width: 4),
+                          const Text(
+                            'Players: ',
+                            style: TextStyle(color: Colors.white, fontSize: 15),
+                          ),
+                          Text(
+                            '${players.length}',
+                            style: TextStyle(color: Colors.yellow[700], fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                          Text(
+                            '/$maxPlayers joined',
+                            style: const TextStyle(color: Colors.white, fontSize: 15),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
 
                       // Start Time
                       if (startDate != null)
                         Row(
                           children: [
-                            const Icon(Icons.access_time, size: 20),
-                            const SizedBox(width: 8),
+                            const Icon(Icons.access_time, color: Colors.white, size: 18),
+                            const SizedBox(width: 4),
                             Text(
-                              'Round 1: ${DateFormat('d MMM, h:mm a').format(startDate)}',
-                              style: const TextStyle(fontSize: 16),
+                              'Starts: ${DateFormat('d MMM, h:mm a').format(startDate)}',
+                              style: const TextStyle(color: Colors.white, fontSize: 15),
                             ),
                           ],
                         ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
+
+                      // Rounds
 
                       // Round Times
-                      _buildRoundTimes(roundTimes),
+                      _buildRoundTimes(roundTimes), const SizedBox(height: 8),
 
                       // Status
                       Row(
                         children: [
-                          Icon(
-                            status == 'Ongoing'
-                                ? Icons.sports_esports
-                                : status == 'Completed'
-                                    ? Icons.emoji_events
-                                    : status == 'Full'
-                                        ? Icons.block
-                                        : status == 'Cancelled'
-                                            ? Icons.cancel
-                                            : Icons.schedule,
-                            size: 20,
-                            color: status == 'Ongoing'
-                                ? Colors.green
-                                : status == 'Completed'
-                                    ? Colors.blue
-                                    : status == 'Full'
-                                        ? Colors.red
-                                        : status == 'Cancelled'
-                                            ? Colors.red
-                                            : Colors.orange,
+                          const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                          const SizedBox(width: 4),
+                          const Text(
+                            'Status: ',
+                            style: TextStyle(color: Colors.white70, fontSize: 15),
                           ),
-                          const SizedBox(width: 8),
                           Text(
-                            'Status: $status',
+                            status == 'Ongoing' ? 'Joined' : status,
                             style: TextStyle(
-                              fontSize: 16,
                               color: status == 'Ongoing'
                                   ? Colors.green
                                   : status == 'Completed'
@@ -505,84 +509,68 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
                                           : status == 'Cancelled'
                                               ? Colors.red
                                               : Colors.orange,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
                             ),
                           ),
-                          if (status == 'Cancelled') ...[
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                data['cancelReason'] ?? 'Tournament cancelled',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.red,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
 
                       // CTA Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: StreamBuilder<DocumentSnapshot>(
-                          stream: _firestore
-                              .collection('tournaments')
-                              .doc(tournament.id)
-                              .snapshots(),
-                          builder: (context, tournamentSnapshot) {
-                            if (tournamentSnapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            }
-                            final tournamentData = tournamentSnapshot.data
-                                ?.data() as Map<String, dynamic>?;
-                            final currentPlayers = List<String>.from(
-                                tournamentData?['players'] ?? []);
-                            final hasJoined =
-                                currentPlayers.contains(_auth.currentUser?.uid);
-                            final isFull = currentPlayers.length >= maxPlayers;
-                            final hasStarted = startDate != null &&
-                                startDate.isBefore(DateTime.now());
+                      Center(
+                        child: SizedBox(
+                          width: MediaQuery.of(context).size.width * 0.8,
+                          child: StreamBuilder<DocumentSnapshot>(
+                            stream: _firestore.collection('tournaments').doc(tournament.id).snapshots(),
+                            builder: (context, tournamentSnapshot) {
+                              if (tournamentSnapshot.connectionState == ConnectionState.waiting) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+                              final tournamentData = tournamentSnapshot.data?.data() as Map<String, dynamic>?;
+                              final currentPlayers = List<String>.from(tournamentData?['players'] ?? []);
+                              final hasJoined = currentPlayers.contains(_auth.currentUser?.uid);
+                              final isFull = currentPlayers.length >= maxPlayers;
+                              // if tournament 1 st round is before datetime
+                              final isRound1BeforeDateTime = roundTimes?[1] != null && DateTime.parse(roundTimes?[1] as String).isBefore(DateTime.now());
+                              // final hasStarted = startDate != null && startDate.isBefore(DateTime.now());
 
-                            return ElevatedButton(
-                              onPressed: hasJoined || isFull || hasStarted
-                                  ? () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              TournamentDetailsScreen(
-                                            tournamentId: tournament.id,
+                              return ElevatedButton(
+                                onPressed: hasJoined || isFull || isRound1BeforeDateTime
+                                    ? () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => TournamentDetailsScreen(
+                                              tournamentId: tournament.id,
+                                            ),
                                           ),
-                                        ),
-                                      );
-                                    }
-                                  : () => joinTournament(tournament.id,
-                                      (data['entryFee'] ?? 0.0).toDouble()),
-                              style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                                backgroundColor: hasJoined || isFull
-                                    ? Colors.blue
-                                    : Colors.green,
-                              ),
-                              child: Text(
-                                hasJoined || isFull || hasStarted
-                                    ? 'View Details'
-                                    : 'Join Now',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                                        );
+                                      }
+                                    : () => joinTournament(tournament.id, (data['entryFee'] ?? 0.0).toDouble()),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: hasJoined ? Colors.yellow[700] : Colors.yellow[700],
+                                  foregroundColor: Colors.black,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  elevation: 0,
                                 ),
-                              ),
-                            );
-                          },
+                                child: Text(
+                                  hasJoined
+                                      ? 'Enter Room'
+                                      : isFull || isRound1BeforeDateTime
+                                          ? 'View Details'
+                                          : 'Join Now',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ],

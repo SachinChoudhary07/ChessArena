@@ -245,7 +245,7 @@ class AutProvider with ChangeNotifier {
       await _setLoginState(true);
       setLoading(false);
       CustomToast.show(AppConstants.loginSuccess, bgColor: Colors.green);
-      push(context, BottomNavBar());
+      push(context, BottomNavBar(key: bottomNavBarKey));
       notifyListeners();
     } on FirebaseAuthException catch (e) {
       setLoading(false);
@@ -311,7 +311,7 @@ class AutProvider with ChangeNotifier {
       await _setLoginState(true);
       setLoading(false);
       CustomToast.show(AppConstants.loginSuccess, bgColor: Colors.green);
-      push(context, BottomNavBar());
+      push(context, BottomNavBar(key: bottomNavBarKey));
       notifyListeners();
     } catch (e) {
       setLoading(false);

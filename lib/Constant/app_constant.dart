@@ -6,7 +6,7 @@ class AppConstants {
   static const String loginSignupImage = 'assets/images/lose.png';
   static const String googleImage = 'assets/images/google.png';
   static const String loaderImage = 'assets/images/king.png';
-
+  static const String defaultProfileImage = 'assets/images/pawn_image.jpg';
   // App Info
   static const String appName = 'Chess4Cash';
 

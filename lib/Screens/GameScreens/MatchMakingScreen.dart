@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
@@ -37,11 +36,22 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
   late AnimationController _searchAnimationController;
   late Animation<double> _searchAnimation;
 
+  // New variables for user-friendly messaging
+  String _searchStatus = "Searching for opponent...";
+  String _searchSubStatus = "Please wait while we find a suitable match";
+  bool _showNoPlayersMessage = false;
+  int _waitingTimeSeconds = 0;
+  Timer? _waitingTimer;
+  bool _isAutoCancelling = false;
+  int _autoCancelCountdown = 6;
+  Timer? _countdownTimer;
+
   @override
   void initState() {
     super.initState();
     _initializeAnimation();
     _initializeUserData();
+    _startWaitingTimer();
   }
 
   void _initializeAnimation() {
@@ -99,6 +109,10 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
       print(
           "🎮 MatchMaking: Queue updated - ${snapshot.docs.length} players in queue");
       final now = DateTime.now();
+      
+      // Check if there are any other players in the queue
+      bool foundSuitableOpponent = false;
+      int availableOpponents = 0;
 
       for (var doc in snapshot.docs) {
         final data = doc.data();
@@ -108,6 +122,8 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
         final String matchTime = data['match_time'] ?? '10';
 
         if (opponentId == currentUserId) continue;
+        
+        availableOpponents++;
 
         final waitingDuration = now.difference(timestamp.toDate()).inSeconds;
         final allowedRange = min(100 + (waitingDuration ~/ 30) * 25, 300);
@@ -120,8 +136,24 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
         if ((opponentElo - currentUserElo).abs() <= allowedRange &&
             matchTime == widget.time) {
           print("🎮 MatchMaking: Match found! Opponent ID: $opponentId");
+          foundSuitableOpponent = true;
           await _createGameRoom(opponentId);
           break;
+        }
+      }
+      
+      // Update status based on available opponents
+      if (mounted) {
+        if (availableOpponents == 0) {
+          setState(() {
+            _searchStatus = "Searching for opponent...";
+            _searchSubStatus = "You're the first player! Waiting for others to join...";
+          });
+        } else if (!foundSuitableOpponent && availableOpponents > 0) {
+          setState(() {
+            _searchStatus = "Players available but not suitable";
+            _searchSubStatus = "Found $availableOpponents players, but none match your skill level.";
+          });
         }
       }
     });
@@ -131,6 +163,19 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
     print("🎮 GameRoom: Starting room creation with opponent: $opponentId");
     await matchmakingListener?.cancel();
     print("🎮 GameRoom: Matchmaking listener cancelled");
+    
+    // Reset search status when match is found
+    if (mounted) {
+      setState(() {
+        _searchStatus = "Match found!";
+        _searchSubStatus = "Setting up your game...";
+        _showNoPlayersMessage = false;
+        _isAutoCancelling = false;
+      });
+    }
+
+    // Cancel any ongoing auto-cancellation
+    _countdownTimer?.cancel();
 
     final currentUserDoc = await _firestore
         .collection('matchmaking_queue')
@@ -149,6 +194,10 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
       print(
           "❌ GameRoom: One of the players is no longer in the queue. Aborting and restarting search.");
       if (mounted) {
+        setState(() {
+          _searchStatus = "Searching for opponent...";
+          _searchSubStatus = "Please wait while we find a suitable match";
+        });
         _startMatchmaking(1);
       }
       return;
@@ -311,12 +360,67 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
     });
   }
 
+  void _startWaitingTimer() {
+    _waitingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _waitingTimeSeconds++;
+        });
+        _updateSearchStatus();
+      }
+    });
+  }
+
+  void _updateSearchStatus() {
+    if (_waitingTimeSeconds >= 30 && !_showNoPlayersMessage) {
+      setState(() {
+        _searchStatus = "Still searching...";
+        _searchSubStatus = "We're expanding our search to find you a match";
+      });
+    }
+
+    if (_waitingTimeSeconds >= 60 && !_showNoPlayersMessage) {
+      setState(() {
+        _searchStatus = "No players available right now";
+        _searchSubStatus = "Try again in a few minutes or try a different time format";
+        _showNoPlayersMessage = true;
+      });
+
+      // Automatically cancel after showing no players message
+      _autoCancelAfterDelay();
+    }
+  }
+
+  void _autoCancelAfterDelay() async {
+    _isAutoCancelling = true;
+    _autoCancelCountdown = 6;
+
+    // Start countdown timer
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted && _isAutoCancelling) {
+        setState(() {
+          _autoCancelCountdown--;
+        });
+
+        if (_autoCancelCountdown <= 0) {
+          timer.cancel();
+          _handleCancel();
+        }
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
   @override
   void dispose() {
     _searchAnimationController.dispose();
     matchmakingListener?.cancel();
+    _waitingTimer?.cancel();
+    _countdownTimer?.cancel();
     super.dispose();
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -325,25 +429,99 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
         child: Column(
           children: [
             const SizedBox(height: 100),
-            const Padding(
-              padding: EdgeInsets.all(18.0),
-              child: Text(
-                AppConstants.waitingText,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold),
+            Padding(
+              padding: const EdgeInsets.all(18.0),
+              child: Column(
+                children: [
+                  Text(
+                    _searchStatus,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _searchSubStatus,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.grey, fontSize: 14),
+                  ),
+                  if (_showNoPlayersMessage) ...[
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        border: Border.all(color: Colors.orange, width: 1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          const Icon(
+                            Icons.info_outline,
+                            color: Colors.orange,
+                            size: 24,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "Suggestions:",
+                            style: TextStyle(
+                              color: Colors.orange,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "• Try a different time format (1 min, 5 min, 10 min)\n• Check back in a few minutes",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
+                          if (_isAutoCancelling) ...[
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                border: Border.all(color: Colors.red, width: 1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.timer,
+                                    color: Colors.red,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "Returning to dashboard in $_autoCancelCountdown seconds",
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            const SizedBox(height: 100),
+            const SizedBox(height: 50),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildPlayerCard(
                   currentUserName ?? AppConstants.you,
-                  profile ??
-                      'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.cgtrader.com%2Ffree-3d-models%2Fsports%2Fgame%2Fchess-variant-king-and-pawn&psig=AOvVaw2SEgsrVl4UrkrWf9X9i8mR&ust=1749959845126000&source=images&cd=vfe&opi=89978449&ved=0CBQQjRxqFwoTCKiEstuC8I0DFQAAAAAdAAAAABAE',
+                  profile ?? AppConstants.defaultProfileImage,
                 ),
                 Text(
                   "VS",
@@ -380,7 +558,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
               imageUrl: imagePath,
               fit: BoxFit.cover,
               placeholder: (context, url) => Image.asset(
-                'assets/images/pawn_image.jpg',
+                AppConstants.defaultProfileImage,
                 fit: BoxFit.cover,
               ),
               errorWidget: (context, url, error) => const Icon(Icons.error),
@@ -441,7 +619,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
     return Padding(
       padding: const EdgeInsets.only(bottom: 40),
       child: ElevatedButton.icon(
-        onPressed: _handleCancel,
+        onPressed: _handleManualCancel,
         icon: const Icon(Icons.close),
         label: const Text(AppConstants.cancel),
         style: ElevatedButton.styleFrom(
@@ -463,8 +641,18 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
         .doc(currentUserId)
         .delete();
     await matchmakingListener?.cancel();
+    _waitingTimer?.cancel();
+    _countdownTimer?.cancel();
+    
     if (mounted) {
       Navigator.pop(context);
     }
+  }
+
+  Future<void> _handleManualCancel() async {
+    // Reset auto-cancellation flag to prevent automatic cancellation
+    _isAutoCancelling = false;
+    _countdownTimer?.cancel();
+    await _handleCancel();
   }
 }

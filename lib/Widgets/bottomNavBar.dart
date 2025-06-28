@@ -5,7 +5,12 @@ import 'package:chess_cash/Screens/ProfileScreens/ProfileScreens.dart';
 import 'package:chess_cash/Screens/WalletScreens/WalletScreen.dart';
 import 'package:flutter/material.dart';
 
+// Global key to access BottomNavBar state
+final GlobalKey<_BottomNavBarState> bottomNavBarKey = GlobalKey<_BottomNavBarState>();
+
 class BottomNavBar extends StatefulWidget {
+  const BottomNavBar({super.key});
+
   @override
   _BottomNavBarState createState() => _BottomNavBarState();
 }
@@ -15,7 +20,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
 
   final List<Widget> _pages = [
     const Dashboardscreen(),
-    WalletScreen(),
+    const WalletScreen(),
     const GameHistoryScreen(),
     const Profilescreens(),
   ];
@@ -24,6 +29,15 @@ class _BottomNavBarState extends State<BottomNavBar> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  // Method to change index from outside
+  void changeIndex(int index) {
+    if (index >= 0 && index < _pages.length) {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   @override

@@ -587,7 +587,7 @@ class _GameScreenState extends State<GameScreen> {
             provider.resetGameState();
             // Navigate to home
             Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (context) => BottomNavBar()),
+              MaterialPageRoute(builder: (context) => BottomNavBar(key: bottomNavBarKey)),
               (route) => false,
             );
           },
