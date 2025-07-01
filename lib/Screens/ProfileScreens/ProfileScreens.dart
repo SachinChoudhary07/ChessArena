@@ -2,9 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Constant/ui_helper.dart';
-import 'package:chess_cash/Providers/AdminProvider/AdminProvider.dart';
 import 'package:chess_cash/Providers/ProfileProvider/ProfileProvider.dart';
-import 'package:chess_cash/Screens/AdminScreens/AdminPanelScreen.dart';
 import 'package:chess_cash/Screens/AuthScreens/changePasswordScreen.dart';
 import 'package:chess_cash/Screens/LeaderBoard/EloLeaderBoard.dart';
 import 'package:chess_cash/Services/navigation.dart';
@@ -28,16 +26,8 @@ class _ProfilescreensState extends State<Profilescreens> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final provider = Provider.of<ProfileProvider>(context, listen: false);
-      final adminProvider = Provider.of<AdminProvider>(context, listen: false);
-
       await provider.fetchUserProfile();
       _nameController = TextEditingController(text: provider.name ?? '');
-
-      // Check if user is admin
-      final isAdmin = await adminProvider.isAdmin();
-      setState(() {
-        _isAdmin = isAdmin;
-      });
     });
   }
 
