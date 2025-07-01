@@ -3,8 +3,10 @@ import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Constant/ui_helper.dart';
 import 'package:chess_cash/Providers/ProfileProvider/ProfileProvider.dart';
+import 'package:chess_cash/Providers/AdminProvider/AdminProvider.dart';
 import 'package:chess_cash/Screens/AuthScreens/changePasswordScreen.dart';
 import 'package:chess_cash/Screens/LeaderBoard/EloLeaderBoard.dart';
+import 'package:chess_cash/Screens/AdminScreens/AdminPanelScreen.dart';
 import 'package:chess_cash/Services/navigation.dart';
 import 'package:chess_cash/Widgets/loader.dart';
 import 'package:flutter/material.dart';
@@ -19,14 +21,22 @@ class Profilescreens extends StatefulWidget {
 
 class _ProfilescreensState extends State<Profilescreens> {
   TextEditingController _nameController = TextEditingController();
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final provider = Provider.of<ProfileProvider>(context, listen: false);
-      provider.fetchUserProfile().then((_) {
-        _nameController = TextEditingController(text: provider.name ?? '');
+      final adminProvider = Provider.of<AdminProvider>(context, listen: false);
+
+      await provider.fetchUserProfile();
+      _nameController = TextEditingController(text: provider.name ?? '');
+      
+      // Check if user is admin
+      final isAdmin = await adminProvider.isAdmin();
+      setState(() {
+        _isAdmin = isAdmin;
       });
     });
   }
@@ -219,6 +229,38 @@ class _ProfilescreensState extends State<Profilescreens> {
                       ),
                     ),
                   ),
+                  // Admin Panel Button (only show for admins)
+                  if (_isAdmin) ...[
+                    Helper.heightSizedBox(16),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const AdminPanelScreen(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.orange),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.admin_panel_settings, color: Colors.orange),
+                            SizedBox(width: 8),
+                            Text(
+                              'Admin Panel',
+                              style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                   Helper.heightSizedBox(16),
                   GestureDetector(
                     onTap: () => _showLogoutConfirmationDialog(profileProvider),

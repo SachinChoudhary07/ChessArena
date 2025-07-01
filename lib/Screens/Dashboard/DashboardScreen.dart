@@ -10,10 +10,8 @@ import 'package:chess_cash/Widgets/bottomNavBar.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../../Constant/ui_helper.dart';
-import '../../Providers/CreateTournamentProvider/CreateTournamentProvider.dart';
 
 class Dashboardscreen extends StatefulWidget {
   const Dashboardscreen({super.key});
@@ -37,14 +35,14 @@ class _DashboardscreenState extends State<Dashboardscreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                InkWell(
-                  onTap: () {
-                    // Navigate to wallet screen (index 1)
-                    bottomNavBarKey.currentState?.changeIndex(1);
-                  },
-                  child: const Align(
-                    alignment: Alignment.topRight,
-                    child: Icon(
+                Align(
+                  alignment: Alignment.topRight,
+                  child: InkWell(
+                    onTap: () {
+                      // Navigate to wallet screen (index 1)
+                      bottomNavBarKey.currentState?.changeIndex(1);
+                    },
+                    child: const Icon(
                       Icons.account_balance_wallet_outlined,
                       size: 33,
                     ),
@@ -73,7 +71,8 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                                 '5 min',
                                 '10 min',
                                 '15 min',
-                                '30 min', '60 min'
+                                '30 min',
+                                '60 min'
                               ]
                                   .map((number) => DropdownMenuItem(
                                         value: number,

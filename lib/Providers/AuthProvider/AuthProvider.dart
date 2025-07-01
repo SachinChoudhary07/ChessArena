@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Screens/AuthScreens/loginScreen.dart';
 import 'package:chess_cash/Widgets/bottomNavBar.dart';
-import 'package:chess_cash/Widgets/customToast.dart';
 import 'package:chess_cash/services/navigation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -44,13 +43,22 @@ class AutProvider with ChangeNotifier {
         },
         verificationFailed: (FirebaseAuthException e) {
           setLoading(false);
-          CustomToast.show(e.message ?? "Verification failed",
-              bgColor: Colors.red);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.message ?? "Verification failed"),
+              backgroundColor: Colors.red,
+            ),
+          );
         },
         codeSent: (String verificationId, int? resendToken) {
           setLoading(false);
           _verificationId = verificationId;
-          CustomToast.show("OTP Sent", bgColor: Colors.green);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("OTP Sent"),
+              backgroundColor: Colors.green,
+            ),
+          );
 
           // ✅ Navigate here
           onOtpSent();
@@ -61,7 +69,12 @@ class AutProvider with ChangeNotifier {
       );
     } catch (e) {
       setLoading(false);
-      CustomToast.show("Failed to send OTP", bgColor: Colors.red);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Failed to send OTP"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -77,7 +90,12 @@ class AutProvider with ChangeNotifier {
   }) async {
     print('printing smsCode:- $smsCode');
     if (_verificationId == null) {
-      CustomToast.show("No OTP was sent", bgColor: Colors.red);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No OTP was sent"),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
@@ -99,7 +117,12 @@ class AutProvider with ChangeNotifier {
       setLoading(false);
       print("error");
       print(e);
-      CustomToast.show("Invalid OTP", bgColor: Colors.red);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Invalid OTP"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -165,18 +188,28 @@ class AutProvider with ChangeNotifier {
 
       await _setLoginState(true);
       setLoading(false);
-      CustomToast.show(AppConstants.registrationSuccess, bgColor: Colors.green);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(AppConstants.registrationSuccess),
+          backgroundColor: Colors.green,
+        ),
+      );
       push(context, const LoginPage());
       notifyListeners();
     } on FirebaseAuthException catch (e) {
       setLoading(false);
       print("object");
       print("error$e");
-      _handleAuthError(e);
+      _handleAuthError(e, context);
     } catch (e) {
       setLoading(false);
       print('eeeeeeeeeeeee----------${e.toString()}');
-      CustomToast.show(AppConstants.unexpectedError, bgColor: Colors.red);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(AppConstants.unexpectedError),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -242,17 +275,57 @@ class AutProvider with ChangeNotifier {
 
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
+
+      // Check ban status after successful authentication
+      final user = _auth.currentUser;
+      if (user != null) {
+        final userDoc = await _firestore
+            .collection(AppConstants.usersCollection)
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          final isBanned = userData[AppConstants.isBannedField] ?? false;
+          final banReason = userData[AppConstants.banReasonField] ?? '';
+
+          if (isBanned) {
+            // User is banned, logout and show ban dialog
+            await _auth.signOut();
+            setLoading(false);
+            _showBanDialog(context, banReason);
+            return;
+          }
+        }
+      }
+
       await _setLoginState(true);
       setLoading(false);
-      CustomToast.show(AppConstants.loginSuccess, bgColor: Colors.green);
-      push(context, BottomNavBar(key: bottomNavBarKey));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(AppConstants.loginSuccess),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+            builder: (context) => BottomNavBar(key: bottomNavBarKey)),
+        (route) => false, // This removes all previous routes from the stack
+      );
       notifyListeners();
     } on FirebaseAuthException catch (e) {
       setLoading(false);
-      _handleAuthError(e);
+      _handleAuthError(e, context);
+      print("object#@11111111111111111${e.toString()}");
     } catch (e) {
+      print("object#@${e.toString()}");
       setLoading(false);
-      CustomToast.show(AppConstants.unexpectedError, bgColor: Colors.red);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(AppConstants.unexpectedError),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -306,32 +379,68 @@ class AutProvider with ChangeNotifier {
             AppConstants.banReasonField: "",
             AppConstants.suspiciousFlagField: false,
           });
+        } else {
+          // Check ban status for existing user
+          final userData = userDoc.data() as Map<String, dynamic>;
+          final isBanned = userData[AppConstants.isBannedField] ?? false;
+          final banReason = userData[AppConstants.banReasonField] ?? '';
+
+          if (isBanned) {
+            // User is banned, logout and show ban dialog
+            await _auth.signOut();
+            await _googleSignIn.signOut();
+            setLoading(false);
+            _showBanDialog(context, banReason);
+            return;
+          }
         }
       }
       await _setLoginState(true);
       setLoading(false);
-      CustomToast.show(AppConstants.loginSuccess, bgColor: Colors.green);
-      push(context, BottomNavBar(key: bottomNavBarKey));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(AppConstants.loginSuccess),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+            builder: (context) => BottomNavBar(key: bottomNavBarKey)),
+        (route) => false, // This removes all previous routes from the stack
+      );
       notifyListeners();
     } catch (e) {
       setLoading(false);
-      CustomToast.show(e.toString(), bgColor: Colors.red);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+        ),
+      );
       print("Catchhhhhhhhhhh ${e.toString()}");
     }
   }
 
-  Future<void> logout() async {
+  Future<void> logout(BuildContext context) async {
     setLoading(true);
     await _auth.signOut();
     await _googleSignIn.signOut();
     await _setLoginState(false);
     setLoading(false);
-    CustomToast.show(AppConstants.logoutSuccess, bgColor: Colors.green);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(AppConstants.logoutSuccess),
+        backgroundColor: Colors.green,
+      ),
+    );
     notifyListeners();
   }
 
-  void _handleAuthError(FirebaseAuthException e) {
+  void _handleAuthError(FirebaseAuthException e, BuildContext context) {
     String message;
+    print("Firebase Auth Error Code: ${e.code}");
+    print("Firebase Auth Error Message: ${e.message}");
+
     switch (e.code) {
       case 'email-already-in-use':
         message = AppConstants.emailAlreadyInUse;
@@ -346,12 +455,31 @@ class AutProvider with ChangeNotifier {
         message = AppConstants.userNotFound;
         break;
       case 'wrong-password':
+      case 'invalid-credential':
+      case 'invalid-password':
         message = AppConstants.wrongPassword;
+        break;
+      case 'too-many-requests':
+        message = 'Too many failed attempts. Please try again later.';
+        break;
+      case 'user-disabled':
+        message = 'This account has been disabled.';
+        break;
+      case 'operation-not-allowed':
+        message = 'This operation is not allowed.';
         break;
       default:
         message = AppConstants.authFailed;
     }
-    CustomToast.show(message, bgColor: Colors.red);
+    print("Selected message: $message");
+    print("AppConstants.wrongPassword: ${AppConstants.wrongPassword}");
+    print("AppConstants.authFailed: ${AppConstants.authFailed}");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   Future<String?> sendPasswordResetEmail(String email) async {
@@ -365,13 +493,15 @@ class AutProvider with ChangeNotifier {
     }
   }
 
-  Future<String?> changePassword(String currentPassword, String newPassword) async {
+  Future<String?> changePassword(
+      String currentPassword, String newPassword) async {
     try {
       final user = _auth.currentUser;
       if (user == null || user.email == null) {
         return 'No user is currently signed in.';
       }
-      final cred = EmailAuthProvider.credential(email: user.email!, password: currentPassword);
+      final cred = EmailAuthProvider.credential(
+          email: user.email!, password: currentPassword);
       await user.reauthenticateWithCredential(cred);
       await user.updatePassword(newPassword);
       return null;
@@ -380,5 +510,102 @@ class AutProvider with ChangeNotifier {
     } catch (e) {
       return 'Failed to change password.';
     }
+  }
+
+  void _showBanDialog(BuildContext context, String banReason) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.block, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Account Banned', style: TextStyle(color: Colors.red)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Your account has been suspended by the administrator.',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'If you believe this is an error, please contact our support team.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Navigate to login screen
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const LoginPage()),
+                (route) => false,
+              );
+            },
+            child: const Text('OK'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _showContactAdminDialog(context);
+            },
+            child: const Text('Contact Admin'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showContactAdminDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Contact Admin'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('To appeal your ban, please contact us:'),
+            SizedBox(height: 12),
+            Text('📧 Email: support@chess4cash.com'),
+            Text('📱 WhatsApp: +91 9876543210'),
+            Text('💬 Telegram: @chess4cash_support'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Method to check ban status periodically (can be called from dashboard)
+  Future<bool> checkBanStatus() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+
+    try {
+      final userDoc = await _firestore
+          .collection(AppConstants.usersCollection)
+          .doc(user.uid)
+          .get();
+
+      if (userDoc.exists) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+        return userData[AppConstants.isBannedField] ?? false;
+      }
+    } catch (e) {
+      print('Error checking ban status: $e');
+    }
+    return false;
   }
 }

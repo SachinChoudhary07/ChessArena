@@ -5,6 +5,7 @@ import 'package:chess_cash/Providers/CreateTournamentProvider/CreateTournamentPr
 import 'package:chess_cash/Providers/LeaderBoardProvider/LeaderBoardProvider.dart';
 import 'package:chess_cash/Providers/ProfileProvider/ProfileProvider.dart';
 import 'package:chess_cash/Providers/WalletProvider/WalletProvider.dart';
+import 'package:chess_cash/Providers/AdminProvider/AdminProvider.dart';
 import 'package:chess_cash/splash_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -95,6 +96,7 @@ List<SingleChildWidget> providers() {
     ChangeNotifierProvider(create: (context) => WalletProvider()),
     ChangeNotifierProvider(create: (context) => CreateTournamentProvider()),
     ChangeNotifierProvider(create: (context) => ChessGameProvider()),
+    ChangeNotifierProvider(create: (context) => AdminProvider()),
   ];
 }
 
