@@ -239,55 +239,117 @@ class _GameScreenState extends State<GameScreen> {
             ),
           ],
         ),
-        body: Consumer<ChessGameProvider>(
-          builder: (context, gameProvider, child) {
-            if (gameProvider.isLoading) {
-              return const Loader();
+        body: StreamBuilder<DocumentSnapshot>(
+          stream: _getGameStream(),
+          builder: (context, snapshot) {
+            if (snapshot.hasData && snapshot.data!.exists) {
+              final data = snapshot.data!.data() as Map<String, dynamic>;
+              _handleDrawOffer(data);
             }
 
-            // Show promotion dialog if needed
-            if (gameProvider.isPromotionPending && !_isShowingPromotionDialog) {
-              _isShowingPromotionDialog = true;
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _showPromotionDialog(gameProvider);
-              });
-            }
+            return Consumer<ChessGameProvider>(
+              builder: (context, gameProvider, child) {
+                if (gameProvider.isLoading) {
+                  return const Loader();
+                }
 
-            return Column(
-              children: [
-                _buildPlayerInfo(
-                  isOpponent: true,
-                  timeLeft: gameProvider.playerColor == PieceColor.white
-                      ? gameProvider.blackTimeLeft
-                      : gameProvider.whiteTimeLeft,
-                  isActive: !gameProvider.isMyTurn,
-                ),
+                // Show promotion dialog if needed
+                if (gameProvider.isPromotionPending &&
+                    !_isShowingPromotionDialog) {
+                  _isShowingPromotionDialog = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _showPromotionDialog(gameProvider);
+                  });
+                }
 
-                // Chess board
-                Expanded(
-                  child: Center(
-                    child: AspectRatio(
-                      aspectRatio: 1.0,
-                      child: _buildChessBoard(gameProvider),
+                return Column(
+                  children: [
+                    _buildPlayerInfo(
+                      isOpponent: true,
+                      timeLeft: gameProvider.playerColor == PieceColor.white
+                          ? gameProvider.blackTimeLeft
+                          : gameProvider.whiteTimeLeft,
+                      isActive: !gameProvider.isMyTurn,
                     ),
-                  ),
-                ),
 
-                // Current player info and timer
-                _buildPlayerInfo(
-                  isOpponent: false,
-                  timeLeft: gameProvider.playerColor == PieceColor.white
-                      ? gameProvider.whiteTimeLeft
-                      : gameProvider.blackTimeLeft,
-                  isActive: gameProvider.isMyTurn,
-                ),
-                _buildGameStatus(gameProvider),
-              ],
+                    // Chess board
+                    Expanded(
+                      child: Center(
+                        child: AspectRatio(
+                          aspectRatio: 1.0,
+                          child: _buildChessBoard(gameProvider),
+                        ),
+                      ),
+                    ),
+
+                    // Current player info and timer
+                    _buildPlayerInfo(
+                      isOpponent: false,
+                      timeLeft: gameProvider.playerColor == PieceColor.white
+                          ? gameProvider.whiteTimeLeft
+                          : gameProvider.blackTimeLeft,
+                      isActive: gameProvider.isMyTurn,
+                    ),
+                    _buildGameStatus(gameProvider),
+                  ],
+                );
+              },
             );
           },
         ),
       ),
     );
+  }
+
+  Stream<DocumentSnapshot> _getGameStream() {
+    CollectionReference<Map<String, dynamic>> gameCollection;
+    if (widget.tournamentId != null) {
+      gameCollection = FirebaseFirestore.instance
+          .collection('tournaments')
+          .doc(widget.tournamentId!)
+          .collection('matches');
+    } else {
+      gameCollection = FirebaseFirestore.instance.collection('games');
+    }
+
+    return gameCollection.doc(widget.roomCode).snapshots();
+  }
+
+  bool _isShowingDrawOfferDialog = false;
+
+  void _handleDrawOffer(Map<String, dynamic> data) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    final drawOfferedBy = data['drawOfferedBy'];
+    final drawAcceptedBy = data['drawAcceptedBy'];
+
+    // Check if a draw offer was made by the opponent
+    if (drawOfferedBy != null &&
+        drawOfferedBy != currentUser.uid &&
+        !_isShowingDrawOfferDialog &&
+        drawAcceptedBy == null) {
+      _isShowingDrawOfferDialog = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showDrawOfferDialog();
+      });
+    }
+
+    // Check if draw was accepted
+    if (drawAcceptedBy != null && data['gameStatus'] == 'draw') {
+      // Game ended in draw, show game end dialog
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showGameEndDialog(
+              _gameProvider, false); // Draw is neither win nor loss
+        }
+      });
+    }
+
+    // Reset draw offer dialog flag if draw offer was cleared
+    if (drawOfferedBy == null) {
+      _isShowingDrawOfferDialog = false;
+    }
   }
 
   Widget _buildPlayerInfo({
@@ -587,7 +649,7 @@ class _GameScreenState extends State<GameScreen> {
             provider.resetGameState();
             // Navigate to home
             Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (context) => BottomNavBar(key: bottomNavBarKey)),
+              MaterialPageRoute(builder: (context) => const BottomNavBar()),
               (route) => false,
             );
           },
@@ -617,14 +679,14 @@ class _GameScreenState extends State<GameScreen> {
                   _confirmResign();
                 },
               ),
-              // ListTile(
-              //   leading: const Icon(Icons.handshake),
-              //   title: const Text('Offer Draw'),
-              //   onTap: () {
-              //     Navigator.pop(context);
-              //     _confirmDraw();
-              //   },
-              // ),
+              ListTile(
+                leading: const Icon(Icons.handshake),
+                title: const Text('Offer Draw'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDraw();
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.exit_to_app),
                 title: const Text('Leave Game'),
@@ -674,7 +736,7 @@ class _GameScreenState extends State<GameScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Offer Draw'),
-          content: const Text('Do you want to offer a draw?'),
+          content: const Text('Do you want to offer a draw to your opponent?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -684,7 +746,7 @@ class _GameScreenState extends State<GameScreen> {
               onPressed: () {
                 Navigator.pop(context);
                 print("🎮 GameScreen: Player confirmed draw offer");
-                _gameProvider.offerDraw();
+                _offerDraw();
               },
               child: const Text('Offer Draw'),
             ),
@@ -692,6 +754,139 @@ class _GameScreenState extends State<GameScreen> {
         );
       },
     );
+  }
+
+  Future<void> _offerDraw() async {
+    print("🎮 GameScreen: Offering draw to opponent");
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      // Update game document to indicate draw offer
+      CollectionReference<Map<String, dynamic>> gameCollection;
+      if (widget.tournamentId != null) {
+        gameCollection = FirebaseFirestore.instance
+            .collection('tournaments')
+            .doc(widget.tournamentId!)
+            .collection('matches');
+      } else {
+        gameCollection = FirebaseFirestore.instance.collection('games');
+      }
+
+      await gameCollection.doc(widget.roomCode).update({
+        'drawOfferedBy': currentUser.uid,
+        'drawOfferedAt': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Draw offer sent to opponent'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    } catch (e) {
+      print("❌ GameScreen: Error offering draw: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to send draw offer'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showDrawOfferDialog() {
+    print("🎮 GameScreen: Showing draw offer dialog");
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Draw Offer'),
+          content:
+              Text('${_getOpponentName()} has offered a draw. Do you accept?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _rejectDraw();
+              },
+              child: const Text('Reject'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _acceptDraw();
+              },
+              child: const Text('Accept'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _acceptDraw() async {
+    print("🎮 GameScreen: Accepting draw offer");
+    try {
+      CollectionReference<Map<String, dynamic>> gameCollection;
+      if (widget.tournamentId != null) {
+        gameCollection = FirebaseFirestore.instance
+            .collection('tournaments')
+            .doc(widget.tournamentId!)
+            .collection('matches');
+      } else {
+        gameCollection = FirebaseFirestore.instance.collection('games');
+      }
+
+      await gameCollection.doc(widget.roomCode).update({
+        'gameStatus': 'draw',
+        'winner': null,
+        'drawAcceptedBy': FirebaseAuth.instance.currentUser?.uid,
+        'drawAcceptedAt': FieldValue.serverTimestamp(),
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Draw accepted! Game ended in a draw.'),
+          backgroundColor: Colors.grey,
+        ),
+      );
+    } catch (e) {
+      print("❌ GameScreen: Error accepting draw: $e");
+    } finally {
+      _isShowingDrawOfferDialog = false;
+    }
+  }
+
+  Future<void> _rejectDraw() async {
+    print("🎮 GameScreen: Rejecting draw offer");
+    try {
+      CollectionReference<Map<String, dynamic>> gameCollection;
+      if (widget.tournamentId != null) {
+        gameCollection = FirebaseFirestore.instance
+            .collection('tournaments')
+            .doc(widget.tournamentId!)
+            .collection('matches');
+      } else {
+        gameCollection = FirebaseFirestore.instance.collection('games');
+      }
+
+      await gameCollection.doc(widget.roomCode).update({
+        'drawOfferedBy': null,
+        'drawOfferedAt': null,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Draw offer rejected. Game continues.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    } catch (e) {
+      print("❌ GameScreen: Error rejecting draw: $e");
+    } finally {
+      _isShowingDrawOfferDialog = false;
+    }
   }
 
   void _confirmLeaveGame() {

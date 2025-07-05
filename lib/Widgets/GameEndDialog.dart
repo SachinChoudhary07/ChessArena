@@ -52,7 +52,9 @@ class _GameEndDialogState extends State<GameEndDialog> {
       if (gameDoc.exists) {
         gameData = gameDoc.data();
         final entryFee = gameData?['entryFee'] ?? 0;
-        prizeAmount = entryFee > 0 ? entryFee * 0.8 : 0;
+        // Calculate prize amount: total pool (2 * entry fee) minus 18% admin commission
+        final totalPrizePool = entryFee * 2;
+        prizeAmount = entryFee > 0 ? totalPrizePool * 0.82 : 0;
       }
 
       // Get current user and opponent Elo ratings to calculate proper Elo change
@@ -149,18 +151,18 @@ class _GameEndDialogState extends State<GameEndDialog> {
           children: [
             // Game Result Header
             Icon(
-              widget.youWon ? Icons.emoji_events : Icons.sentiment_dissatisfied,
+              _isDraw() ? Icons.handshake : (widget.youWon ? Icons.emoji_events : Icons.sentiment_dissatisfied),
               size: 64,
-              color: widget.youWon ? Colors.amber : Colors.grey,
+              color: _isDraw() ? Colors.blue : (widget.youWon ? Colors.amber : Colors.grey),
             ),
             const SizedBox(height: 16),
 
             Text(
-              widget.youWon ? '🎉 Victory!' : '😔 Defeat',
+              _isDraw() ? '🤝 Draw!' : (widget.youWon ? '🎉 Victory!' : '😔 Defeat'),
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: widget.youWon ? Colors.green : Colors.red,
+                color: _isDraw() ? Colors.blue : (widget.youWon ? Colors.green : Colors.red),
               ),
             ),
             const SizedBox(height: 8),
@@ -204,10 +206,8 @@ class _GameEndDialogState extends State<GameEndDialog> {
                     const Divider(height: 20),
                     _buildDetailRow(
                       'Prize Money',
-                      widget.youWon
-                          ? '+₹${prizeAmount!.toStringAsFixed(0)}'
-                          : '₹0',
-                      valueColor: widget.youWon ? Colors.green : null,
+                      _isDraw() ? 'Refunded ₹${(prizeAmount! / 2).toStringAsFixed(0)}' : (widget.youWon ? '+₹${prizeAmount!.toStringAsFixed(0)}' : '₹0'),
+                      valueColor: _isDraw() ? Colors.blue : (widget.youWon ? Colors.green : null),
                     ),
                   ],
                   if (eloChange != null) ...[
@@ -339,5 +339,9 @@ class _GameEndDialogState extends State<GameEndDialog> {
     // Calculate based on remaining time vs initial time
     final timeLimit = gameData?['time'] ?? '10 min';
     return 'Time Control: $timeLimit';
+  }
+
+  bool _isDraw() {
+    return widget.gameProvider.gameStatus == 'draw';
   }
 }

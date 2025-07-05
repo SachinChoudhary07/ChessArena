@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Screens/GameScreens/GamePlay.dart';
@@ -8,7 +9,6 @@ import 'package:chess_cash/Services/navigation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 class PaidMatchmaking extends StatefulWidget {
   final String time;
@@ -24,7 +24,8 @@ class PaidMatchmaking extends StatefulWidget {
   State<PaidMatchmaking> createState() => _PaidMatchmakingState();
 }
 
-class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProviderStateMixin {
+class _PaidMatchmakingState extends State<PaidMatchmaking>
+    with SingleTickerProviderStateMixin {
   bool isSearching = true;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -74,7 +75,8 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
 
   Future<void> _initializeUserData() async {
     currentUserId = _auth.currentUser!.uid;
-    final userDoc = await _firestore.collection('users').doc(currentUserId).get();
+    final userDoc =
+        await _firestore.collection('users').doc(currentUserId).get();
     final userData = userDoc.data() ?? {};
 
     setState(() {
@@ -82,13 +84,14 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
       currentUserElo = userData['eloRating']?.round() ?? 0;
       currentUserName = userData['username']?.toString();
     });
-    
+
     _startMatchmaking(0);
   }
 
   Future<void> _startMatchmaking(int retryCount) async {
     if (retryCount == 0) {
-      final docRef = _firestore.collection('paid_matchmaking_queue').doc(currentUserId);
+      final docRef =
+          _firestore.collection('paid_matchmaking_queue').doc(currentUserId);
       await docRef.set({
         'uid': currentUserId,
         'eloRating': currentUserElo,
@@ -111,7 +114,7 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
         .snapshots()
         .listen((snapshot) async {
       final now = DateTime.now();
-      
+
       // Check if there are any other players in the queue
       bool foundSuitableOpponent = false;
       int availableOpponents = 0;
@@ -125,8 +128,9 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
         final String opponentAmount = data['amount'];
 
         if (opponentId == currentUserId) continue;
-        if (opponentTime != widget.time || opponentAmount != widget.amount) continue;
-        
+        if (opponentTime != widget.time || opponentAmount != widget.amount)
+          continue;
+
         availableOpponents++;
 
         final waitingDuration = now.difference(timestamp.toDate()).inSeconds;
@@ -138,18 +142,20 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
           break;
         }
       }
-      
+
       // Update status based on available opponents
       if (mounted) {
         if (availableOpponents == 0) {
           setState(() {
             _searchStatus = "Searching for opponent...";
-            _searchSubStatus = "You're the first player! Waiting for others to join...";
+            _searchSubStatus =
+                "You're the first player! Waiting for others to join...";
           });
         } else if (!foundSuitableOpponent && availableOpponents > 0) {
           setState(() {
             _searchStatus = "Players available but not suitable";
-            _searchSubStatus = "Found $availableOpponents players, but none match your skill level.";
+            _searchSubStatus =
+                "Found $availableOpponents players, but none match your skill level.";
           });
         }
       }
@@ -171,7 +177,7 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
   Future<void> _createGameRoom(String opponentId) async {
     isSearching = false;
     await matchmakingListener?.cancel();
-    
+
     // Reset search status when match is found
     if (mounted) {
       setState(() {
@@ -206,18 +212,20 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
       return;
     }
 
-    final currentUserTimestamp = currentUserDoc.data()?['timestamp'] as Timestamp;
+    final currentUserTimestamp =
+        currentUserDoc.data()?['timestamp'] as Timestamp;
     final opponentTimestamp = opponentDoc.data()?['timestamp'] as Timestamp;
 
     try {
       await _deductEntryFee(currentUserId);
-      await _deductEntryFee(opponentId);
-      
+      // await _deductEntryFee(opponentId);
+
       // Show success message after entry fee deduction
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Entry fee of ${widget.amount} deducted successfully!'),
+            content:
+                Text('Entry fee of ${widget.amount} deducted successfully!'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 3),
           ),
@@ -247,9 +255,15 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
       });
       gameId = gameDoc.id;
     } else {
-      await _firestore.collection('paid_matchmaking_queue').doc(currentUserId).delete();
-      await _firestore.collection('paid_matchmaking_queue').doc(opponentId).delete();
-      
+      await _firestore
+          .collection('paid_matchmaking_queue')
+          .doc(currentUserId)
+          .delete();
+      await _firestore
+          .collection('paid_matchmaking_queue')
+          .doc(opponentId)
+          .delete();
+
       await Future.delayed(const Duration(milliseconds: 500));
 
       final querySnapshot = await _firestore
@@ -330,7 +344,8 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
     return board;
   }
 
-  Future<void> _initializeGameData(Map<String, dynamic> roomData, String roomCode) async {
+  Future<void> _initializeGameData(
+      Map<String, dynamic> roomData, String roomCode) async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
@@ -460,7 +475,8 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
                           if (_isAutoCancelling) ...[
                             const SizedBox(height: 16),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 color: Colors.red.withOpacity(0.1),
                                 border: Border.all(color: Colors.red, width: 1),
@@ -615,11 +631,14 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
   }
 
   Future<void> _handleCancel() async {
-    await _firestore.collection('paid_matchmaking_queue').doc(currentUserId).delete();
+    await _firestore
+        .collection('paid_matchmaking_queue')
+        .doc(currentUserId)
+        .delete();
     await matchmakingListener?.cancel();
     _waitingTimer?.cancel();
     _countdownTimer?.cancel();
-    
+
     if (mounted) {
       Navigator.pop(context);
     }
@@ -654,7 +673,8 @@ class _PaidMatchmakingState extends State<PaidMatchmaking> with SingleTickerProv
     if (_waitingTimeSeconds >= 60 && !_showNoPlayersMessage) {
       setState(() {
         _searchStatus = "No players available right now";
-        _searchSubStatus = "Try again in a few minutes or try a different amount";
+        _searchSubStatus =
+            "Try again in a few minutes or try a different amount";
         _showNoPlayersMessage = true;
       });
 

@@ -105,7 +105,7 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                 }),
                 _buildButton(AppConstants.joinPaidContest, Icons.attach_money,
                     ColorResources.secondaryColor, () {
-                  push(context, const PlayPaidMatch());
+                  push(context, PlayPaidMatch(defaultTime: selectedTime));
                 }),
                 _buildButton(AppConstants.tournaments, Icons.emoji_events,
                     ColorResources.secondaryColor, () {

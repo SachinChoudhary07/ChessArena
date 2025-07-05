@@ -575,7 +575,6 @@ class AutProvider with ChangeNotifier {
             SizedBox(height: 12),
             Text('📧 Email: support@chess4cash.com'),
             Text('📱 WhatsApp: +91 9876543210'),
-            Text('💬 Telegram: @chess4cash_support'),
           ],
         ),
         actions: [
