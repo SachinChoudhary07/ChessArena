@@ -134,9 +134,11 @@ class _GameHistoryScreenState extends State<GameHistoryScreen>
                         Text(
                           "₹ ${game['prize'].toString()}",
                           style: TextStyle(
-                              color: game['prize'].toString() == "0"
-                                  ? ColorResources.secondaryColor
-                                  : Colors.green),
+                              color: game['result'].toString() == 'loss'
+                                  ? Colors.red
+                                  : game['prize'].toString() == "0"
+                                      ? ColorResources.secondaryColor
+                                      : Colors.green),
                         )
                       ],
                     ),

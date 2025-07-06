@@ -610,32 +610,34 @@ class _CreateTournamentState extends State<CreateTournament>
 
                 if (tournaments.isEmpty) {
                   return const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.emoji_events,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'No Contest joined yet',
-                          style: TextStyle(
-                            fontSize: 16,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.emoji_events,
+                            size: 64,
                             color: Colors.grey,
                           ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Join a Contest using a room code above',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
+                          SizedBox(height: 16),
+                          Text(
+                            'No Contest joined yet',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey,
+                            ),
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                          SizedBox(height: 8),
+                          Text(
+                            'Join a Contest using a room code above',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }
@@ -825,23 +827,16 @@ class _CreateTournamentState extends State<CreateTournament>
                                       color: Colors.white70, fontSize: 15),
                                 ),
                                 Text(
-                                  status == 'ongoing'
-                                      ? 'Joined'
-                                      : status.toUpperCase(),
+                                  _getStatusText(status, endDate),
                                   style: TextStyle(
-                                    color: status == 'ongoing'
-                                        ? Colors.green
-                                        : status == 'completed'
-                                            ? Colors.blue
-                                            : status == 'cancelled'
-                                                ? Colors.red
-                                                : Colors.orange,
+                                    color: _getStatusColor(status, endDate),
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15,
                                   ),
-                                ),
+                                ),  
                               ],
                             ),
+                      
                             const SizedBox(height: 14),
 
                             // Action Buttons
@@ -859,8 +854,8 @@ class _CreateTournamentState extends State<CreateTournament>
                                           MaterialPageRoute(
                                             builder: (context) =>
                                                 TournamentDetailsScreen(
-                                              tournamentId: tournament.id,
-                                            ),
+                                                    tournamentId: tournament.id,
+                                                    isFromTournament: false),
                                           ),
                                         );
                                       },
@@ -895,7 +890,7 @@ class _CreateTournamentState extends State<CreateTournament>
                                           final tournamentData = tournament
                                               .data() as Map<String, dynamic>?;
                                           final shareText =
-                                              'Check out this Contest: ${tournamentData?['name']} and room code: ${tournamentData?['roomCode']}';
+                                              "🔥 Don't miss out on ${tournamentData?['name']}! Use room code: ${tournamentData?['roomCode']} to join the action!";
 
                                           await Share.share(shareText);
 
@@ -946,83 +941,45 @@ class _CreateTournamentState extends State<CreateTournament>
               },
             ),
           ),
-
           const SizedBox(height: 16),
-          // const Card(
-          //   child: Padding(
-          //     padding: EdgeInsets.all(16.0),
-          //     child: Column(
-          //       children: [
-          //         Icon(
-          //           Icons.info_outline,
-          //           size: 48,
-          //           color: Colors.blue,
-          //         ),
-          //         SizedBox(height: 16),
-          //         Text(
-          //           'How to Join',
-          //           style: TextStyle(
-          //             fontSize: 18,
-          //             fontWeight: FontWeight.bold,
-          //           ),
-          //         ),
-          //         SizedBox(height: 8),
-          //         Text(
-          //           '1. Ask the tournament creator for the room code\n2. Enter the 6-character room code above\n3. Click "Join Tournament" to participate',
-          //           textAlign: TextAlign.center,
-          //         ),
-          //       ],
-          //     ),
-          //   ),
-          // ),
         ],
       ),
     );
   }
 
-  Widget _buildDetailItem(String label, String value, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: Colors.grey[600]),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+  String _getStatusText(String status, DateTime? endDate) {
+    // If tournament has ended but status is still pending, show as completed
+    if (endDate != null && DateTime.now().isAfter(endDate) && status.toLowerCase() == 'pending') {
+      return 'Completed';
+    }
+
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return 'Pending';
+      case 'active':
+        return 'Active';
+      case 'completed':
+        return 'Completed';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return 'Unknown';
+    }
   }
 
-  Color _getStatusColor(String status) {
+  Color _getStatusColor(String status, DateTime? endDate) {
+    // If tournament has ended but status is still pending, show as completed
+    if (endDate != null && DateTime.now().isAfter(endDate) && status.toLowerCase() == 'pending') {
+      return Colors.blue;
+    }
+    
     switch (status.toLowerCase()) {
       case 'pending':
         return Colors.orange;
-      case 'upcoming':
-        return Colors.blue;
-      case 'ongoing':
+      case 'active':
         return Colors.green;
       case 'completed':
-        return Colors.purple;
+        return Colors.blue;
       case 'cancelled':
         return Colors.red;
       default:

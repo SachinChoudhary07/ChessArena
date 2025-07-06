@@ -9,11 +9,10 @@ import 'package:intl/intl.dart';
 
 class TournamentDetailsScreen extends StatelessWidget {
   final String tournamentId;
+  bool isFromTournament;
 
-  const TournamentDetailsScreen({
-    super.key,
-    required this.tournamentId,
-  });
+  TournamentDetailsScreen(
+      {super.key, required this.tournamentId, this.isFromTournament = true});
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +81,7 @@ class TournamentDetailsScreen extends StatelessWidget {
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('tournaments')
+          .collection(isFromTournament ? 'tournaments' : 'user_tournaments')
           .doc(tournamentId)
           .snapshots(),
       builder: (context, snapshot) {
