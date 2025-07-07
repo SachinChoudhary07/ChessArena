@@ -17,14 +17,20 @@ class PlayPaidMatch extends StatefulWidget {
 }
 
 class _PlayPaidMatchState extends State<PlayPaidMatch> {
-
   String selectedFee = '₹100';
   final _formKey = GlobalKey<FormState>();
   final TextEditingController gameNameController = TextEditingController();
-  
+
   // Add filter state
   String? selectedTimeFilter;
-  final List<String> timeOptions = ['All', '1 min', '3 min', '5 min', '10 min', '15 min'];
+  final List<String> timeOptions = [
+    'All',
+    '1 min',
+    '3 min',
+    '5 min',
+    '10 min',
+    '15 min'
+  ];
 
   @override
   void initState() {
@@ -153,14 +159,16 @@ class _PlayPaidMatchState extends State<PlayPaidMatch> {
   }
 
   // Filter matches based on selected time
-  List<QueryDocumentSnapshot> _filterMatches(List<QueryDocumentSnapshot> matches) {
+  List<QueryDocumentSnapshot> _filterMatches(
+      List<QueryDocumentSnapshot> matches) {
     if (selectedTimeFilter == null || selectedTimeFilter == 'All') {
       return matches;
     }
     return matches.where((match) {
       final data = match.data() as Map<String, dynamic>;
       // Check multiple possible field names for time control
-      final timeControl = data['timeControl'] ?? data['timecontrol'] ?? data['time'] ?? '';
+      final timeControl =
+          data['timeControl'] ?? data['timecontrol'] ?? data['time'] ?? '';
 
       // Extract the numeric value from the time control (e.g., "3" from "3 min")
       final numericValue = selectedTimeFilter!.split(' ')[0];
@@ -183,7 +191,8 @@ class _PlayPaidMatchState extends State<PlayPaidMatch> {
               decoration: BoxDecoration(
                 color: ColorResources.secondaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: ColorResources.secondaryColor.withOpacity(0.3)),
+                border: Border.all(
+                    color: ColorResources.secondaryColor.withOpacity(0.3)),
               ),
               child: Text(
                 selectedTimeFilter!,
@@ -232,7 +241,8 @@ class _PlayPaidMatchState extends State<PlayPaidMatch> {
                             value: item,
                             child: Text(
                               item,
-                              style: TextStyle(color: ColorResources.secondaryColor),
+                              style: TextStyle(
+                                  color: ColorResources.secondaryColor),
                             ),
                           ))
                       .toList(),
@@ -242,8 +252,10 @@ class _PlayPaidMatchState extends State<PlayPaidMatch> {
                     });
                   },
                   decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 12),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     hintText: 'Select time control',
                   ),
                   buttonStyleData: const ButtonStyleData(
@@ -263,7 +275,9 @@ class _PlayPaidMatchState extends State<PlayPaidMatch> {
           // Matches List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('paidMatch').snapshots(),
+              stream: FirebaseFirestore.instance
+                  .collection('paidMatch')
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -271,7 +285,7 @@ class _PlayPaidMatchState extends State<PlayPaidMatch> {
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return const Center(child: Text('No paid matches available'));
                 }
-                
+
                 final allMatches = snapshot.data!.docs;
                 final filteredMatches = _filterMatches(allMatches);
 
@@ -311,41 +325,74 @@ class _PlayPaidMatchState extends State<PlayPaidMatch> {
                   padding: const EdgeInsets.all(16),
                   itemCount: filteredMatches.length,
                   itemBuilder: (context, index) {
-                    final data = filteredMatches[index].data() as Map<String, dynamic>;
+                    final data =
+                        filteredMatches[index].data() as Map<String, dynamic>;
                     final entryFee = data['entryFee'] ?? 0;
-                    final time = data['timeControl'] ?? data['timecontrol'] ?? data['time'] ?? '';
+                    final time = data['timeControl'] ??
+                        data['timecontrol'] ??
+                        data['time'] ??
+                        '';
                     const spots = 2;
                     // Calculate prize pool after 18% admin cut
-                    final double entryFeeValue = double.tryParse(entryFee.toString()) ?? 0.0;
+                    final double entryFeeValue =
+                        double.tryParse(entryFee.toString()) ?? 0.0;
                     final int spotsValue = int.tryParse(spots.toString()) ?? 2;
                     const double adminPercent = 18.0;
-                    final double prizePool = entryFeeValue * spotsValue * (1 - adminPercent / 100);
+                    final double prizePool =
+                        entryFeeValue * spotsValue * (1 - adminPercent / 100);
                     return Card(
                       margin: const EdgeInsets.only(bottom: 18),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                       elevation: 4,
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Prize Pool', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
+                            const Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Prize Pool',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 16)),
+                                Text('Entry Fee   ',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 16)),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text('₹${prizePool.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 28)),
+                                Text('₹${prizePool.toStringAsFixed(0)}',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 28)),
                                 SizedBox(
                                   width: 100,
                                   child: ElevatedButton(
-                                    onPressed: () => _startMatchmaking(time.toString(), entryFee.toString()),
+                                    onPressed: () => _startMatchmaking(
+                                        time.toString(), entryFee.toString()),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: ColorResources.secondaryColor,
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      backgroundColor:
+                                          ColorResources.secondaryColor,
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 10),
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(5), // <-- No rounded corners
+                                        borderRadius: BorderRadius.circular(
+                                            5), // <-- No rounded corners
                                       ),
                                     ),
-                                    child: Text('₹$entryFee', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                                    child: Text('₹$entryFee',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: Colors.white)),
                                   ),
                                 ),
                               ],
@@ -360,14 +407,16 @@ class _PlayPaidMatchState extends State<PlayPaidMatch> {
                               children: [
                                 Row(
                                   children: [
-                                    Icon(Icons.emoji_events, color: Colors.amber[700], size: 20),
+                                    Icon(Icons.emoji_events,
+                                        color: Colors.amber[700], size: 20),
                                     const SizedBox(width: 4),
-                                    Text('₹${prizePool.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w500)),
+                                    Text('₹${prizePool.toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w500)),
                                     const SizedBox(width: 12),
-                                    const Icon(Icons.emoji_events_outlined, color: Colors.grey, size: 20),
+                                    const Icon(Icons.timelapse_sharp,
+                                        color: Colors.grey, size: 20),
                                     const SizedBox(width: 4),
-                                    const Text('50%', style: TextStyle(fontWeight: FontWeight.w500)),
-                                    const SizedBox(width: 12),
                                     Text('$time Minutes')
                                   ],
                                 ),
