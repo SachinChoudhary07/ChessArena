@@ -464,9 +464,12 @@ class _GameScreenState extends State<GameScreen> {
     // player always sees their own pieces at the bottom of the screen.
     final shouldFlipBoard = gameProvider.playerColor == PieceColor.black;
 
+    const String lightWoodAsset = 'assets/wood_light.jpg';
+    const String darkWoodAsset = 'assets/wood_dark.png';
+
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.brown, width: 4),
+        border: Border.all(color: const Color(0xFF8B4513), width: 4),
       ),
       child: GridView.builder(
         physics: const NeverScrollableScrollPhysics(),
@@ -492,44 +495,52 @@ class _GameScreenState extends State<GameScreen> {
           final isKingInCheckSquare = gameProvider.kingInCheck != null &&
               gameProvider.kingInCheck == position;
 
+          final String squareAsset = isWhiteSquare ? lightWoodAsset : darkWoodAsset;
+
           return GestureDetector(
             onTap: () => gameProvider.onSquareTapped(row, col),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isKingInCheckSquare
-                    ? const Color.fromARGB(255, 187, 87, 87)
-                    : _getSquareColor(
-                        isWhiteSquare, isSelected, isPossibleMove),
-                border: isPossibleMove
-                    ? Border.all(color: Colors.yellow, width: 2)
-                    : null,
-              ),
-              child: Center(
-                child: piece != null
-                    ? _buildPieceWidget(piece)
-                    : isPossibleMove
-                        ? Container(
-                            width: 14,
-                            height: 14,
-                            decoration: const BoxDecoration(
-                              color: Colors.yellow,
-                              shape: BoxShape.circle,
-                            ),
-                          )
-                        : null,
-              ),
+            child: Stack(
+              children: [
+                // The wood texture background
+                Container(
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage(squareAsset),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                // Overlay for king in check
+                if (isKingInCheckSquare)
+                  Container(
+                    color: const Color.fromARGB(180, 187, 87, 87), // semi-transparent red
+                  ),
+                // Overlay for possible move (only if not king in check)
+                if (isPossibleMove && !isKingInCheckSquare)
+                  Container(
+                    color: const Color.fromARGB(120, 124, 179, 66), // semi-transparent green
+                  ),
+                // The piece or possible move indicator
+                Center(
+                  child: piece != null
+                      ? _buildPieceWidget(piece)
+                      : isPossibleMove
+                          ? Container(
+                              width: 14,
+                              height: 14,
+                              decoration: const BoxDecoration(
+                                color: Colors.grey,
+                                shape: BoxShape.circle,
+                              ),
+                            )
+                          : null,
+                ),
+              ],
             ),
           );
         },
       ),
     );
-  }
-
-  Color _getSquareColor(
-      bool isWhiteSquare, bool isSelected, bool isPossibleMove) {
-    if (isSelected) return Colors.blue;
-    if (isPossibleMove) return Colors.green;
-    return isWhiteSquare ? Colors.white : Colors.brown[300]!;
   }
 
   Widget _buildPieceWidget(ChessPiece piece) {
