@@ -30,6 +30,7 @@ class _GameScreenState extends State<GameScreen> {
   late ChessGameProvider _gameProvider;
   final bool _isInitialized = false;
   bool _isShowingPromotionDialog = false;
+  DocumentSnapshot? _latestGameSnapshot;
 
   @override
   void initState() {
@@ -235,13 +236,28 @@ class _GameScreenState extends State<GameScreen> {
           actions: [
             IconButton(
               icon: const Icon(Icons.more_vert),
-              onPressed: () => _showGameMenu(context),
+              onPressed: () {
+                // We'll get move counts from the latest snapshot
+                final snapshot = _latestGameSnapshot;
+                int moveCountWhite = 0;
+                int moveCountBlack = 0;
+                if (snapshot != null && snapshot.data() != null) {
+                  final data = snapshot.data() as Map<String, dynamic>;
+                  moveCountWhite = (data['moveCountWhite'] ?? 0) as int;
+                  moveCountBlack = (data['moveCountBlack'] ?? 0) as int;
+                }
+                _showGameMenu(context,
+                    moveCountWhite: moveCountWhite,
+                    moveCountBlack: moveCountBlack);
+              },
             ),
           ],
         ),
         body: StreamBuilder<DocumentSnapshot>(
           stream: _getGameStream(),
           builder: (context, snapshot) {
+            // Store the latest snapshot for use in the menu
+            _latestGameSnapshot = snapshot.data;
             if (snapshot.hasData && snapshot.data!.exists) {
               final data = snapshot.data!.data() as Map<String, dynamic>;
               _handleDrawOffer(data);
@@ -401,7 +417,7 @@ class _GameScreenState extends State<GameScreen> {
                 imageUrl: playerImage,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Image.asset(
-                  'assets/images/pawn_image.jpg',
+                  'assets/white_peice/White_King.png',
                   fit: BoxFit.cover,
                 ),
                 errorWidget: (context, url, error) => const Icon(Icons.person),
@@ -424,7 +440,7 @@ class _GameScreenState extends State<GameScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'ELO: ${playerElo.toStringAsFixed(2)}',
+                  'ELO: ${playerElo.toStringAsFixed(0)}',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[600],
@@ -495,7 +511,8 @@ class _GameScreenState extends State<GameScreen> {
           final isKingInCheckSquare = gameProvider.kingInCheck != null &&
               gameProvider.kingInCheck == position;
 
-          final String squareAsset = isWhiteSquare ? lightWoodAsset : darkWoodAsset;
+          final String squareAsset =
+              isWhiteSquare ? lightWoodAsset : darkWoodAsset;
 
           return GestureDetector(
             onTap: () => gameProvider.onSquareTapped(row, col),
@@ -513,12 +530,14 @@ class _GameScreenState extends State<GameScreen> {
                 // Overlay for king in check
                 if (isKingInCheckSquare)
                   Container(
-                    color: const Color.fromARGB(180, 187, 87, 87), // semi-transparent red
+                    color: const Color.fromARGB(
+                        180, 187, 87, 87), // semi-transparent red
                   ),
                 // Overlay for possible move (only if not king in check)
                 if (isPossibleMove && !isKingInCheckSquare)
                   Container(
-                    color: const Color.fromARGB(120, 124, 179, 66), // semi-transparent green
+                    color: const Color.fromARGB(
+                        120, 124, 179, 66), // semi-transparent green
                   ),
                 // The piece or possible move indicator
                 Center(
@@ -672,8 +691,11 @@ class _GameScreenState extends State<GameScreen> {
 // Add this flag to prevent multiple dialogs
   bool _isShowingGameEndDialog = false;
 
-  void _showGameMenu(BuildContext context) {
+  void _showGameMenu(BuildContext context,
+      {required int moveCountWhite, required int moveCountBlack}) {
     print("🎮 GameScreen: Opening game menu");
+    final bool canAbort = moveCountWhite == 0 || moveCountBlack == 0;
+    final bool canResign = moveCountWhite > 0 && moveCountBlack > 0;
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -682,14 +704,24 @@ class _GameScreenState extends State<GameScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ListTile(
-                leading: const Icon(Icons.flag),
-                title: const Text('Resign'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _confirmResign();
-                },
-              ),
+              if (canAbort)
+                ListTile(
+                  leading: const Icon(Icons.cancel),
+                  title: const Text('Abort'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _confirmAbort();
+                  },
+                ),
+              if (canResign)
+                ListTile(
+                  leading: const Icon(Icons.flag),
+                  title: const Text('Resign'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _confirmResign();
+                  },
+                ),
               ListTile(
                 leading: const Icon(Icons.handshake),
                 title: const Text('Offer Draw'),
@@ -698,14 +730,14 @@ class _GameScreenState extends State<GameScreen> {
                   _confirmDraw();
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.exit_to_app),
-                title: const Text('Leave Game'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _confirmLeaveGame();
-                },
-              ),
+              // ListTile(
+              //   leading: const Icon(Icons.exit_to_app),
+              //   title: const Text('Leave Game'),
+              //   onTap: () {
+              //     Navigator.pop(context);
+              //     _confirmLeaveGame();
+              //   },
+              // ),
             ],
           ),
         );
@@ -900,34 +932,34 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  void _confirmLeaveGame() {
-    print("🎮 GameScreen: Showing leave game confirmation dialog");
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Leave Game'),
-          content: Text(
-              "If you leave, your opponent (${_getOpponentName()}) will win the match.\nAre you sure you want to exit?"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                print(
-                    "🎮 GameScreen: Player confirmed leave , that will going to call resign");
-                _gameProvider.resignGame();
-              },
-              child: const Text('Yes, Exit'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  // void _confirmLeaveGame() {
+  //   print("🎮 GameScreen: Showing leave game confirmation dialog");
+  //   showDialog(
+  //     context: context,
+  //     builder: (BuildContext context) {
+  //       return AlertDialog(
+  //         title: const Text('Leave Game'),
+  //         content: Text(
+  //             "If you leave, your opponent (${_getOpponentName()}) will win the match.\nAre you sure you want to exit?"),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () => Navigator.pop(context),
+  //             child: const Text('Cancel'),
+  //           ),
+  //           TextButton(
+  //             onPressed: () async {
+  //               Navigator.pop(context);
+  //               print(
+  //                   "🎮 GameScreen: Player confirmed leave , that will going to call resign");
+  //               _gameProvider.resignGame();
+  //             },
+  //             child: const Text('Yes, Exit'),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 
   void _showPromotionDialog(ChessGameProvider gameProvider) {
     showDialog(
@@ -980,6 +1012,34 @@ class _GameScreenState extends State<GameScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _confirmAbort() {
+    print("🎮 GameScreen: Showing abort confirmation dialog");
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Abort Game'),
+          content: const Text('Are you sure you want to abort the game?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                print("🎮 GameScreen: Player confirmed abort");
+                // Implement abort logic here (e.g., update Firestore, end game as aborted)
+                _gameProvider.abortGame();
+              },
+              child: const Text('Abort'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

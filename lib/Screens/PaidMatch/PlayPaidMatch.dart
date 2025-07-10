@@ -29,7 +29,9 @@ class _PlayPaidMatchState extends State<PlayPaidMatch> {
     '3 min',
     '5 min',
     '10 min',
-    '15 min'
+    '15 min',
+    '30 min',
+    '60 min'
   ];
 
   @override

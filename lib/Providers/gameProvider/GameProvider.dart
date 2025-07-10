@@ -926,6 +926,12 @@ class ChessGameProvider with ChangeNotifier {
       }
     }
 
+    // Determine which player moved
+    String? movedColor;
+    if (move != null) {
+      movedColor = move.piece.color == PieceColor.white ? 'white' : 'black';
+    }
+
     final data = {
       'boardState': boardState,
       'currentPlayer': _currentPlayer.toString().split('.').last,
@@ -935,6 +941,8 @@ class ChessGameProvider with ChangeNotifier {
       'blackTimeLeft': _blackTimeLeft,
       'lastMove': move?.toMap(),
       'lastUpdated': FieldValue.serverTimestamp(),
+      if (movedColor == 'white') 'moveCountWhite': FieldValue.increment(1),
+      if (movedColor == 'black') 'moveCountBlack': FieldValue.increment(1),
     };
 
     (tournamentId != null
@@ -959,6 +967,36 @@ class ChessGameProvider with ChangeNotifier {
     print("🎲 GameProvider: Player $_playerColor resigned");
     final winner = _playerColor == PieceColor.white ? 'black' : 'white';
     _endGame(winner, 'resignation');
+  }
+
+  // Abort game
+  void abortGame() async {
+    print("🎲 GameProvider: Player requested abort");
+    _gameStatus = 'abort';
+    _winner = null;
+    _gameTimer?.cancel();
+
+    // Refund logic for abort
+    final gameDoc = await _firestore.collection('games').doc(_roomCode).get();
+    final gameData = gameDoc.data();
+    final entryFeeRaw = gameData?['entryFee'] ?? gameData?['amount'] ?? 0;
+    final entryFeeAmount = entryFeeRaw is String ? int.tryParse(entryFeeRaw) ?? 0 : (entryFeeRaw is num ? entryFeeRaw.toInt() : 0);
+
+    if (entryFeeAmount > 0 && gameData?['balanceUpdated'] != true) {
+      await _firestore.runTransaction((transaction) async {
+        final currentGameDoc = await transaction.get(_firestore.collection('games').doc(_roomCode));
+        if (currentGameDoc.data()?['balanceUpdated'] == true) return;
+
+        transaction.update(_firestore.collection('users').doc(_playerId), {'Balance': FieldValue.increment(entryFeeAmount)});
+        transaction.update(_firestore.collection('users').doc(_opponentId!), {'Balance': FieldValue.increment(entryFeeAmount)});
+        transaction.update(_firestore.collection('games').doc(_roomCode), {'balanceUpdated': true});
+      });
+      _balanceUpdated = true;
+      print("💰 GameProvider: Refunded ₹$entryFeeAmount to both players for abort");
+    }
+
+    _updateGameInFirestore(null);
+    notifyListeners();
   }
 
   // Format time for display

@@ -43,7 +43,7 @@ class _GameEndDialogState extends State<GameEndDialog> {
 
   Future<void> _loadGameData() async {
     try {
-      // Get game data for prize information
+      // Always load game data for prize information
       final gameDoc = await FirebaseFirestore.instance
           .collection('games')
           .doc(widget.roomCode)
@@ -55,6 +55,12 @@ class _GameEndDialogState extends State<GameEndDialog> {
         // Calculate prize amount: total pool (2 * entry fee) minus 18% admin commission
         final totalPrizePool = entryFee * 2;
         prizeAmount = entryFee > 0 ? totalPrizePool * 0.82 : 0;
+      }
+
+      // If game is aborted, skip ELO and winner logic, but keep prizeAmount
+      if (widget.gameProvider.gameStatus == 'abort') {
+        if (mounted) setState(() {});
+        return;
       }
 
       // Get current user and opponent Elo ratings to calculate proper Elo change
@@ -138,12 +144,11 @@ class _GameEndDialogState extends State<GameEndDialog> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: widget.youWon
-                ? [
-                    Colors.green.withOpacity(0.1),
-                    Colors.green.withOpacity(0.05)
-                  ]
-                : [Colors.red.withOpacity(0.1), Colors.red.withOpacity(0.05)],
+            colors: _isAborted()
+                ? [Colors.blueGrey.withOpacity(0.1), Colors.blueGrey.withOpacity(0.05)]
+                : widget.youWon
+                    ? [Colors.green.withOpacity(0.1), Colors.green.withOpacity(0.05)]
+                    : [Colors.red.withOpacity(0.1), Colors.red.withOpacity(0.05)],
           ),
         ),
         child: Column(
@@ -151,18 +156,34 @@ class _GameEndDialogState extends State<GameEndDialog> {
           children: [
             // Game Result Header
             Icon(
-              _isDraw() ? Icons.handshake : (widget.youWon ? Icons.emoji_events : Icons.sentiment_dissatisfied),
+              _isAborted()
+                  ? Icons.info_outline
+                  : _isDraw()
+                      ? Icons.handshake
+                      : (widget.youWon ? Icons.emoji_events : Icons.sentiment_dissatisfied),
               size: 64,
-              color: _isDraw() ? Colors.blue : (widget.youWon ? Colors.amber : Colors.grey),
+              color: _isAborted()
+                  ? Colors.blueGrey
+                  : _isDraw()
+                      ? Colors.blue
+                      : (widget.youWon ? Colors.amber : Colors.grey),
             ),
             const SizedBox(height: 16),
 
             Text(
-              _isDraw() ? '🤝 Draw!' : (widget.youWon ? '🎉 Victory!' : '😔 Defeat'),
+              _isAborted()
+                  ? 'Game Ended'
+                  : _isDraw()
+                      ? '🤝 Draw!'
+                      : (widget.youWon ? '🎉 Victory!' : '😔 Defeat'),
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: _isDraw() ? Colors.blue : (widget.youWon ? Colors.green : Colors.red),
+                color: _isAborted()
+                    ? Colors.blueGrey
+                    : _isDraw()
+                        ? Colors.blue
+                        : (widget.youWon ? Colors.green : Colors.red),
               ),
             ),
             const SizedBox(height: 8),
@@ -199,18 +220,32 @@ class _GameEndDialogState extends State<GameEndDialog> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildDetailRow('Winner', winnerName),
+                  if (!_isAborted()) ...[
+                    _buildDetailRow('Winner', winnerName),
+                  ],
                   _buildDetailRow('Game Mode', _getGameMode()),
                   _buildDetailRow('Duration', _getGameDuration()),
-                  if (prizeAmount != null && prizeAmount! > 0) ...[
+                  if (!_isAborted() && prizeAmount != null && prizeAmount! > 0) ...[
                     const Divider(height: 20),
                     _buildDetailRow(
                       'Prize Money',
-                      _isDraw() ? 'Refunded ₹${(prizeAmount! / 2).toStringAsFixed(0)}' : (widget.youWon ? '+₹${prizeAmount!.toStringAsFixed(0)}' : '₹0'),
+                      _isDraw() ? 'Refunded ₹{(prizeAmount! / 2).toStringAsFixed(0)}' : (widget.youWon ? '+₹${prizeAmount!.toStringAsFixed(0)}' : '₹0'),
                       valueColor: _isDraw() ? Colors.blue : (widget.youWon ? Colors.green : null),
                     ),
                   ],
-                  if (eloChange != null) ...[
+                  if (_isAborted() && prizeAmount != null && prizeAmount! > 0) ...[
+                    const Divider(height: 20),
+                    const Text(
+                      'Entry fee will be refund in some time.',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                  if (!_isAborted() && eloChange != null) ...[
                     const Divider(height: 20),
                     _buildDetailRow(
                       'Your ELO',
@@ -325,6 +360,8 @@ class _GameEndDialogState extends State<GameEndDialog> {
         return widget.youWon
             ? 'Your opponent ran out of time'
             : 'You ran out of time';
+      case 'abort':
+        return 'Game was aborted. No result.';
       default:
         return 'Game ended';
     }
@@ -343,5 +380,9 @@ class _GameEndDialogState extends State<GameEndDialog> {
 
   bool _isDraw() {
     return widget.gameProvider.gameStatus == 'draw';
+  }
+
+  bool _isAborted() {
+    return widget.gameProvider.gameStatus == 'abort';
   }
 }
