@@ -34,6 +34,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        ndk {
+            abiFilters "armeabi-v7a", "arm64-v8a"
+        }
     }
 
     // REMOVE OR COMMENT OUT THIS BLOCK, AS IT'S HARDCODING THE WRONG ALIAS
@@ -61,6 +64,7 @@ android {
             signingConfig signingConfigs.release
             minifyEnabled false
             shrinkResources false
+            debuggable false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }

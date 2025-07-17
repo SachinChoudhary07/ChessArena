@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -134,13 +135,14 @@ class AutProvider with ChangeNotifier {
   }
 
   Future<void> signUp(
-      String username,
-      String email,
-      String number,
-      String password,
-      BuildContext context,
-      String imagePath, // Local image file path
-      String skillLevel) async {
+    String username,
+    String email,
+    String number,
+    String password,
+    BuildContext context,
+    String imagePath, // Can be asset or file path
+    String skillLevel,
+  ) async {
     setLoading(true);
     try {
       // Step 1: Create Firebase Auth User
@@ -150,16 +152,54 @@ class AutProvider with ChangeNotifier {
         password: password,
       );
 
-      // Step 2: Upload image to Firebase Storage
       String uid = userCredential.user!.uid;
       String imageUrl = "";
+
+      // Step 2: Upload profile image
       if (imagePath.isNotEmpty) {
         final ref = FirebaseStorage.instance
             .ref()
             .child("profileImages")
             .child("$uid.jpg");
-        await ref.putFile(File(imagePath));
-        imageUrl = await ref.getDownloadURL();
+
+        if (imagePath.startsWith("assets/")) {
+          // 📦 It's an asset image
+          try {
+            final byteData = await rootBundle.load(imagePath);
+            final uploadTask = ref.putData(
+              byteData.buffer.asUint8List(),
+              SettableMetadata(contentType: 'image/jpeg'),
+            );
+            await uploadTask;
+            imageUrl = await ref.getDownloadURL();
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Failed to load asset image."),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        } else {
+          // 📁 It's a file image
+          final file = File(imagePath);
+          print('Image Path: $imagePath');
+          print('File exists: ${file.existsSync()}');
+
+          if (!file.existsSync()) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Image file not found at the given path"),
+                backgroundColor: Colors.red,
+              ),
+            );
+            setLoading(false);
+            return;
+          }
+
+          await ref.putFile(file);
+          imageUrl = await ref.getDownloadURL();
+        }
       }
 
       // Step 3: Save user data in Firestore
@@ -198,12 +238,10 @@ class AutProvider with ChangeNotifier {
       notifyListeners();
     } on FirebaseAuthException catch (e) {
       setLoading(false);
-      print("object");
-      print("error$e");
       _handleAuthError(e, context);
     } catch (e) {
       setLoading(false);
-      print('eeeeeeeeeeeee----------${e.toString()}');
+      print('Unexpected error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(AppConstants.unexpectedError),

@@ -45,6 +45,9 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
   bool _isAutoCancelling = false;
   int _autoCancelCountdown = 6;
   Timer? _countdownTimer;
+  DateTime? _matchmakingStartTime;
+  Timer? _phaseCheckTimer;
+  bool _isInPhase2 = false;
 
   @override
   void initState() {
@@ -85,11 +88,122 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
     _startMatchmaking(0);
   }
 
+  void _startPhaseCheckTimer() {
+    _phaseCheckTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (mounted && _matchmakingStartTime != null) {
+        final elapsedSeconds = DateTime.now().difference(_matchmakingStartTime!).inSeconds;
+
+        // Check if we need to switch to phase 2
+        if (elapsedSeconds >= 15 && !_isInPhase2) {
+          print("🎮 MatchMaking: Timer forcing phase 2 check at ${elapsedSeconds}s");
+          _isInPhase2 = true;
+
+          // Force a queue check by fetching the current queue
+          _firestore.collection('matchmaking_queue').orderBy('timestamp').get().then((snapshot) {
+            if (snapshot.docs.isNotEmpty) {
+              print("🎮 MatchMaking: Forcing queue re-evaluation with ${snapshot.docs.length} players");
+
+              // Manually trigger the matchmaking logic
+              _checkQueueForMatches(snapshot.docs);
+            }
+          });
+        }
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  Future<void> _checkQueueForMatches(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) async {
+    final now = DateTime.now();
+    bool foundSuitableOpponent = false;
+    int availableOpponents = 0;
+
+    for (var doc in docs) {
+      final data = doc.data();
+      final String opponentId = data['uid'];
+      final int opponentElo = data['eloRating'];
+      final Timestamp timestamp = data['timestamp'] ?? Timestamp.now();
+      final String matchTime = data['match_time'] ?? '10';
+
+      if (opponentId == currentUserId) continue;
+
+      availableOpponents++;
+
+      // Time-based matching logic
+      bool isMatch = false;
+
+      // Calculate actual time elapsed since matchmaking started
+      final matchmakingElapsedSeconds = _matchmakingStartTime != null ? now.difference(_matchmakingStartTime!).inSeconds : 0;
+
+      if (matchmakingElapsedSeconds < 15) {
+        // Phase 1: First 15 seconds - ELO-based matching
+        final waitingDuration = now.difference(timestamp.toDate()).inSeconds;
+        final allowedRange = min(100 + (waitingDuration ~/ 30) * 25, 300);
+
+        print(
+            "🎮 MatchMaking: Phase 1 (ELO-based) - Elapsed: ${matchmakingElapsedSeconds}s - Checking opponent - ID: $opponentId, ELO: $opponentElo");
+        print("🎮 MatchMaking: Wait time: ${waitingDuration}s, Allowed ELO range: ±$allowedRange");
+
+        if ((opponentElo - currentUserElo).abs() <= allowedRange && matchTime == widget.time) {
+          isMatch = true;
+        }
+      } else {
+        // Phase 2: After 15 seconds - Match with any player with same time
+        print("🎮 MatchMaking: Phase 2 (Any player) - Elapsed: ${matchmakingElapsedSeconds}s - Checking opponent - ID: $opponentId, ELO: $opponentElo");
+
+        if (matchTime == widget.time) {
+          isMatch = true;
+        }
+      }
+
+      if (isMatch) {
+        print("🎮 MatchMaking: Match found! Opponent ID: $opponentId");
+        foundSuitableOpponent = true;
+        
+        // Add a small random delay to prevent simultaneous game room creation
+        final randomDelay = Random().nextInt(300) + 100; // 100-400ms delay
+        print("🎮 MatchMaking: Adding ${randomDelay}ms delay before creating game room");
+        await Future.delayed(Duration(milliseconds: randomDelay));
+        
+        await _createGameRoom(opponentId);
+        break;
+      }
+    }
+    
+    // Update status based on available opponents and current phase
+    if (mounted) {
+      if (availableOpponents == 0) {
+        setState(() {
+          _searchStatus = "Searching for opponent...";
+          _searchSubStatus = "You're the first player! Waiting for others to join...";
+        });
+      } else if (!foundSuitableOpponent && availableOpponents > 0) {
+        // Calculate actual time elapsed since matchmaking started for status
+        final matchmakingElapsedSeconds = _matchmakingStartTime != null ? now.difference(_matchmakingStartTime!).inSeconds : 0;
+
+        if (matchmakingElapsedSeconds < 15) {
+          setState(() {
+            _searchStatus = "Searching for opponent...";
+            _searchSubStatus = "Found $availableOpponents players, searching for skill-matched opponent...";
+          });
+        } else {
+          setState(() {
+            _searchStatus = "Broadening search...";
+            _searchSubStatus = "Searching among all available players with same time format...";
+          });
+        }
+      }
+    }
+  }
+
   Future<void> _startMatchmaking(int retryCount) async {
     if (retryCount == 0) {
       print("🎮 MatchMaking: Starting matchmaking process first time");
-      final docRef =
-          _firestore.collection('matchmaking_queue').doc(currentUserId);
+      _matchmakingStartTime = DateTime.now(); // Set matchmaking start time
+      _isInPhase2 = false; // Reset phase flag
+      _startPhaseCheckTimer(); // Start the periodic phase check timer
+      final docRef = _firestore.collection('matchmaking_queue').doc(currentUserId);
       await docRef.set({
         'uid': currentUserId,
         'eloRating': currentUserElo,
@@ -99,69 +213,22 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
       print("🎮 MatchMaking: Added to queue - UserID: $currentUserId");
     } else {
       print("🎮 MatchMaking: Starting matchmaking process second time");
+      _matchmakingStartTime = DateTime.now(); // Reset start time for retry
+      _isInPhase2 = false; // Reset phase flag
+      _startPhaseCheckTimer(); // Start the periodic phase check timer
     }
 
-    matchmakingListener = _firestore
-        .collection('matchmaking_queue')
-        .orderBy('timestamp')
-        .snapshots()
-        .listen((snapshot) async {
-      print(
-          "🎮 MatchMaking: Queue updated - ${snapshot.docs.length} players in queue");
-      final now = DateTime.now();
-      
-      // Check if there are any other players in the queue
-      bool foundSuitableOpponent = false;
-      int availableOpponents = 0;
+    matchmakingListener = _firestore.collection('matchmaking_queue').orderBy('timestamp').snapshots().listen((snapshot) async {
+      print("🎮 MatchMaking: Queue updated - ${snapshot.docs.length} players in queue");
 
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final String opponentId = data['uid'];
-        final int opponentElo = data['eloRating'];
-        final Timestamp timestamp = data['timestamp'] ?? Timestamp.now();
-        final String matchTime = data['match_time'] ?? '10';
-
-        if (opponentId == currentUserId) continue;
-        
-        availableOpponents++;
-
-        final waitingDuration = now.difference(timestamp.toDate()).inSeconds;
-        final allowedRange = min(100 + (waitingDuration ~/ 30) * 25, 300);
-
-        print(
-            "🎮 MatchMaking: Checking opponent - ID: $opponentId, ELO: $opponentElo");
-        print(
-            "🎮 MatchMaking: Wait time: ${waitingDuration}s, Allowed ELO range: ±$allowedRange");
-
-        if ((opponentElo - currentUserElo).abs() <= allowedRange &&
-            matchTime == widget.time) {
-          print("🎮 MatchMaking: Match found! Opponent ID: $opponentId");
-          foundSuitableOpponent = true;
-          await _createGameRoom(opponentId);
-          break;
-        }
-      }
-      
-      // Update status based on available opponents
-      if (mounted) {
-        if (availableOpponents == 0) {
-          setState(() {
-            _searchStatus = "Searching for opponent...";
-            _searchSubStatus = "You're the first player! Waiting for others to join...";
-          });
-        } else if (!foundSuitableOpponent && availableOpponents > 0) {
-          setState(() {
-            _searchStatus = "Players available but not suitable";
-            _searchSubStatus = "Found $availableOpponents players, but none match your skill level.";
-          });
-        }
-      }
+      await _checkQueueForMatches(snapshot.docs);
     });
   }
 
   Future<void> _createGameRoom(String opponentId) async {
     print("🎮 GameRoom: Starting room creation with opponent: $opponentId");
     await matchmakingListener?.cancel();
+    _phaseCheckTimer?.cancel(); // Cancel the phase check timer
     print("🎮 GameRoom: Matchmaking listener cancelled");
     
     // Reset search status when match is found
@@ -190,7 +257,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
     print("🎮 GameRoom: Opponent Document Details:");
     print(opponentDoc.data());
 
-    if (!opponentDoc.exists) {
+    if (!opponentDoc.exists || !currentUserDoc.exists) {
       print(
           "❌ GameRoom: One of the players is no longer in the queue. Aborting and restarting search.");
       if (mounted) {
@@ -203,9 +270,23 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
       return;
     }
 
-    final currentUserTimestamp =
-        currentUserDoc.data()?['timestamp'] as Timestamp;
-    final opponentTimestamp = opponentDoc.data()?['timestamp'] as Timestamp;
+    final currentUserData = currentUserDoc.data();
+    final opponentData = opponentDoc.data();
+
+    if (currentUserData == null || opponentData == null) {
+      print("❌ GameRoom: Player data is null. Aborting and restarting search.");
+      if (mounted) {
+        setState(() {
+          _searchStatus = "Searching for opponent...";
+          _searchSubStatus = "Please wait while we find a suitable match";
+        });
+        _startMatchmaking(1);
+      }
+      return;
+    }
+
+    final currentUserTimestamp = currentUserData['timestamp'] as Timestamp;
+    final opponentTimestamp = opponentData['timestamp'] as Timestamp;
 
     print(
         "🎮 GameRoom: Current user wait time: ${DateTime.now().difference(currentUserTimestamp.toDate()).inSeconds}s");
@@ -226,33 +307,60 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
       gameId = gameDoc.id;
       print("🎮 GameRoom: Game created with ID: $gameId");
     } else {
+      print("🎮 GameRoom: Opponent should create game, removing from queue and waiting");
       await _firestore
           .collection('matchmaking_queue')
           .doc(currentUserId)
           .delete();
       await _firestore.collection('matchmaking_queue').doc(opponentId).delete();
       print("🎮 GameRoom: Both players removed from queue");
+      
       print("🎮 GameRoom: Waiting for opponent to create game");
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 1000));
 
-      final querySnapshot = await _firestore
-          .collection('games')
-          .where('player2', isEqualTo: currentUserId)
-          .where('player1', isEqualTo: opponentId)
-          .where('status', isEqualTo: 'ready')
-          .orderBy('createdAt', descending: true)
-          .limit(1)
-          .get();
+      // Try multiple times to find the game
+      int attempts = 0;
+      const maxAttempts = 10;
 
-      if (querySnapshot.docs.isNotEmpty) {
-        gameId = querySnapshot.docs.first.id;
-        print("🎮 GameRoom: Found and joining game with ID: $gameId");
-      } else {
-        print("❌ GameRoom: Failed to find game to join");
+      while (attempts < maxAttempts && gameId == null) {
+        attempts++;
+        print("🎮 GameRoom: Attempt $attempts to find game");
+
+        final querySnapshot = await _firestore
+            .collection('games')
+            .where('player2', isEqualTo: currentUserId)
+            .where('player1', isEqualTo: opponentId)
+            .where('status', isEqualTo: 'ready')
+            .orderBy('createdAt', descending: true)
+            .limit(1)
+            .get();
+
+        if (querySnapshot.docs.isNotEmpty) {
+          gameId = querySnapshot.docs.first.id;
+          print("🎮 GameRoom: Found game with ID: $gameId on attempt $attempts");
+          break;
+        } else {
+          print("🎮 GameRoom: Game not found on attempt $attempts, waiting...");
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      }
+
+      if (gameId == null) {
+        print("❌ GameRoom: Failed to find game after $maxAttempts attempts");
+        // Try to restart matchmaking if game not found
+        if (mounted) {
+          setState(() {
+            _searchStatus = "Connection issue, restarting search...";
+            _searchSubStatus = "Please wait while we reconnect you";
+          });
+          await Future.delayed(const Duration(milliseconds: 1000));
+          _startMatchmaking(1);
+        }
+        return;
       }
     }
 
-    if (gameId != null && mounted) {
+    if (mounted) {
       print("🎮 GameRoom: Navigating to game screen with ID: $gameId");
 
       final roomData = {
@@ -372,14 +480,10 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
   }
 
   void _updateSearchStatus() {
-    if (_waitingTimeSeconds >= 30 && !_showNoPlayersMessage) {
-      setState(() {
-        _searchStatus = "Still searching...";
-        _searchSubStatus = "We're expanding our search to find you a match";
-      });
-    }
-
-    if (_waitingTimeSeconds >= 60 && !_showNoPlayersMessage) {
+    // Only show "no players available" message after both phases have been attempted
+    final matchmakingElapsedSeconds = _matchmakingStartTime != null ? DateTime.now().difference(_matchmakingStartTime!).inSeconds : 0;
+        
+    if (matchmakingElapsedSeconds >= 45 && !_showNoPlayersMessage) {
       setState(() {
         _searchStatus = "No players available right now";
         _searchSubStatus = "Try again in a few minutes or try a different time format";
@@ -418,6 +522,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
     matchmakingListener?.cancel();
     _waitingTimer?.cancel();
     _countdownTimer?.cancel();
+    _phaseCheckTimer?.cancel(); // Cancel the new timer
     super.dispose();
   }
 
@@ -643,6 +748,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
     await matchmakingListener?.cancel();
     _waitingTimer?.cancel();
     _countdownTimer?.cancel();
+    _phaseCheckTimer?.cancel(); // Cancel the new timer
     
     if (mounted) {
       Navigator.pop(context);
