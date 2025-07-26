@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
@@ -10,6 +12,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../Widgets/GameEndDialog.dart';
+
+// -------------------------------------------------------------------------
+// Friend request status enumeration (top-level)
+// -------------------------------------------------------------------------
+
+enum FriendStatus { none, pending, requestReceived, friends }
 
 // screens/game_screen.dart
 class GameScreen extends StatefulWidget {
@@ -32,6 +40,14 @@ class _GameScreenState extends State<GameScreen> {
   bool _isShowingPromotionDialog = false;
   DocumentSnapshot? _latestGameSnapshot;
 
+  // ---------------------------------------------------------
+  // Friend request variables
+  // ---------------------------------------------------------
+  FriendStatus _friendStatus = FriendStatus.none;
+  StreamSubscription<DocumentSnapshot>? _friendSubscription;
+  String? _opponentUID;
+  final bool _showFriendBanner = false;
+
   @override
   void initState() {
     super.initState();
@@ -44,6 +60,8 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void dispose() {
     print("🎮 GameScreen: Disposing game screen");
+    // Cancel friend request listener
+    _friendSubscription?.cancel();
     // _gameProvider.dispose();
     super.dispose();
   }
@@ -102,8 +120,18 @@ class _GameScreenState extends State<GameScreen> {
 
         player1Image = player1Snapshot.data()?['profileImage'] ?? '';
         player2Image = player2Snapshot.data()?['profileImage'] ?? '';
-        player1Elo = player1Snapshot.data()?['eloRating'];
-        player2Elo = player2Snapshot.data()?['eloRating'];
+        player1Elo = player1Snapshot.data()?['eloRating'] ?? 0;
+        player2Elo = player2Snapshot.data()?['eloRating'] ?? 0;
+
+        // Store opponent UID for friend logic
+        _opponentUID =
+            (player1UID == currentUser.uid) ? player2UID : player1UID;
+
+        // Start listening for friend request / friendship status
+        _listenToFriendStatus();
+
+        // Check if already friends
+        _checkExistingFriendship();
 
         PieceColor playerColor;
         if (player1UID == currentUser.uid) {
@@ -220,6 +248,232 @@ class _GameScreenState extends State<GameScreen> {
   //   notifyListeners(); // if inside ChangeNotifier
   // }
 
+  // ---------------------------------------------------------
+  // Friend request Firestore helpers
+  // ---------------------------------------------------------
+
+  String _combinedFriendDocId(String uidA, String uidB) {
+    // Ensure consistent docId irrespective of order
+    return (uidA.compareTo(uidB) < 0) ? '${uidA}_$uidB' : '${uidB}_$uidA';
+  }
+
+  void _listenToFriendStatus() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null || _opponentUID == null) return;
+
+    final docId = _combinedFriendDocId(currentUser.uid, _opponentUID!);
+    _friendSubscription = FirebaseFirestore.instance
+        .collection('friend_requests')
+        .doc(docId)
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
+
+      if (!snapshot.exists) {
+        // Only set to none if not already friends
+        if (_friendStatus != FriendStatus.friends) {
+          setState(() {
+            _friendStatus = FriendStatus.none;
+          });
+        }
+        return;
+      }
+
+      final data = snapshot.data() as Map<String, dynamic>;
+      final status = data['status']; // 'pending', 'accepted', 'rejected'
+      final requester = data['requester'];
+
+      if (status == 'accepted') {
+        setState(() {
+          _friendStatus = FriendStatus.friends;
+        });
+      } else if (status == 'pending') {
+        if (requester == currentUser.uid) {
+          setState(() {
+            _friendStatus = FriendStatus.pending;
+          });
+        } else {
+          // Current user received a request
+          setState(() {
+            _friendStatus = FriendStatus.requestReceived;
+          });
+        }
+      } else if (status == 'rejected') {
+        // Treat rejection same as no request so users can send again
+        setState(() {
+          _friendStatus = FriendStatus.none;
+        });
+      } else {
+        setState(() {
+          _friendStatus = FriendStatus.none;
+        });
+      }
+    });
+  }
+
+  Future<void> _sendFriendRequest() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null || _opponentUID == null) return;
+
+    final docId = _combinedFriendDocId(currentUser.uid, _opponentUID!);
+    await FirebaseFirestore.instance
+        .collection('friend_requests')
+        .doc(docId)
+        .set({
+      'requester': currentUser.uid,
+      'addressee': _opponentUID,
+      'status': 'pending',
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> _acceptFriendRequest() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null || _opponentUID == null) return;
+
+    final docId = _combinedFriendDocId(currentUser.uid, _opponentUID!);
+    final batch = FirebaseFirestore.instance.batch();
+
+    // Update request status
+    final reqRef =
+        FirebaseFirestore.instance.collection('friend_requests').doc(docId);
+    batch.update(reqRef,
+        {'status': 'accepted', 'respondedAt': FieldValue.serverTimestamp()});
+
+    // Add each other to friends subcollection
+    final userRef =
+        FirebaseFirestore.instance.collection('users').doc(currentUser.uid);
+    final oppRef =
+        FirebaseFirestore.instance.collection('users').doc(_opponentUID!);
+
+    batch.set(userRef.collection('friends').doc(_opponentUID!), {
+      'uid': _opponentUID,
+      'since': FieldValue.serverTimestamp(),
+    });
+
+    batch.set(oppRef.collection('friends').doc(currentUser.uid), {
+      'uid': currentUser.uid,
+      'since': FieldValue.serverTimestamp(),
+    });
+
+    await batch.commit();
+  }
+
+  Future<void> _rejectFriendRequest() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null || _opponentUID == null) return;
+
+    final docId = _combinedFriendDocId(currentUser.uid, _opponentUID!);
+
+    // Delete the request document so that a new request can be sent later
+    await FirebaseFirestore.instance
+        .collection('friend_requests')
+        .doc(docId)
+        .delete();
+
+    if (mounted) {
+      setState(() {
+        _friendStatus = FriendStatus.none;
+      });
+    }
+  }
+
+  // ---------------------------------------------------------
+  // Initial check: are we already friends?
+  // ---------------------------------------------------------
+
+  Future<void> _checkExistingFriendship() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null || _opponentUID == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('friends')
+        .doc(_opponentUID!)
+        .get();
+
+    if (doc.exists && mounted) {
+      setState(() {
+        _friendStatus = FriendStatus.friends;
+      });
+    }
+  }
+
+  // ---------------------------------------------------------
+  // UI helpers for friend request action row & banner
+  // ---------------------------------------------------------
+
+  Widget _buildActionRow() {
+    // Only show friend actions for opponent info (top)
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chat),
+            color: Colors.grey,
+            onPressed: () {
+              // Future chat implementation
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Chat feature coming soon!')),
+              );
+            },
+          ),
+          const SizedBox(width: 4),
+          ..._friendActionIcons(),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _friendActionIcons() {
+    switch (_friendStatus) {
+      case FriendStatus.none:
+        return [
+          IconButton(
+            icon: const Icon(Icons.person_add),
+            onPressed: _sendFriendRequest,
+          ),
+        ];
+      case FriendStatus.pending:
+        return [
+          IconButton(
+            icon: Icon(
+              Icons.hourglass_bottom_sharp,
+              color: ColorResources.secondaryColor,
+            ),
+            onPressed: null,
+          ),
+        ];
+      case FriendStatus.friends:
+        return [
+          const IconButton(
+            icon: Icon(
+              Icons.people,
+              color: Colors.green,
+            ),
+            color: Colors.green,
+            onPressed: null,
+          ),
+        ];
+      case FriendStatus.requestReceived:
+        return [
+          IconButton(
+            icon: const Icon(Icons.check),
+            color: Colors.green,
+            onPressed: _acceptFriendRequest,
+          ),
+          IconButton(
+            icon: const Icon(Icons.close),
+            color: Colors.red,
+            onPressed: _rejectFriendRequest,
+          ),
+        ];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -287,6 +541,8 @@ class _GameScreenState extends State<GameScreen> {
                           : gameProvider.whiteTimeLeft,
                       isActive: !gameProvider.isMyTurn,
                     ),
+
+                    _buildActionRow(),
 
                     // Chess board
                     Expanded(
