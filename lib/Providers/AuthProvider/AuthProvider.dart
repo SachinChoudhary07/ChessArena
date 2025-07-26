@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class AutProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -21,6 +22,19 @@ class AutProvider with ChangeNotifier {
 
   bool isLoading = false;
   bool isLoggedIn = false;
+
+  // Save or refresh the device's FCM token in Firestore for this user
+  Future<void> _updateFCMToken(String uid) async {
+    try {
+      final String? token = await FirebaseMessaging.instance.getToken();
+      if (token != null && token.isNotEmpty) {
+        await _firestore.collection(AppConstants.usersCollection).doc(uid).update({AppConstants.fcmTokenField: token});
+      }
+    } catch (e) {
+      // Non-fatal – just log it
+      print('Error updating FCM token: $e');
+    }
+  }
 
   void setLoading(bool value) {
     isLoading = value;
@@ -154,6 +168,8 @@ class AutProvider with ChangeNotifier {
 
       String uid = userCredential.user!.uid;
       String imageUrl = "";
+      // 🔑 Grab FCM token for this brand-new account
+      final String? fcmToken = await FirebaseMessaging.instance.getToken();
 
       // Step 2: Upload profile image
       if (imagePath.isNotEmpty) {
@@ -212,7 +228,7 @@ class AutProvider with ChangeNotifier {
         AppConstants.profileImageField: imageUrl,
         AppConstants.createdAtField: Timestamp.now(),
         AppConstants.deviceInfoField: "Unknown",
-        AppConstants.fcmTokenField: "",
+        AppConstants.fcmTokenField: fcmToken ?? "",
         AppConstants.eloRatingField: 1200,
         AppConstants.gamesPlayedField: 0,
         AppConstants.gamesWonField: 0,
@@ -334,6 +350,8 @@ class AutProvider with ChangeNotifier {
             _showBanDialog(context, banReason);
             return;
           }
+          // 👍 User is allowed – make sure their token is stored
+          await _updateFCMToken(user.uid);
         }
       }
 
@@ -388,6 +406,7 @@ class AutProvider with ChangeNotifier {
 
       User? user = userCredential.user;
       if (user != null) {
+        final String? fcmToken = await FirebaseMessaging.instance.getToken();
         DocumentSnapshot userDoc = await _firestore
             .collection(AppConstants.usersCollection)
             .doc(user.uid)
@@ -404,7 +423,7 @@ class AutProvider with ChangeNotifier {
             AppConstants.profileImageField: user.photoURL ?? "",
             AppConstants.createdAtField: Timestamp.now(),
             AppConstants.deviceInfoField: "Unknown",
-            AppConstants.fcmTokenField: "",
+            AppConstants.fcmTokenField: fcmToken ?? "",
             AppConstants.eloRatingField: 400,
             AppConstants.gamesPlayedField: 0,
             AppConstants.gamesWonField: 0,
@@ -431,6 +450,8 @@ class AutProvider with ChangeNotifier {
             _showBanDialog(context, banReason);
             return;
           }
+          // Existing, non-banned user – refresh their token
+          await _updateFCMToken(user.uid);
         }
       }
       await _setLoginState(true);
@@ -562,16 +583,16 @@ class AutProvider with ChangeNotifier {
             Text('Account Banned', style: TextStyle(color: Colors.red)),
           ],
         ),
-        content: Column(
+        content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Your account has been suspended by the administrator.',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 12),
-            const Text(
+            SizedBox(height: 12),
+            Text(
               'If you believe this is an error, please contact our support team.',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),

@@ -12,6 +12,8 @@ import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
 import 'Providers/gameProvider/GameProvider.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:chess_cash/Services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,12 +30,36 @@ void main() async {
   //         // Or use: AndroidProvider.debug for development
   //         );
 
+  // Register background handler
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // Initialize local notification service
+  await NotificationService().init();
+
+  // Request notification permissions
+  await FirebaseMessaging.instance.requestPermission(alert: true, badge: true, sound: true);
+
+  // Obtain and print FCM token
+  String? token = await FirebaseMessaging.instance.getToken();
+  print('FCM Token: ${token ?? ''}');
+
+  // Listen for messages when the app is in the foreground
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    NotificationService().showNotification(message);
+  });
+
   runApp(
     MultiProvider(
       providers: providers(),
       child: const MyApp(),
     ),
   );
+}
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  await NotificationService().init();
+  await NotificationService().showNotification(message);
 }
 
 class MyApp extends StatelessWidget {
