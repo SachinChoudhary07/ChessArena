@@ -33,6 +33,7 @@ class AppConstants {
   static const String tournaments = 'Tournaments';
   static const String createContest = 'Create/Join Contest';
   static const String playWithFriends = 'Play With Friends';
+  static const String playWithOnlineFriends = 'Play With Online Friends';
 
   //Profile Text
   static const String profile = 'Profile';

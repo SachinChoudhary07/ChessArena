@@ -65,6 +65,7 @@ dependencies:
   share_plus: ^10.0.0
   firebase_messaging:
   flutter_local_notifications:
+  googleapis_auth: ^1.6.0
 
 
 dev_dependencies:
@@ -96,6 +97,7 @@ flutter:
     - assets/black_peice/
     - assets/white_peice/
     - assets/
+    - lib/Firebase/serverKey.json
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

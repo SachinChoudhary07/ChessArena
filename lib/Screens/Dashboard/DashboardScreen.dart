@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../Constant/ui_helper.dart';
+import '../PlayWithOnlineFriends/play_with_online_friend.dart';
 
 class Dashboardscreen extends StatefulWidget {
   const Dashboardscreen({super.key});
@@ -122,6 +123,12 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                     Icons.people_outline_rounded,
                     ColorResources.secondaryColor, () {
                   push(context, const PlayWithFriends());
+                }),
+                _buildButton(
+                    AppConstants.playWithOnlineFriends,
+                    Icons.broadcast_on_personal_rounded,
+                    ColorResources.secondaryColor, () {
+                  push(context, const PlayWithOnlineFriendScreen());
                 }),
                 Helper.heightSizedBox(20),
               ],

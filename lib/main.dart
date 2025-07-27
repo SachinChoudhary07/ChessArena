@@ -5,15 +5,16 @@ import 'package:chess_cash/Providers/CreateTournamentProvider/CreateTournamentPr
 import 'package:chess_cash/Providers/LeaderBoardProvider/LeaderBoardProvider.dart';
 import 'package:chess_cash/Providers/ProfileProvider/ProfileProvider.dart';
 import 'package:chess_cash/Providers/WalletProvider/WalletProvider.dart';
+import 'package:chess_cash/Screens/PlayWithOnlineFriends/play_with_online_friend_provider.dart';
+import 'package:chess_cash/Services/notification_service.dart';
 import 'package:chess_cash/splash_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
 import 'Providers/gameProvider/GameProvider.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:chess_cash/Services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,7 +38,8 @@ void main() async {
   await NotificationService().init();
 
   // Request notification permissions
-  await FirebaseMessaging.instance.requestPermission(alert: true, badge: true, sound: true);
+  await FirebaseMessaging.instance
+      .requestPermission(alert: true, badge: true, sound: true);
 
   // Obtain and print FCM token
   String? token = await FirebaseMessaging.instance.getToken();
@@ -121,6 +123,7 @@ List<SingleChildWidget> providers() {
     ChangeNotifierProvider(create: (context) => WalletProvider()),
     ChangeNotifierProvider(create: (context) => CreateTournamentProvider()),
     ChangeNotifierProvider(create: (context) => ChessGameProvider()),
+    ChangeNotifierProvider(create: (context) => PlayWithOnlineFriendProvider()),
   ];
 }
 
