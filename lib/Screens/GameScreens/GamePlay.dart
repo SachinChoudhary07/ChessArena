@@ -6,6 +6,7 @@ import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Providers/gameProvider/GameProvider.dart';
 import 'package:chess_cash/Widgets/bottomNavBar.dart';
 import 'package:chess_cash/Widgets/loader.dart';
+import 'package:chess_cash/Models/chat_message.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -47,6 +48,7 @@ class _GameScreenState extends State<GameScreen> {
   StreamSubscription<DocumentSnapshot>? _friendSubscription;
   String? _opponentUID;
   final bool _showFriendBanner = false;
+  bool _isChatOpen = false; // Track chat open state
 
   @override
   void initState() {
@@ -412,12 +414,38 @@ class _GameScreenState extends State<GameScreen> {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           IconButton(
-            icon: const Icon(Icons.chat),
+            icon: _isChatOpen ? const Icon(Icons.chat_bubble_outline) : const Icon(Icons.chat),
             color: Colors.grey,
             onPressed: () {
-              // Future chat implementation
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Chat feature coming soon!')),
+              setState(() {
+                _isChatOpen = !_isChatOpen;
+              });
+              if (_isChatOpen) {
+                _showChatInputDialog();
+              }
+            },
+          ),
+
+          // Display the most recent message inline (fades after 15 s)
+          Consumer<ChessGameProvider>(
+            builder: (_, provider, __) {
+              final messages = provider.chatMessages;
+              final latestMessage = messages.isNotEmpty ? messages.last : null;
+              if (latestMessage == null || latestMessage.text.isEmpty) return const SizedBox();
+              // Optionally hide my own messages – uncomment next line if needed
+              // if (latestMessage.senderId == FirebaseAuth.instance.currentUser?.uid) return SizedBox();
+              return Container(
+                padding: const EdgeInsets.only(right: 8.0, left: 8.0, top: 4.0, bottom: 4.0),
+                margin: const EdgeInsets.only(right: 8.0, left: 8.0, top: 4.0, bottom: 4.0),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  latestMessage.text,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[800]),
+                  overflow: TextOverflow.ellipsis,
+                ),
               );
             },
           ),
@@ -472,6 +500,212 @@ class _GameScreenState extends State<GameScreen> {
           ),
         ];
     }
+  }
+
+  // ---------------------------------------------------------
+  // Chat helpers
+  // ---------------------------------------------------------
+  void _showChatInputDialog() {
+    final TextEditingController chatController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext ctx) {
+        // Get keyboard height and adjust bottom sheet accordingly
+        final keyboardHeight = MediaQuery.of(ctx).viewInsets.bottom;
+        final screenHeight = MediaQuery.of(ctx).size.height;
+        final bottomSheetHeight = screenHeight * 0.6 + keyboardHeight;
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: bottomSheetHeight,
+          decoration: const BoxDecoration(
+            color: Color(0xFF2C2C2C), // Dark theme like chess.com
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            children: [
+              // Header with close button
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1E1E1E),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Chat',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        setState(() {
+                          _isChatOpen = false;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              // Chat messages area - will expand from top when keyboard appears
+              Expanded(
+                child: Consumer<ChessGameProvider>(
+                  builder: (_, provider, __) {
+                    final messages = provider.chatMessages;
+                    print("🎮 GameScreen: Chat messages count: ${messages.length}");
+                    if (messages.isNotEmpty) {
+                      print("🎮 GameScreen: Latest message: ${messages.last.text}");
+                    }
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      child: messages.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No messages yet',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              // Remove reverse to show messages from top to bottom
+                              itemCount: messages.length,
+                              itemBuilder: (context, index) {
+                                // Show messages in chronological order (oldest first)
+                                final message = messages[index];
+                                return _buildMessageBubble(message);
+                              },
+                            ),
+                    );
+                  },
+                ),
+              ),
+
+              // Input area - stays at bottom but moves up with keyboard
+              Container(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 16,
+                  bottom: 16 + keyboardHeight, // Add keyboard height to bottom padding
+                ),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1E1E1E),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3C3C3C),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: TextField(
+                          controller: chatController,
+                          style: const TextStyle(color: Colors.white),
+                          maxLength: 100,
+                          autofocus: false, // Don't auto-focus to prevent immediate keyboard
+                          decoration: const InputDecoration(
+                            hintText: 'Send a message...',
+                            hintStyle: TextStyle(color: Colors.grey),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            counterText: '',
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.send, color: Colors.white),
+                      onPressed: () {
+                        final text = chatController.text.trim();
+                        if (text.isNotEmpty) {
+                          Provider.of<ChessGameProvider>(context, listen: false).sendChat(text);
+                          chatController.clear();
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMessageBubble(ChatMessage message) {
+    final isMyMessage = message.senderId == FirebaseAuth.instance.currentUser?.uid;
+
+    return Align(
+      alignment: isMyMessage ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isMyMessage ? const Color(0xFF4A90E2) : const Color(0xFF3C3C3C),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!isMyMessage) ...[
+              const Icon(
+                Icons.sports_esports,
+                color: Colors.white,
+                size: 16,
+              ),
+              const SizedBox(width: 4),
+            ],
+            Flexible(
+              child: Text(
+                message.text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            if (isMyMessage) ...[
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.sports_esports,
+                color: Colors.white,
+                size: 16,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   @override

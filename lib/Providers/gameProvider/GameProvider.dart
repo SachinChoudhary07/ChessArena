@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 
 import '../../Screens/GameScreens/GamePlay.dart';
+import '../../Models/chat_message.dart';
 
 class ChessGameProvider with ChangeNotifier {
   // Game state
@@ -44,6 +45,12 @@ class ChessGameProvider with ChangeNotifier {
 
   // Threefold repetition tracking
   final Map<String, int> _positionCounts = {};
+
+  // -------------------------------------------------
+  // Latest chat support (single, overwriting message)
+  // -------------------------------------------------
+  List<ChatMessage> _chatMessages = [];
+  List<ChatMessage> get chatMessages => _chatMessages;
 
   void setLoading(bool value) {
     // isLoading = value;
@@ -236,6 +243,37 @@ class ChessGameProvider with ChangeNotifier {
     _winner = data['winner'];
     _whiteTimeLeft = data['whiteTimeLeft'] ?? 600;
     _blackTimeLeft = data['blackTimeLeft'] ?? 600;
+
+    // -------------------------------
+    // Latest chat parsing
+    // -------------------------------
+    print("🎲 GameProvider: Chat data from Firestore: ${data['chatMessages']}");
+
+    // Initialize chatMessages if it doesn't exist
+    if (data['chatMessages'] == null) {
+      print("🎲 GameProvider: No chatMessages field found, initializing empty array");
+      _chatMessages = [];
+    } else {
+      try {
+        final chatData = data['chatMessages'];
+        if (chatData is List) {
+          final chatList = List<Map<String, dynamic>>.from(chatData);
+          final newMessages = chatList.map((msg) => ChatMessage.fromMap(msg)).toList();
+
+          print("🎲 GameProvider: New messages count: ${newMessages.length}, Current messages count: ${_chatMessages.length}");
+
+          // Simply update messages
+          _chatMessages = newMessages;
+          print("🎲 GameProvider: Final message count: ${_chatMessages.length}");
+        } else {
+          print("⚠️ GameProvider: chatMessages is not a List, it's: ${chatData.runtimeType}");
+          _chatMessages = [];
+        }
+      } catch (e) {
+        print("❌ GameProvider: Error parsing chat messages: $e");
+        _chatMessages = [];
+      }
+    }
 
     // Update opponent info
     if (data['player1'] != _playerId) {
@@ -1533,5 +1571,45 @@ class ChessGameProvider with ChangeNotifier {
 
     if (rights.isEmpty) rights.write('-');
     return rights.toString();
+  }
+
+  // -------------------------------
+  // Chat send helper
+  // -------------------------------
+  Future<void> sendChat(String text) async {
+    print("🎲 GameProvider: Sending chat message: '$text'");
+    final docRef = tournamentId != null ? _matchesCollection(tournamentId!).doc(_roomCode) : _firestore.collection('games').doc(_roomCode);
+
+    final messageId = DateTime.now().millisecondsSinceEpoch.toString();
+    final timestamp = DateTime.now();
+
+    final messageData = {
+      'id': messageId,
+      'text': text,
+      'sender': _playerId,
+      'ts': timestamp,
+    };
+
+    print("🎲 GameProvider: Message data to send: $messageData");
+
+    try {
+      // First check if chatMessages field exists, if not initialize it
+      final docSnapshot = await docRef.get();
+      final docData = docSnapshot.data();
+
+      if (docData == null || docData['chatMessages'] == null) {
+        print("🎲 GameProvider: Initializing chatMessages field");
+        await docRef.update({
+          'chatMessages': [messageData],
+        });
+      } else {
+        await docRef.update({
+          'chatMessages': FieldValue.arrayUnion([messageData]),
+        });
+      }
+      print("🎲 GameProvider: Chat message sent successfully");
+    } catch (e) {
+      print("❌ GameProvider: Error sending chat message: $e");
+    }
   }
 }

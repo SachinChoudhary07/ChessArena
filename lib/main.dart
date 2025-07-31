@@ -16,6 +16,9 @@ import 'package:provider/single_child_widget.dart';
 
 import 'Providers/gameProvider/GameProvider.dart';
 
+// Add navigator key for global dialog handling
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -48,7 +51,11 @@ void main() async {
   // Listen for messages when the app is in the foreground
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     NotificationService().showNotification(message);
+    _handleIncomingMessage(message); // <-- show dialog if needed
   });
+
+  // Listen when the app is brought to foreground/opened via a notification tap
+  FirebaseMessaging.onMessageOpenedApp.listen(_handleIncomingMessage);
 
   runApp(
     MultiProvider(
@@ -56,12 +63,27 @@ void main() async {
       child: const MyApp(),
     ),
   );
+
+  // Handle the case when the app is launched by tapping the notification while
+  // it was completely terminated.
+  final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+  if (initialMessage != null) {
+    // Delay until a frame is rendered so navigatorKey has a valid context
+    Future.delayed(Duration.zero, () => _handleIncomingMessage(initialMessage));
+  }
 }
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   await NotificationService().init();
-  await NotificationService().showNotification(message);
+  // Show a local notification ONLY for data-only messages. If the message already
+  // contains a notification payload, the system has displayed it for us, so
+  // calling showNotification would create a duplicate.
+  if (message.notification == null) {
+    await NotificationService().showNotification(message);
+  }
+  // We still want to surface the accept/reject dialog once the app is opened.
+  // (This will be triggered from onMessageOpenedApp or getInitialMessage.)
 }
 
 class MyApp extends StatelessWidget {
@@ -70,6 +92,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey, // allow showing dialogs from anywhere
       debugShowCheckedModeBanner: false,
       title: AppConstants.appName,
       theme: ThemeData(
@@ -129,3 +152,121 @@ List<SingleChildWidget> providers() {
 
 // debug token app check
 //A3225464-5115-407C-A9AB-9238773D13A9
+
+// ----------------------------------------------------------------------------
+// Helper to process inbound FCM messages and trigger UI if they represent
+// a chess challenge.
+// ----------------------------------------------------------------------------
+void _handleIncomingMessage(RemoteMessage message) {
+  final data = message.data;
+
+  // Extract body/title for simple string matching (case-insensitive)
+  final body = (message.notification?.body ?? '').toLowerCase();
+  final title = (message.notification?.title ?? '').toLowerCase();
+
+  // Determine if this is a chess challenge.
+  final bool isChallengeType = data['type'] == 'challenge';
+  final bool containsChallengePhrase = body.contains('challange you') || body.contains('challenged you') || title.contains('challange you') || title.contains('challenged you');
+
+  if (isChallengeType || containsChallengePhrase) {
+    _showChallengeDialog(message);
+  }
+}
+
+void _showChallengeDialog(RemoteMessage message) {
+  final BuildContext? ctx = navigatorKey.currentContext;
+  if (ctx == null) return;
+
+  // Extract useful information to display
+  final challengerUid = message.data['challengerUid'] ?? '';
+  final title = message.notification?.title ?? 'New Chess Challenge!';
+  final body = message.notification?.body ?? 'A player challenged you.';
+
+  showDialog(
+    context: ctx,
+    barrierDismissible: false, // Non-dismissable
+    barrierColor: Colors.black87.withOpacity(0.7),
+    builder: (context) {
+      return WillPopScope(
+        onWillPop: () async => false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 320),
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: ColorResources.secondaryColor, width: 2),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Title
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: ColorResources.secondaryColor,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    // Body
+                    Text(
+                      body,
+                      style: const TextStyle(color: Colors.white70, fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    // Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        // Reject
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: ColorResources.secondaryColor),
+                            foregroundColor: ColorResources.secondaryColor,
+                            textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: () {
+                            // TODO: Handle reject logic (e.g., update Firestore)
+                            Navigator.of(context).pop();
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: Text('Reject'),
+                          ),
+                        ),
+                        // Accept
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: ColorResources.secondaryColor,
+                            foregroundColor: Colors.black,
+                            textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: () {
+                            // TODO: Handle accept logic (e.g., navigate to game screen)
+                            Navigator.of(context).pop();
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: Text('Accept'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
