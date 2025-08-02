@@ -1,9 +1,10 @@
 import 'package:chess_cash/Screens/GameScreens/GamePlay.dart';
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../Providers/gameProvider/GameProvider.dart';
+import 'package:flutter/material.dart';
+
 import '../Constant/color_resources.dart';
+import '../Providers/gameProvider/GameProvider.dart';
 
 class GameEndDialog extends StatefulWidget {
   final ChessGameProvider gameProvider;
@@ -76,8 +77,14 @@ class _GameEndDialogState extends State<GameEndDialog> {
         final opponentId = isPlayer1 ? player2UID : player1UID;
 
         // Get both players' Elo ratings
-        final currentUserDoc = await FirebaseFirestore.instance.collection('users').doc(currentUserId).get();
-        final opponentDoc = await FirebaseFirestore.instance.collection('users').doc(opponentId).get();
+        final currentUserDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId)
+            .get();
+        final opponentDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(opponentId)
+            .get();
 
         final currentUserElo = currentUserDoc.data()?['eloRating'] ?? 1200;
         final opponentElo = opponentDoc.data()?['eloRating'] ?? 1200;
@@ -145,10 +152,19 @@ class _GameEndDialogState extends State<GameEndDialog> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: _isAborted()
-                ? [Colors.blueGrey.withOpacity(0.1), Colors.blueGrey.withOpacity(0.05)]
+                ? [
+                    Colors.blueGrey.withOpacity(0.1),
+                    Colors.blueGrey.withOpacity(0.05)
+                  ]
                 : widget.youWon
-                    ? [Colors.green.withOpacity(0.1), Colors.green.withOpacity(0.05)]
-                    : [Colors.red.withOpacity(0.1), Colors.red.withOpacity(0.05)],
+                    ? [
+                        Colors.green.withOpacity(0.1),
+                        Colors.green.withOpacity(0.05)
+                      ]
+                    : [
+                        Colors.red.withOpacity(0.1),
+                        Colors.red.withOpacity(0.05)
+                      ],
           ),
         ),
         child: Column(
@@ -160,7 +176,9 @@ class _GameEndDialogState extends State<GameEndDialog> {
                   ? Icons.info_outline
                   : _isDraw()
                       ? Icons.handshake
-                      : (widget.youWon ? Icons.emoji_events : Icons.sentiment_dissatisfied),
+                      : (widget.youWon
+                          ? Icons.emoji_events
+                          : Icons.sentiment_dissatisfied),
               size: 64,
               color: _isAborted()
                   ? Colors.blueGrey
@@ -225,15 +243,25 @@ class _GameEndDialogState extends State<GameEndDialog> {
                   ],
                   _buildDetailRow('Game Mode', _getGameMode()),
                   _buildDetailRow('Duration', _getGameDuration()),
-                  if (!_isAborted() && prizeAmount != null && prizeAmount! > 0) ...[
+                  if (!_isAborted() &&
+                      prizeAmount != null &&
+                      prizeAmount! > 0) ...[
                     const Divider(height: 20),
                     _buildDetailRow(
                       'Prize Money',
-                      _isDraw() ? 'Refunded ₹{(prizeAmount! / 2).toStringAsFixed(0)}' : (widget.youWon ? '+₹${prizeAmount!.toStringAsFixed(0)}' : '₹0'),
-                      valueColor: _isDraw() ? Colors.blue : (widget.youWon ? Colors.green : null),
+                      _isDraw()
+                          ? 'Refunded ₹${(prizeAmount! / 2).toStringAsFixed(0)}'
+                          : (widget.youWon
+                              ? '+₹${prizeAmount!.toStringAsFixed(0)}'
+                              : '₹0'),
+                      valueColor: _isDraw()
+                          ? Colors.blue
+                          : (widget.youWon ? Colors.green : null),
                     ),
                   ],
-                  if (_isAborted() && prizeAmount != null && prizeAmount! > 0) ...[
+                  if (_isAborted() &&
+                      prizeAmount != null &&
+                      prizeAmount! > 0) ...[
                     const Divider(height: 20),
                     const Text(
                       'Entry fee will be refund in some time.',
@@ -270,7 +298,8 @@ class _GameEndDialogState extends State<GameEndDialog> {
                         decoration: BoxDecoration(
                           color: Colors.blue.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                          border:
+                              Border.all(color: Colors.blue.withOpacity(0.3)),
                         ),
                         child: Text(
                           eloContext!,
@@ -369,7 +398,7 @@ class _GameEndDialogState extends State<GameEndDialog> {
 
   String _getGameMode() {
     final entryFee = gameData?['entryFee'] ?? 0;
-    return entryFee > 0 ? 'Paid Match (₹$entryFee)' : 'Free Match';
+    return entryFee > 0 ? 'Paid (₹$entryFee)' : 'Free Match';
   }
 
   String _getGameDuration() {

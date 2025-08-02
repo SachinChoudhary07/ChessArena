@@ -4,7 +4,6 @@ import 'package:chess_cash/Screens/CreateTournament/createTournament.dart';
 import 'package:chess_cash/Screens/GameScreens/MatchMakingScreen.dart';
 import 'package:chess_cash/Screens/PaidMatch/PlayPaidMatch.dart';
 import 'package:chess_cash/Screens/TournamentScreens/tournaments_screen.dart';
-import 'package:chess_cash/Screens/create_contest.dart';
 import 'package:chess_cash/Services/navigation.dart';
 import 'package:chess_cash/Widgets/bottomNavBar.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
@@ -118,15 +117,15 @@ class _DashboardscreenState extends State<Dashboardscreen> {
                     ColorResources.secondaryColor, () {
                   push(context, const CreateTournament());
                 }),
+                // _buildButton(
+                //     AppConstants.playWithFriends,
+                //     Icons.people_outline_rounded,
+                //     ColorResources.secondaryColor, () {
+                //   push(context, const PlayWithFriends());
+                // }),
                 _buildButton(
                     AppConstants.playWithFriends,
                     Icons.people_outline_rounded,
-                    ColorResources.secondaryColor, () {
-                  push(context, const PlayWithFriends());
-                }),
-                _buildButton(
-                    AppConstants.playWithOnlineFriends,
-                    Icons.broadcast_on_personal_rounded,
                     ColorResources.secondaryColor, () {
                   push(context, const PlayWithOnlineFriendScreen());
                 }),

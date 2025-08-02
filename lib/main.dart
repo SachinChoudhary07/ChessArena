@@ -7,6 +7,10 @@ import 'package:chess_cash/Providers/ProfileProvider/ProfileProvider.dart';
 import 'package:chess_cash/Providers/WalletProvider/WalletProvider.dart';
 import 'package:chess_cash/Screens/PlayWithOnlineFriends/play_with_online_friend_provider.dart';
 import 'package:chess_cash/Services/notification_service.dart';
+import 'package:chess_cash/Services/challenge_service.dart';
+import 'package:chess_cash/Services/challenge_expiration_service.dart';
+import 'package:chess_cash/Screens/GameScreens/waitingRoom.dart';
+import 'package:chess_cash/Services/navigation.dart';
 import 'package:chess_cash/splash_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -71,6 +75,9 @@ void main() async {
     // Delay until a frame is rendered so navigatorKey has a valid context
     Future.delayed(Duration.zero, () => _handleIncomingMessage(initialMessage));
   }
+
+  // Start the challenge expiration timer
+  ChallengeExpirationService.startExpirationTimer();
 }
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -157,7 +164,7 @@ List<SingleChildWidget> providers() {
 // Helper to process inbound FCM messages and trigger UI if they represent
 // a chess challenge.
 // ----------------------------------------------------------------------------
-void _handleIncomingMessage(RemoteMessage message) {
+void _handleIncomingMessage(RemoteMessage message) async {
   final data = message.data;
 
   // Extract body/title for simple string matching (case-insensitive)
@@ -169,7 +176,14 @@ void _handleIncomingMessage(RemoteMessage message) {
   final bool containsChallengePhrase = body.contains('challange you') || body.contains('challenged you') || title.contains('challange you') || title.contains('challenged you');
 
   if (isChallengeType || containsChallengePhrase) {
-    _showChallengeDialog(message);
+    // Extract challenge ID from data
+    final challengeId = data['challengeId'];
+    if (challengeId != null) {
+      await _showChallengeDialogWithId(message, challengeId);
+    } else {
+      // Fallback for old notifications without challenge ID
+      _showChallengeDialog(message);
+    }
   }
 }
 
@@ -182,6 +196,31 @@ void _showChallengeDialog(RemoteMessage message) {
   final title = message.notification?.title ?? 'New Chess Challenge!';
   final body = message.notification?.body ?? 'A player challenged you.';
 
+  _showChallengeDialogWithValidation(ctx, title, body, challengerUid, null);
+}
+
+Future<void> _showChallengeDialogWithId(RemoteMessage message, String challengeId) async {
+  final BuildContext? ctx = navigatorKey.currentContext;
+  if (ctx == null) return;
+
+  // Validate the challenge first
+  final validation = await ChallengeService.validateChallenge(challengeId);
+
+  if (!validation.isValid) {
+    // Show expired/error dialog
+    _showExpiredChallengeDialog(ctx, validation.message, validation.challenge);
+    return;
+  }
+
+  // Extract useful information to display
+  final challengerUid = message.data['challengerUid'] ?? '';
+  final title = message.notification?.title ?? 'New Chess Challenge!';
+  final body = message.notification?.body ?? 'A player challenged you.';
+
+  _showChallengeDialogWithValidation(ctx, title, body, challengerUid, challengeId);
+}
+
+void _showChallengeDialogWithValidation(BuildContext ctx, String title, String body, String challengerUid, String? challengeId) {
   showDialog(
     context: ctx,
     barrierDismissible: false, // Non-dismissable
@@ -233,8 +272,10 @@ void _showChallengeDialog(RemoteMessage message) {
                             foregroundColor: ColorResources.secondaryColor,
                             textStyle: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          onPressed: () {
-                            // TODO: Handle reject logic (e.g., update Firestore)
+                          onPressed: () async {
+                            if (challengeId != null) {
+                              await ChallengeService.rejectChallenge(challengeId);
+                            }
                             Navigator.of(context).pop();
                           },
                           child: const Padding(
@@ -249,9 +290,23 @@ void _showChallengeDialog(RemoteMessage message) {
                             foregroundColor: Colors.black,
                             textStyle: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          onPressed: () {
-                            // TODO: Handle accept logic (e.g., navigate to game screen)
-                            Navigator.of(context).pop();
+                          onPressed: () async {
+                            if (challengeId != null) {
+                              final result = await ChallengeService.acceptChallenge(challengeId);
+                              if (result.success && result.roomCode != null) {
+                                // Navigate to waiting room
+                                Navigator.of(context).pop();
+                                push(context, EnhancedWaitingRoom(roomCode: result.roomCode!));
+                              } else {
+                                // Show error message
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(result.message)),
+                                );
+                                Navigator.of(context).pop();
+                              }
+                            } else {
+                              Navigator.of(context).pop();
+                            }
                           },
                           child: const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -262,6 +317,80 @@ void _showChallengeDialog(RemoteMessage message) {
                     ),
                   ],
                 ),
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+void _showExpiredChallengeDialog(BuildContext ctx, String message, Challenge? challenge) {
+  showDialog(
+    context: ctx,
+    barrierDismissible: true,
+    barrierColor: Colors.black87.withOpacity(0.7),
+    builder: (context) {
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 320),
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.red, width: 2),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Icon
+                  const Icon(
+                    Icons.timer_off,
+                    color: Colors.red,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 16),
+                  // Title
+                  const Text(
+                    'Challenge Expired',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  // Message
+                  Text(
+                    message,
+                    style: const TextStyle(color: Colors.white70, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  // OK Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text('OK'),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
