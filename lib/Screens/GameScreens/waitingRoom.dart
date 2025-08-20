@@ -19,17 +19,23 @@ class EnhancedWaitingRoom extends StatefulWidget {
 
 class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
   bool _navigated = false;
-  int _countdown = 0; // for countdown display
+  final int _countdown = 0; // for countdown display
 
   void _startCountdown(Map<String, dynamic> roomData) {
-    _initializeGameData(roomData).then((_) {
-      Future.delayed(const Duration(seconds: 3));
+    // Prevent multiple navigations from repeated snapshots
+    if (_navigated) return;
+    _navigated = true;
+
+    () async {
+      await _initializeGameData(roomData);
+      await Future.delayed(const Duration(seconds: 3));
+      if (!mounted) return;
       pushReplacement(
           context,
           GameScreen(
             roomCode: widget.roomCode,
           ));
-    });
+    }();
   }
 
   String? player1Name; // ✅
@@ -85,9 +91,7 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
-    // Determine player colors
-    final isPlayer1 = roomData['player1'] == currentUser.uid;
-    final playerColor = isPlayer1 ? 'white' : 'black';
+    // Determine player colors (not needed here; colors are set explicitly in the document update below)
 
     // Setup initial board state
     final initialBoardState = _createInitialBoardState();
@@ -192,10 +196,24 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
           }
 
           final data = snapshot.data!.data() as Map<String, dynamic>;
+
+          // Once countdown starts, show a static loader to avoid flicker from subsequent snapshots
+          if (_navigated) {
+            return const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Loader(),
+                  SizedBox(height: 12),
+                  Text('Starting game...'),
+                ],
+              ),
+            );
+          }
           final player1 = data['player1'];
           final player2 = data['player2'];
           final status = data['status'];
-          final gameName = data['gameName'];
+          // gameName not used in this UI; remove to avoid warning
 
           if (player1Name == null || (player2 != null && player2Name == null)) {
             _fetchPlayerNames(player1, player2); // ✅ Fetch names

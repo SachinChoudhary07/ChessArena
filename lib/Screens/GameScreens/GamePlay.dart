@@ -37,7 +37,7 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   late ChessGameProvider _gameProvider;
-  final bool _isInitialized = false;
+  bool _isInitialized = false;
   bool _isShowingPromotionDialog = false;
   DocumentSnapshot? _latestGameSnapshot;
 
@@ -47,7 +47,6 @@ class _GameScreenState extends State<GameScreen> {
   FriendStatus _friendStatus = FriendStatus.none;
   StreamSubscription<DocumentSnapshot>? _friendSubscription;
   String? _opponentUID;
-  final bool _showFriendBanner = false;
   bool _isChatOpen = false; // Track chat open state
 
   @override
@@ -77,6 +76,8 @@ class _GameScreenState extends State<GameScreen> {
   num player2Elo = 0.0;
 
   Future<void> _initializeGame() async {
+    if (_isInitialized) return;
+    _isInitialized = true;
     print("🎮 GameScreen: Starting game initialization");
     _gameProvider = Provider.of<ChessGameProvider>(context, listen: false);
     _gameProvider.initializeBoard();
@@ -435,6 +436,7 @@ class _GameScreenState extends State<GameScreen> {
               // Optionally hide my own messages – uncomment next line if needed
               // if (latestMessage.senderId == FirebaseAuth.instance.currentUser?.uid) return SizedBox();
               return Container(
+                width: MediaQuery.of(context).size.width / 1.7,
                 padding: const EdgeInsets.only(right: 8.0, left: 8.0, top: 4.0, bottom: 4.0),
                 margin: const EdgeInsets.only(right: 8.0, left: 8.0, top: 4.0, bottom: 4.0),
                 decoration: BoxDecoration(
@@ -627,7 +629,8 @@ class _GameScreenState extends State<GameScreen> {
                           controller: chatController,
                           style: const TextStyle(color: Colors.white),
                           maxLength: 100,
-                          autofocus: false, // Don't auto-focus to prevent immediate keyboard
+                          autofocus: false,
+                          // Don't auto-focus to prevent immediate keyboard
                           decoration: const InputDecoration(
                             hintText: 'Send a message...',
                             hintStyle: TextStyle(color: Colors.grey),
@@ -873,12 +876,9 @@ class _GameScreenState extends State<GameScreen> {
         : (isWhitePlayer ? (player1Name ?? 'You') : (player2Name ?? 'You'));
 
     final playerElo = isOpponent
-        ? (isWhitePlayer ? (player2Elo ?? 0) : (player1Elo ?? 0))
-        : (isWhitePlayer ? (player1Elo ?? 0) : (player2Elo ?? 0));
+        ? (isWhitePlayer ? player2Elo : player1Elo) : (isWhitePlayer ? player1Elo : player2Elo);
 
-    final playerImage = isOpponent
-        ? (isWhitePlayer ? (player2Image ?? '') : (player1Image ?? ''))
-        : (isWhitePlayer ? (player1Image ?? '') : (player2Image ?? ''));
+    final playerImage = (isOpponent ? (isWhitePlayer ? player2Image : player1Image) : (isWhitePlayer ? player1Image : player2Image)) ?? '';
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -994,7 +994,7 @@ class _GameScreenState extends State<GameScreen> {
 
           final position = ChessPosition(row, col);
           final piece = board[row][col];
-          final isSelected = gameProvider.selectedPosition == position;
+          // selection highlighting handled elsewhere
           final isPossibleMove = gameProvider.possibleMoves.contains(position);
           final isWhiteSquare = (row + col) % 2 == 0;
 
@@ -1073,7 +1073,6 @@ class _GameScreenState extends State<GameScreen> {
     String statusText = '';
     Color statusColor = Colors.blue;
 
-    final currentUser = FirebaseAuth.instance.currentUser;
     final winnerColor = gameProvider.winner;
     final playerColor = gameProvider.playerColor.toString().split('.').last;
     final youWon = winnerColor == playerColor;

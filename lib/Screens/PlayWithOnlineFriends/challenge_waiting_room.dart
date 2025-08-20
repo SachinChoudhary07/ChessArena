@@ -6,7 +6,6 @@ import '../../Constant/color_resources.dart';
 import '../../Services/navigation.dart';
 import '../../Widgets/loader.dart';
 import '../GameScreens/waitingRoom.dart';
-import 'play_with_online_friend_provider.dart';
 
 class ChallengeWaitingRoom extends StatefulWidget {
   final String roomCode;
@@ -161,6 +160,9 @@ class _ChallengeWaitingRoomState extends State<ChallengeWaitingRoom> {
 
             // Navigate to game waiting room
             WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              // Prevent multiple navigations if snapshot fires again
+              if (ModalRoute.of(context)?.isCurrent != true) return;
               Navigator.of(context).pop(); // Pop challenge waiting room
               push(context, EnhancedWaitingRoom(roomCode: gameRoomCode));
             });
