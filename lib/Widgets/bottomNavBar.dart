@@ -4,6 +4,7 @@ import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Providers/AuthProvider/AuthProvider.dart';
 import 'package:chess_cash/Screens/AuthScreens/loginScreen.dart';
 import 'package:chess_cash/Screens/Dashboard/DashboardScreen.dart';
+import 'package:chess_cash/Screens/Friends/friends_screen.dart';
 import 'package:chess_cash/Screens/HistoryScreens/GameHistoryScreen.dart';
 import 'package:chess_cash/Screens/ProfileScreens/ProfileScreens.dart';
 import 'package:chess_cash/Screens/WalletScreens/WalletScreen.dart';
@@ -31,6 +32,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
     const Dashboardscreen(),
     const WalletScreen(),
     const GameHistoryScreen(),
+    const FriendsScreen(),
     const Profilescreens(),
   ];
 
@@ -157,6 +159,10 @@ class _BottomNavBarState extends State<BottomNavBar> {
           BottomNavigationBarItem(
             icon: Icon(Icons.history),
             label: AppConstants.history,
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.group),
+            label: 'Friends',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),

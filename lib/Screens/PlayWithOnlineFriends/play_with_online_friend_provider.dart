@@ -1,6 +1,9 @@
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import '../../Firebase/get_server_key.dart';
 import 'dart:convert'; // Added for jsonEncode
@@ -128,6 +131,11 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
   List<FriendInfo> get friends => _friends;
   bool get isFetchingFriends => _isFetchingFriends;
 
+  // Presence map: uid -> isOnline
+  final Map<String, bool> _friendOnlineMap = {};
+  Map<String, bool> get friendOnlineMap => _friendOnlineMap;
+  final Map<String, StreamSubscription<DatabaseEvent>> _presenceSubs = {};
+
   // Currently selected values
   FriendInfo? _selectedFriend;
   String _selectedTime = '5 min';
@@ -182,12 +190,55 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
       }
 
       _friends = loaded;
+
+      // Start/refresh presence subscriptions for these friends
+      _setupPresenceListeners();
     } catch (e) {
       debugPrint('Error fetching friends: $e');
     }
 
     _isFetchingFriends = false;
     notifyListeners();
+  }
+
+  void _setupPresenceListeners() {
+    // Cancel removed subscriptions
+    final currentUids = _friends.map((f) => f.uid).toSet();
+    final toRemove = _presenceSubs.keys.where((k) => !currentUids.contains(k)).toList();
+    for (final uid in toRemove) {
+      _presenceSubs.remove(uid)?.cancel();
+      _friendOnlineMap.remove(uid);
+    }
+
+    final db = FirebaseDatabase.instance;
+    for (final friend in _friends) {
+      if (_presenceSubs.containsKey(friend.uid)) continue;
+
+      final ref = db.ref('status/${friend.uid}');
+      final sub = ref.onValue.listen((event) {
+        final data = event.snapshot.value;
+        bool isOnline = false;
+        if (data is Map) {
+          final state = data['state'];
+          isOnline = state == 'online';
+        }
+        _friendOnlineMap[friend.uid] = isOnline;
+        notifyListeners();
+      }, onError: (e) {
+        debugPrint('Presence listen error for ${friend.uid}: $e');
+      });
+
+      _presenceSubs[friend.uid] = sub;
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final sub in _presenceSubs.values) {
+      sub.cancel();
+    }
+    _presenceSubs.clear();
+    super.dispose();
   }
 
   Future<ChallengeSendResult> sendChallenge() async {
@@ -380,7 +431,6 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
   // Push notification via FCM HTTP v1 legacy API
   // ---------------------------------------------------------------------------
 
-  static const String _projectId = 'chess4cash-37f67';
   static const String _fcmEndpoint = 'https://fcm.googleapis.com/v1/projects/chess4cash-37f67/messages:send';
 
   Future<void> _sendChallengeNotification(String challengerUid, String opponentUid, String challengeId) async {

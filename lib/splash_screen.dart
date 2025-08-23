@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'Services/presence_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -42,6 +43,7 @@ class _SplashScreenState extends State<SplashScreen> {
             _navigateToLogin();
           } else {
             // User is not banned, proceed to dashboard
+            await PresenceService.instance.start();
             _navigateToDashboard();
           }
         } else {

@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:chess_cash/Services/presence_service.dart';
 
 class AutProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -368,6 +369,8 @@ class AutProvider with ChangeNotifier {
             builder: (context) => BottomNavBar(key: bottomNavBarKey)),
         (route) => false, // This removes all previous routes from the stack
       );
+      // Start presence tracking after successful login navigation
+      await PresenceService.instance.start();
       notifyListeners();
     } on FirebaseAuthException catch (e) {
       setLoading(false);
@@ -482,6 +485,8 @@ class AutProvider with ChangeNotifier {
 
   Future<void> logout(BuildContext context) async {
     setLoading(true);
+    // Ensure presence is marked offline
+    await PresenceService.instance.stop();
     await _auth.signOut();
     await _googleSignIn.signOut();
     await _setLoginState(false);
