@@ -1,4 +1,5 @@
 import 'package:chess_cash/Constant/color_resources.dart';
+import 'package:chess_cash/Widgets/premium_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -42,17 +43,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Forgot Password')),
+      appBar: const PremiumAppBar(title: 'Forgot Password'),
       body: Padding(
         padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
         child: Column(
           // mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
+            const Text(
               'Enter your email address to receive a password reset link.',
-              // textAlign: TextAlign.center,
               style:
-                  TextStyle(fontSize: 16, color: ColorResources.secondaryColor),
+                  TextStyle(fontSize: 16, color: ColorResources.textSecondary),
             ),
             const SizedBox(height: 80),
             TextField(

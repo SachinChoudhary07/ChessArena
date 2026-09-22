@@ -1,3 +1,4 @@
+import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:flutter/material.dart';
 
 class CustomTextField extends StatelessWidget {
@@ -6,6 +7,7 @@ class CustomTextField extends StatelessWidget {
   final bool obscureText;
   final Widget? suffixIcon;
   final String? Function(String?)? validator;
+  final TextInputType? keyboardType;
 
   const CustomTextField({
     super.key,
@@ -14,6 +16,7 @@ class CustomTextField extends StatelessWidget {
     this.obscureText = false,
     this.suffixIcon,
     this.validator,
+    this.keyboardType,
   });
 
   @override
@@ -22,24 +25,11 @@ class CustomTextField extends StatelessWidget {
       controller: controller,
       obscureText: obscureText,
       validator: validator,
-      style: const TextStyle(color: Colors.white),
+      keyboardType: keyboardType,
+      style: const TextStyle(color: ColorResources.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.white),
         suffixIcon: suffixIcon,
-        enabledBorder: const OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.white),
-        ),
-        focusedBorder: const OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.amber),
-        ),
-        errorBorder: const OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.redAccent),
-        ),
-        focusedErrorBorder: const OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.redAccent),
-        ),
-        errorStyle: const TextStyle(color: Colors.redAccent),
       ),
     );
   }

@@ -1,10 +1,10 @@
 import 'package:chess_cash/Constant/app_constant.dart';
+import 'package:chess_cash/Constant/app_theme.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Providers/AuthProvider/AuthProvider.dart';
 import 'package:chess_cash/Providers/CreateTournamentProvider/CreateTournamentProvider.dart';
 import 'package:chess_cash/Providers/LeaderBoardProvider/LeaderBoardProvider.dart';
 import 'package:chess_cash/Providers/ProfileProvider/ProfileProvider.dart';
-import 'package:chess_cash/Providers/WalletProvider/WalletProvider.dart';
 import 'package:chess_cash/Screens/PlayWithOnlineFriends/play_with_online_friend_provider.dart';
 import 'package:chess_cash/Services/notification_service.dart';
 import 'package:chess_cash/Services/challenge_service.dart';
@@ -102,44 +102,7 @@ class MyApp extends StatelessWidget {
       navigatorKey: navigatorKey, // allow showing dialogs from anywhere
       debugShowCheckedModeBanner: false,
       title: AppConstants.appName,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        primaryColor: ColorResources.secondaryColor,
-        // Gold color
-        scaffoldBackgroundColor: const Color(0xFF000000),
-        // Black background
-        textTheme: TextTheme(
-          bodyLarge:
-              TextStyle(color: ColorResources.secondaryColor), // Primary Text
-          // bodyMedium: TextStyle(color: Color(0xFFFFC107)), // Secondary Text
-          titleLarge: TextStyle(
-              color: ColorResources.secondaryColor,
-              fontWeight: FontWeight.bold),
-        ),
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.black,
-          titleTextStyle: TextStyle(
-              color: ColorResources.secondaryColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold),
-          iconTheme: IconThemeData(color: ColorResources.secondaryColor),
-        ),
-        buttonTheme: const ButtonThemeData(
-          buttonColor: Colors.black, // Black button background
-          textTheme: ButtonTextTheme.primary,
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.black,
-            foregroundColor: ColorResources.secondaryColor,
-            side:
-                BorderSide(color: ColorResources.secondaryColor), // Gold border
-            textStyle: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-        iconTheme:
-            IconThemeData(color: ColorResources.secondaryColor), // Gold icons
-      ),
+      theme: AppTheme.dark(),
       home: const SplashScreen(),
     );
   }
@@ -150,7 +113,6 @@ List<SingleChildWidget> providers() {
     ChangeNotifierProvider(create: (context) => AutProvider()),
     ChangeNotifierProvider(create: (context) => ProfileProvider()),
     ChangeNotifierProvider(create: (context) => LeaderBoardProvider()),
-    ChangeNotifierProvider(create: (context) => WalletProvider()),
     ChangeNotifierProvider(create: (context) => CreateTournamentProvider()),
     ChangeNotifierProvider(create: (context) => ChessGameProvider()),
     ChangeNotifierProvider(create: (context) => PlayWithOnlineFriendProvider()),
@@ -173,7 +135,10 @@ void _handleIncomingMessage(RemoteMessage message) async {
 
   // Determine if this is a chess challenge.
   final bool isChallengeType = data['type'] == 'challenge';
-  final bool containsChallengePhrase = body.contains('challange you') || body.contains('challenged you') || title.contains('challange you') || title.contains('challenged you');
+  final bool containsChallengePhrase = body.contains('challange you') ||
+      body.contains('challenged you') ||
+      title.contains('challange you') ||
+      title.contains('challenged you');
 
   if (isChallengeType || containsChallengePhrase) {
     // Extract challenge ID from data
@@ -199,7 +164,8 @@ void _showChallengeDialog(RemoteMessage message) {
   _showChallengeDialogWithValidation(ctx, title, body, challengerUid, null);
 }
 
-Future<void> _showChallengeDialogWithId(RemoteMessage message, String challengeId) async {
+Future<void> _showChallengeDialogWithId(
+    RemoteMessage message, String challengeId) async {
   final BuildContext? ctx = navigatorKey.currentContext;
   if (ctx == null) return;
 
@@ -217,14 +183,16 @@ Future<void> _showChallengeDialogWithId(RemoteMessage message, String challengeI
   final title = message.notification?.title ?? 'New Chess Challenge!';
   final body = message.notification?.body ?? 'A player challenged you.';
 
-  _showChallengeDialogWithValidation(ctx, title, body, challengerUid, challengeId);
+  _showChallengeDialogWithValidation(
+      ctx, title, body, challengerUid, challengeId);
 }
 
-void _showChallengeDialogWithValidation(BuildContext ctx, String title, String body, String challengerUid, String? challengeId) {
+void _showChallengeDialogWithValidation(BuildContext ctx, String title,
+    String body, String challengerUid, String? challengeId) {
   showDialog(
     context: ctx,
     barrierDismissible: false, // Non-dismissable
-    barrierColor: Colors.black87.withOpacity(0.7),
+    barrierColor: Colors.black.withOpacity(0.72),
     builder: (context) {
       return WillPopScope(
         onWillPop: () async => false,
@@ -236,9 +204,9 @@ void _showChallengeDialogWithValidation(BuildContext ctx, String title, String b
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.black,
+                  color: ColorResources.surface,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: ColorResources.secondaryColor, width: 2),
+                  border: Border.all(color: ColorResources.divider),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -247,7 +215,7 @@ void _showChallengeDialogWithValidation(BuildContext ctx, String title, String b
                     Text(
                       title,
                       style: TextStyle(
-                        color: ColorResources.secondaryColor,
+                        color: ColorResources.textPrimary,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
@@ -257,7 +225,8 @@ void _showChallengeDialogWithValidation(BuildContext ctx, String title, String b
                     // Body
                     Text(
                       body,
-                      style: const TextStyle(color: Colors.white70, fontSize: 16),
+                      style: const TextStyle(
+                          color: ColorResources.textSecondary, fontSize: 16),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
@@ -268,35 +237,45 @@ void _showChallengeDialogWithValidation(BuildContext ctx, String title, String b
                         // Reject
                         OutlinedButton(
                           style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: ColorResources.secondaryColor),
-                            foregroundColor: ColorResources.secondaryColor,
-                            textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                            side:
+                                const BorderSide(color: ColorResources.divider),
+                            foregroundColor: ColorResources.textPrimary,
+                            textStyle:
+                                const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           onPressed: () async {
                             if (challengeId != null) {
-                              await ChallengeService.rejectChallenge(challengeId);
+                              await ChallengeService.rejectChallenge(
+                                  challengeId);
                             }
                             Navigator.of(context).pop();
                           },
                           child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
                             child: Text('Reject'),
                           ),
                         ),
                         // Accept
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: ColorResources.secondaryColor,
-                            foregroundColor: Colors.black,
-                            textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                            backgroundColor: ColorResources.primary,
+                            foregroundColor: ColorResources.onPrimary,
+                            textStyle:
+                                const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           onPressed: () async {
                             if (challengeId != null) {
-                              final result = await ChallengeService.acceptChallenge(challengeId);
+                              final result =
+                                  await ChallengeService.acceptChallenge(
+                                      challengeId);
                               if (result.success && result.roomCode != null) {
                                 // Navigate to waiting room
                                 Navigator.of(context).pop();
-                                push(context, EnhancedWaitingRoom(roomCode: result.roomCode!));
+                                push(
+                                    context,
+                                    EnhancedWaitingRoom(
+                                        roomCode: result.roomCode!));
                               } else {
                                 // Show error message
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -309,7 +288,8 @@ void _showChallengeDialogWithValidation(BuildContext ctx, String title, String b
                             }
                           },
                           child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
                             child: Text('Accept'),
                           ),
                         ),
@@ -326,7 +306,8 @@ void _showChallengeDialogWithValidation(BuildContext ctx, String title, String b
   );
 }
 
-void _showExpiredChallengeDialog(BuildContext ctx, String message, Challenge? challenge) {
+void _showExpiredChallengeDialog(
+    BuildContext ctx, String message, Challenge? challenge) {
   showDialog(
     context: ctx,
     barrierDismissible: true,
@@ -340,9 +321,9 @@ void _showExpiredChallengeDialog(BuildContext ctx, String message, Challenge? ch
             child: Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.black,
+                color: ColorResources.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.red, width: 2),
+                border: Border.all(color: ColorResources.error),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -350,7 +331,7 @@ void _showExpiredChallengeDialog(BuildContext ctx, String message, Challenge? ch
                   // Icon
                   const Icon(
                     Icons.timer_off,
-                    color: Colors.red,
+                    color: ColorResources.error,
                     size: 48,
                   ),
                   const SizedBox(height: 16),
@@ -358,7 +339,7 @@ void _showExpiredChallengeDialog(BuildContext ctx, String message, Challenge? ch
                   const Text(
                     'Challenge Expired',
                     style: TextStyle(
-                      color: Colors.red,
+                      color: ColorResources.error,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
@@ -368,7 +349,8 @@ void _showExpiredChallengeDialog(BuildContext ctx, String message, Challenge? ch
                   // Message
                   Text(
                     message,
-                    style: const TextStyle(color: Colors.white70, fontSize: 16),
+                    style: const TextStyle(
+                        color: ColorResources.textSecondary, fontSize: 16),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -377,15 +359,16 @@ void _showExpiredChallengeDialog(BuildContext ctx, String message, Challenge? ch
                     width: double.infinity,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
+                        backgroundColor: ColorResources.error,
+                        foregroundColor: ColorResources.textPrimary,
                         textStyle: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       onPressed: () {
                         Navigator.of(context).pop();
                       },
                       child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         child: Text('OK'),
                       ),
                     ),

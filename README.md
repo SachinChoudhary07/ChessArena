@@ -1,200 +1,184 @@
-# Chess4Cash
+# ChessArena
 
-Chess4Cash is a cross-platform Flutter application that lets users play competitive chess matches
-and win real money. The app integrates Firebase for authentication, data storage, and push
-notifications, uses Razorpay for payments, and embeds the Stockfish chess engine for single-player
-practice.
+**Premium online chess app** built with Flutter + Firebase.  
+Play rated matches, challenge friends, join tournaments, and climb the Elo leaderboard — **no wallets, no stakes, no cash prizes**.
 
----
-
-## Table of Contents
-
-1. Features
-2. Tech Stack & Versions
-3. Folder Structure
-4. Prerequisites
-5. Getting Started
-6. Running & Building
-7. Environment / Secrets
-8. Useful Commands
-9. Contributing
-10. License
+Designed as a **Play Store–ready** skill chess product with a modern dark UI, ready for freelancers and studios to white-label, customize, and ship.
 
 ---
 
-## 1  Features
+## Why buy / use this project?
 
-• Email with Firebase Auth  
-• Real-time game rooms powered by Cloud Firestore & Realtime Database  
-• Secure cash stakes and payouts via Razorpay  
-• Push notifications (Firebase Messaging + Flutter Local Notifications)  
-• Profile management with image picker & cropper  
-• Game analytics and leader-board
+- Clean **Chess.com-inspired** dark green UI (not a generic template look)
+- Full **multiplayer online chess** flow already wired to Firebase
+- **Real-money features removed** — safer path for Google Play submission
+- Includes legal page templates, Firestore/Storage rules, and Data Safety notes
+- Easy to rebrand (name, icon, colors, Firebase project)
 
----
-
-## 2  Tech Stack & Versions
-
-### Flutter / Dart
-
-• Flutter SDK ≥ 3.24.0   (see `.flutter` in repo)  
-• Dart SDK ≥ 3.5.2 (defined in `pubspec.yaml`)
-
-### Core Dependencies (direct)
-
-| Package                     | Version | Purpose                  |
-|-----------------------------|---------|--------------------------|
-| provider                    | 6.1.5   | State management         |
-| firebase_core               | 3.15.1  | Firebase core bindings   |
-| firebase_auth               | 5.6.2   | User auth                |
-| cloud_firestore             | 5.6.11  | Realtime data            |
-| firebase_database           | 11.3.9  | Legacy realtime DB       |
-| firebase_storage            | 12.4.9  | File storage             |
-| firebase_messaging          | 15.2.9  | Push notifications       |
-| firebase_app_check          | 0.3.2+9 | Device/App integrity     |
-| google_sign_in              | 6.2.2   | Google OAuth             |
-| razorpay_flutter            | 1.4.0   | Payments                 |
-| flutter_chess_board         | 1.0.1   | Chess board widget       |
-| bishop                      | 1.4.4   | Chess logic              |
-| square_bishop               | 0.3.0   | Chess square helpers     |
-| squares                     | 1.2.1   | Chess UI helpers         |
-| stockfish                   | 1.7.1   | Embedded chess engine    |
-| cached_network_image        | 3.4.1   | Image caching            |
-| image_picker                | 1.1.2   | Select images            |
-| image_cropper               | 8.1.0   | Crop images              |
-| permission_handler          | 11.4.0  | Runtime permissions      |
-| shared_preferences          | 2.5.3   | Key-value storage        |
-| flutter_local_notifications | 19.4.0  | Local notifications      |
-| intl                        | 0.20.2  | Date & number formatting |
-| share_plus                  | 10.1.4  | System share sheet       |
-| uuid                        | 4.5.1   | ID generation            |
-
-Full locked versions are recorded in `pubspec.lock`.
-
-### Android
-
-• compileSdk 35  
-• minSdk 23  
-• targetSdk 35 (inherited from Flutter 3.24)  
-• Kotlin 1.9.23 (via Flutter Gradle)
-
-### iOS
-
-• Xcode 15 or higher  
-• Platform iOS 12.0+
+Ideal for: Play Store launch, client delivery, portfolio demo, or white-label sale.
 
 ---
 
-## 3  Folder Structure (top-level)
+## Core features
+
+### Play
+- Rated online matchmaking with multiple time controls (3 / 5 / 10 / 15 / 30 min)
+- Live chess board with clocks, moves, check detection, resign / abort flows
+- Game end screen with Elo change summary
+
+### Social
+- Friends list with online / offline presence
+- Challenge a friend to a rated game
+- In-game chat with **report** and **block** moderation
+
+### Events
+- Public **tournaments** (bracket events)
+- **Private rooms** — create / join with a room code and share
+- Tournament overview + match brackets
+
+### Progress
+- Elo rating system
+- Elo leaderboard (podium + ranked list)
+- Match history with win / loss filters and stats
+
+### Account
+- Email/password auth + Google Sign-In
+- Register flow with OTP, profile photo, skill level
+- Profile edit, change password, logout, account deletion help
+- Public privacy policy + account deletion webpages (templates included)
+
+### App quality
+- Custom splash screen + branded launcher icon
+- Double-back-to-exit with snackbar
+- Shimmer loading for profile avatars
+- Bottom navigation: Home · Ratings · History · Friends · Profile
+
+---
+
+## What’s intentionally NOT included (Play Store friendly)
+
+- No wallet / add cash / withdraw
+- No entry fees, stakes, or cash prizes
+- No payment gateway (Razorpay removed)
+- No rake / commission logic
+
+This keeps the product positioned as **free skill chess**, not real-money gaming.
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+|--------|------------|
+| Framework | Flutter (Dart 3.5+) |
+| State | Provider |
+| Auth | Firebase Auth, Google Sign-In |
+| Database | Cloud Firestore, Firebase Realtime Database |
+| Storage | Firebase Storage |
+| Push | Firebase Messaging + local notifications |
+| Chess logic | Bishop / Squares / flutter_chess_board |
+| Engine | Stockfish (available in project) |
+| Other | cached_network_image, image_picker, share_plus, url_launcher, shimmer |
+
+---
+
+## Project structure (high level)
 
 ```text
-lib/              → Dart source code
-  ├─ Constant/     → Static values & helpers
-  ├─ Firebase/     → Firebase service helpers + `serverKey.json`
-  ├─ Providers/    → Provider state classes
-  ├─ Screens/      → UI screens & flows
-  ├─ Services/     → Business logic / API wrappers
-  ├─ Widgets/      → Re-usable UI widgets
-assets/           → Images & splash icons
-android/          → Android Gradle project
-ios/              → Xcode project
-web/ linux/ macos/ windows/ → Desktop / Web targets
-analysis_options.yaml → Static analysis rules
-pubspec.yaml      → Dependencies & assets list
+lib/
+  Constant/          # theme, colors, app constants, legal URLs
+  Providers/         # auth, game, profile, tournaments, leaderboard
+  Screens/           # UI screens (home, game, friends, tournaments, auth…)
+  Services/          # challenges, notifications, moderation, presence
+  Widgets/           # shared premium UI components
+  splash_screen.dart
+  main.dart
+legal/               # privacy-policy.html, delete-account.html
+firestore.rules
+storage.rules
+PLAY_STORE_DATA_SAFETY.md
 ```
 
 ---
 
-## 4  Prerequisites
+## Getting started
 
-1. **Flutter SDK** 3.24.0 stable (install
-   from [flutter.dev](https://flutter.dev/docs/get-started/install)).
-   ```bash
-   flutter --version   # should report 3.24.x
-   ```
-2. **Firebase Project** with Android & iOS apps added.  
-   • Download `google-services.json` → place in `android/app/`.  
-   • Download `GoogleService-Info.plist` → place in `ios/Runner/`.
-3. **Android Studio / Xcode** for platform builds.
-4. (Android release only) create `key.properties` & keystore:
+### Prerequisites
+- Flutter SDK ≥ 3.24
+- Android Studio / Xcode
+- A Firebase project (Auth, Firestore, RTDB, Storage, Messaging)
 
----
-
-## 5  Getting Started
+### Setup
+1. Clone the repo and open it in your IDE.
+2. Create your own Firebase project and download:
+   - `android/app/google-services.json`
+   - iOS `GoogleService-Info.plist` (if shipping iOS)
+3. **Do not commit secrets.** Use your own service account / FCM keys locally.
+4. Update branding if needed:
+   - App name: `lib/Constant/app_constant.dart`
+   - Legal URLs: `lib/Constant/legal_urls.dart`
+   - Icon: `assets/Icons/app_icon.png` → run `dart run flutter_launcher_icons`
+5. Install & run:
 
 ```bash
-# 1. Clone
-$ git clone <repo-url> && cd Chess4Cash
-
-# 2. Install packages
-$ flutter pub get
-
-# 3. Generate native splash (only first time)
-$ flutter pub run flutter_native_splash:create
+flutter pub get
+flutter run
 ```
+
+### Deploy Firebase rules
+
+```bash
+firebase deploy --only firestore:rules,storage
+```
+
+### Host legal pages
+Upload files from `/legal` to your domain and point Play Console + `LegalUrls` to them.
 
 ---
 
-## 6  Running & Building
+## Play Store notes
 
-### Debug
-
-```bash
-flutter run            # picks first connected device
-flutter run -d chrome  # web
-```
-
-### Release APK
-
-```bash
-flutter build apk --release
-```
-
-### Release AppBundle (Play Store)
-
-```bash
-flutter build appbundle --release
-```
-
-### iOS (macOS only)
-
-```bash
-flutter build ios --release
-open ios/Runner.xcworkspace     # archive in Xcode
-```
+- Display name: **ChessArena**
+- Package id in this repo may still be the original Android applicationId — change before publishing if you want a new listing identity.
+- Use `PLAY_STORE_DATA_SAFETY.md` when filling Google Play Data Safety.
+- Host privacy policy + account deletion URLs before submission.
 
 ---
 
-## 7  Environment / Secrets
+## What you can sell / customize for clients
 
-| File                                    | Purpose                   |
-|-----------------------------------------|---------------------------|
-| `android/app/google-services.json`      | Firebase Android config   |
-| `ios/Runner/GoogleService-Info.plist`   | Firebase iOS config       |
-| `key.properties` / `my-release-key.jks` | Android signing           |
-| `lib/Firebase/serverKey.json`           | Firebase server key (FCM) |
-
-**‼️ NEVER commit secret keys to public repos.**
+- Rebrand colors, fonts, icon, splash
+- Add ads (AdMob) or premium subscription
+- Add puzzles / bots / lessons on top of the engine
+- Multi-language support
+- Admin panel for reports / bans / tournaments
+- iOS polish + App Store listing pack
 
 ---
 
-## 8  Useful Commands
+## Screenshots
 
-```bash
-flutter pub outdated            # check newer package versions
-flutter pub upgrade --major-versions
-flutter analyze                 # static analysis
-flutter test                    # run widget tests
-```
+> Add your device screenshots here before listing on a freelancing marketplace  
+> (Home, Matchmaking, Gameplay, Ratings, Tournaments, Profile, Login/Register)
 
 ---
 
-## 9  Contributing
+## License / delivery
 
-Internal project – contact maintainer before opening PRs.
+Delivered as source code for the buyer’s use.  
+Replace Firebase credentials and legal URLs before production release.  
+You are responsible for store policies, privacy compliance, and local laws in your target markets.
 
 ---
 
-## 10  License
+## Support for buyers
 
-© 2025 Chess4Cash. All rights reserved.
+After purchase, typical handover includes:
+1. Source code access
+2. Setup steps (this README)
+3. Firebase collections overview
+4. How to change branding + icon
+
+---
+
+**ChessArena** — Play free. Climb your Elo.

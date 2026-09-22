@@ -32,4 +32,4 @@ Future<String> generateFcmAccessToken() async {
   client.close();
 
   return token; // valid ~1h
-} 
+}

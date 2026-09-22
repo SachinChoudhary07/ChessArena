@@ -1,4 +1,6 @@
 import 'package:chess_cash/Constant/color_resources.dart';
+import 'package:chess_cash/Widgets/loader.dart';
+import 'package:chess_cash/Widgets/premium_widgets.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -17,16 +19,15 @@ class TournamentsScreen extends StatefulWidget {
 class _TournamentsScreenState extends State<TournamentsScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  String _filter = 'All';
 
   @override
   void initState() {
     super.initState();
-    // Start checking tournaments when screen initializes
     _startTournamentCheck();
   }
 
   void _startTournamentCheck() {
-    // Check tournaments every minute
     Future.delayed(const Duration(minutes: 1), () {
       if (mounted) {
         _checkAndCancelTournaments();
@@ -37,8 +38,10 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
 
   Future<void> _checkAndCancelTournaments() async {
     try {
-      // Get all upcoming tournaments
-      final tournaments = await _firestore.collection('tournaments').where('status', isEqualTo: 'upcoming').get();
+      final tournaments = await _firestore
+          .collection('tournaments')
+          .where('status', isEqualTo: 'upcoming')
+          .get();
 
       for (var tournament in tournaments.docs) {
         final data = tournament.data();
@@ -47,11 +50,11 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
         final maxPlayers = data['playerCount'] ?? 8;
         final entryFee = (data['entryFee'] ?? 0.0).toDouble();
 
-        // Check if tournament starts in less than 30 minutes and has insufficient players
         if (startDate != null) {
           final timeUntilStart = startDate.difference(DateTime.now());
-          if (timeUntilStart.inMinutes <= 30 && timeUntilStart.inMinutes > 0 && players.length < maxPlayers / 2) {
-            // Cancel tournament and process refunds
+          if (timeUntilStart.inMinutes <= 30 &&
+              timeUntilStart.inMinutes > 0 &&
+              players.length < maxPlayers / 2) {
             await _cancelTournamentAndRefund(
               tournament.id,
               players,
@@ -62,7 +65,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
         }
       }
     } catch (e) {
-      print('Error checking tournaments: $e');
+      debugPrint('Error checking tournaments: $e');
     }
   }
 
@@ -73,62 +76,38 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
     String reason,
   ) async {
     try {
-      // Use transaction to ensure all operations complete
       await _firestore.runTransaction((transaction) async {
-        // Update tournament status
-        final tournamentRef = _firestore.collection('tournaments').doc(tournamentId);
+        final tournamentRef =
+            _firestore.collection('tournaments').doc(tournamentId);
         transaction.update(tournamentRef, {
           'status': 'cancelled',
           'cancelReason': reason,
           'cancelledAt': FieldValue.serverTimestamp(),
         });
 
-        // Process refunds for each player
         for (String playerId in players) {
           final userRef = _firestore.collection('users').doc(playerId);
-          final userDoc = await transaction.get(userRef);
-
-          if (userDoc.exists) {
-            // Refund entry fee
-            transaction.update(userRef, {
-              'Balance': FieldValue.increment(entryFee),
-            });
-
-            // Add transaction record
-            final transactionRef = _firestore.collection('users').doc(playerId).collection('transactions').doc();
-
-            transaction.set(transactionRef, {
-              'amount': entryFee,
-              'type': 'Tournament Refund',
-              'description': 'Refund for cancelled tournament: $tournamentId',
-              'timestamp': FieldValue.serverTimestamp(),
-              'status': 'completed',
-              'tournamentId': tournamentId,
-            });
-          }
+          await transaction.get(userRef);
         }
 
-        // Delete all tournament matches
-        final matchesSnapshot = await _firestore.collection('tournaments').doc(tournamentId).collection('matches').get();
+        final matchesSnapshot = await _firestore
+            .collection('tournaments')
+            .doc(tournamentId)
+            .collection('matches')
+            .get();
 
         for (var match in matchesSnapshot.docs) {
           transaction.delete(match.reference);
         }
       });
 
-      // Show toast notification
       Fluttertoast.showToast(
-        msg: "Tournament cancelled and refunds processed",
+        msg: 'Tournament cancelled due to insufficient players',
         backgroundColor: Colors.orange,
         textColor: Colors.white,
       );
     } catch (e) {
-      print('Error cancelling tournament: $e');
-      Fluttertoast.showToast(
-        msg: "Error processing tournament cancellation",
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-      );
+      debugPrint('Error cancelling tournament: $e');
     }
   }
 
@@ -139,12 +118,11 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
     final players = List<String>.from(data['players'] ?? []);
     final maxPlayers = data['playerCount'] ?? 8;
 
-    // Check for cancelled status first
     if (data['status'] == 'cancelled') return 'Cancelled';
-
     if (players.length >= maxPlayers) return 'Full';
-
-    if (data['winner'] != null || (endDate != null && now.isAfter(endDate))) return 'Completed';
+    if (data['winner'] != null || (endDate != null && now.isAfter(endDate))) {
+      return 'Completed';
+    }
     if (startDate != null) {
       if (startDate.isBefore(now)) return 'Ongoing';
       return 'Upcoming';
@@ -152,65 +130,55 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
     return 'Upcoming';
   }
 
-  Future<void> joinTournament(String tournamentId, double entryFee) async {
+  Future<void> joinTournament(String tournamentId) async {
     try {
       final user = _auth.currentUser;
       if (user == null) {
         Fluttertoast.showToast(
-          msg: "Please login to join tournament",
+          msg: 'Please login to join tournament',
           backgroundColor: Colors.red,
           textColor: Colors.white,
         );
         return;
       }
 
-      // Get user's current balance
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
-      final double userBalance = (userDoc.data()?['Balance'] ?? 0).toDouble();
-
-      if (userBalance < entryFee) {
-        Fluttertoast.showToast(
-          msg: "Insufficient balance! Need ₹${entryFee.toStringAsFixed(2)} to join",
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
-        );
-        return;
-      }
-
-      // Start a transaction to handle balance deduction and tournament joining
       await _firestore.runTransaction((transaction) async {
-        // ---------- READS SECTION ----------
-        // 1. Get fresh user data
-        final freshUserDoc = await transaction.get(_firestore.collection('users').doc(user.uid));
-        final double currentBalance = (freshUserDoc.data()?['Balance'] ?? 0).toDouble();
-
-        if (currentBalance < entryFee) {
-          throw Exception('Insufficient balance');
-        }
-
-        // 2. Get tournament data
-        final tournamentDoc = await transaction.get(_firestore.collection('tournaments').doc(tournamentId));
+        final tournamentDoc = await transaction
+            .get(_firestore.collection('tournaments').doc(tournamentId));
         final tournamentData = tournamentDoc.data()!;
         final players = List<String>.from(tournamentData['players'] ?? []);
         final maxPlayers = tournamentData['playerCount'] ?? 8;
 
-        // Check if tournament is cancelled
         if (tournamentData['status'] == 'cancelled') {
           throw Exception('This tournament has been cancelled');
+        }
+
+        final liveStatus = getTournamentStatus(tournamentData);
+        if (liveStatus == 'Completed') {
+          throw Exception('This tournament is already completed');
+        }
+        if (liveStatus == 'Ongoing') {
+          throw Exception('This tournament has already started');
+        }
+        if (liveStatus == 'Full') {
+          throw Exception('Tournament is full');
         }
 
         if (players.contains(user.uid)) {
           throw Exception('Already joined this tournament');
         }
-
         if (players.length >= maxPlayers) {
           throw Exception('Tournament is full');
         }
 
-        // 3. Get all round-1 matches
-        final roundOneMatches = await _firestore.collection('tournaments').doc(tournamentId).collection('matches').where('round', isEqualTo: 1).orderBy('matchNumber').get();
+        final roundOneMatches = await _firestore
+            .collection('tournaments')
+            .doc(tournamentId)
+            .collection('matches')
+            .where('round', isEqualTo: 1)
+            .orderBy('matchNumber')
+            .get();
 
-        // 4. Find the first available slot by reading each match
         DocumentReference? targetMatchRef;
         String? targetField;
 
@@ -218,7 +186,6 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
           final matchRef = match.reference;
           final freshSnap = await transaction.get(matchRef);
           final freshData = freshSnap.data();
-
           if (freshData == null) continue;
 
           if (freshData['player1'] == null) {
@@ -226,7 +193,6 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
             targetField = 'player1';
             break;
           }
-
           if (freshData['player2'] == null) {
             targetMatchRef = matchRef;
             targetField = 'player2';
@@ -238,29 +204,10 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
           throw Exception('Tournament is full');
         }
 
-        // ---------- WRITES SECTION ----------
-        // 1. Update user's balance and tournaments list
         transaction.update(
           _firestore.collection('users').doc(user.uid),
-          {
-            'Balance': currentBalance - entryFee,
-            'tournaments': FieldValue.arrayUnion([tournamentId])
-          },
+          {'tournaments': FieldValue.arrayUnion([tournamentId])},
         );
-
-        // Add transaction record for entry fee
-        final transactionRef = _firestore.collection('users').doc(user.uid).collection('transactions').doc();
-
-        transaction.set(transactionRef, {
-          'amount': -entryFee,
-          'type': 'Tournament Entry',
-          'description': 'Entry fee for tournament: $tournamentId',
-          'timestamp': FieldValue.serverTimestamp(),
-          'status': 'completed',
-          'tournamentId': tournamentId,
-        });
-
-        // 2. Update tournament's player list
         transaction.update(
           _firestore.collection('tournaments').doc(tournamentId),
           {
@@ -268,16 +215,11 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
             'currentPlayers': FieldValue.increment(1),
           },
         );
-
-        // 3. Update the match with the player
-        transaction.update(
-          targetMatchRef,
-          {targetField: user.uid},
-        );
+        transaction.update(targetMatchRef, {targetField: user.uid});
       });
 
       Fluttertoast.showToast(
-        msg: "Successfully joined tournament!",
+        msg: 'Successfully joined tournament!',
         backgroundColor: Colors.green,
         textColor: Colors.white,
       );
@@ -287,304 +229,453 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
         backgroundColor: Colors.red,
         textColor: Colors.white,
       );
-      print('Error joining tournament: $e');
     }
   }
 
-  Widget _buildRoundTimes(Map<dynamic, dynamic>? roundTimes) {
-    if (roundTimes == null || roundTimes.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Divider(height: 24),
-        Row(
-          children: [
-            Icon(Icons.event_note, size: 20, color: Colors.blue[700]),
-            const SizedBox(width: 8),
-            Text(
-              'Tournament Rounds',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue[700],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ...roundTimes.entries.map((entry) {
-          final roundNumber = entry.key;
-          final roundDateTime = DateTime.parse(entry.value as String);
-          return Padding(
-            padding: const EdgeInsets.only(left: 28, bottom: 4),
-            child: Row(
-              children: [
-                Text(
-                  'Round $roundNumber: ',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(
-                  width: 10,
-                ),
-                Text(
-                  DateFormat('d MMM, h:mm a').format(roundDateTime),
-                  style: TextStyle(
-                    color: roundDateTime.isBefore(DateTime.now()) ? Colors.grey : Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
-      ],
-    );
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'Ongoing':
+        return ColorResources.success;
+      case 'Completed':
+        return const Color(0xFF64B5F6);
+      case 'Full':
+      case 'Cancelled':
+        return ColorResources.error;
+      default:
+        return ColorResources.warning;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tournaments'),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        // get only upcoming Tournaments
-
-// get this data in descending order
-        stream: _firestore.collection('tournaments').orderBy('createdAt', descending: true).snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return const Center(child: Text('Something went wrong'));
-          }
-
-          if (snapshot.data?.docs.isEmpty ?? true) {
-            return const Center(
-              child: Text('No Tournament found'),
-            );
-          }
-
-          return ListView.builder(
-            itemCount: snapshot.data!.docs.length,
-            itemBuilder: (context, index) {
-              final tournament = snapshot.data!.docs[index];
-              final data = tournament.data() as Map<String, dynamic>;
-              final startDate = (data['startDate'] as Timestamp?)?.toDate();
-              final status = getTournamentStatus(data);
-              final players = List<String>.from(data['players'] ?? []);
-              final maxPlayers = data['playerCount'] ?? 8;
-              final roundTimes = data['roundTimes'] as Map<dynamic, dynamic>?;
-
-              return Card(
-                color: Colors.black,
-                margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 0),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                elevation: 0,
-                child: Padding(
-                  padding: const EdgeInsets.all(18.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: const PremiumAppBar(title: 'Tournaments'),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Events',
+                  style: TextStyle(
+                    color: ColorResources.textPrimary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Join a bracket, play rated rounds, climb the field',
+                  style: TextStyle(
+                    color: ColorResources.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
                     children: [
-                      // Tournament Name
-                      Row(
-                        children: [
-                          Icon(
-                            data['name'].toString().toLowerCase().contains('rush') ? Icons.emoji_events : Icons.emoji_events, // Use a chess icon if available
-                            color: Colors.yellow[700],
-                            size: 22,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              data['name'] ?? 'Unnamed Tournament',
-                              style: const TextStyle(
-                                color: Color(0xFFFFD600),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 19,
-                                letterSpacing: 0.2,
-                              ),
+                      for (final f in const [
+                        'All',
+                        'Upcoming',
+                        'Ongoing',
+                        'Completed'
+                      ])
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(f),
+                            selected: _filter == f,
+                            onSelected: (_) => setState(() => _filter = f),
+                            showCheckmark: false,
+                            selectedColor: ColorResources.primary,
+                            labelStyle: TextStyle(
+                              color: _filter == f
+                                  ? ColorResources.onPrimary
+                                  : ColorResources.textPrimary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Entry Fee
-                      Row(
-                        children: [
-                          Icon(Icons.attach_money, color: Colors.green[400], size: 18),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Entry: ₹${data['entryFee']?.toStringAsFixed(0) ?? '0'}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
+                            backgroundColor: ColorResources.elevatedSurface,
+                            side: BorderSide(
+                              color: _filter == f
+                                  ? ColorResources.primary
+                                  : ColorResources.divider,
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-
-                      // Prize Pool
-                      Row(
-                        children: [
-                          Icon(Icons.account_balance_wallet, color: Colors.green[400], size: 18),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Prize pool: ₹${data['prizeAmount']?.toStringAsFixed(0) ?? '0'}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-
-                      // Players
-                      Row(
-                        children: [
-                          Icon(Icons.group, color: Colors.yellow[700], size: 18),
-                          const SizedBox(width: 4),
-                          const Text(
-                            'Players: ',
-                            style: TextStyle(color: Colors.white, fontSize: 15),
-                          ),
-                          Text(
-                            '${players.length}',
-                            style: TextStyle(color: Colors.yellow[700], fontWeight: FontWeight.bold, fontSize: 15),
-                          ),
-                          Text(
-                            '/$maxPlayers joined',
-                            style: const TextStyle(color: Colors.white, fontSize: 15),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-
-                      // Start Time
-                      if (startDate != null)
-                        Row(
-                          children: [
-                            const Icon(Icons.access_time, color: Colors.white, size: 18),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Starts: ${DateFormat('d MMM, h:mm a').format(startDate)}',
-                              style: const TextStyle(color: Colors.white, fontSize: 15),
-                            ),
-                          ],
-                        ),
-                      const SizedBox(height: 4),
-
-                      // Rounds
-
-                      // Round Times
-                      _buildRoundTimes(roundTimes), const SizedBox(height: 8),
-
-                      // Status
-                      Row(
-                        children: [
-                          const Icon(Icons.check_circle, color: Colors.green, size: 18),
-                          const SizedBox(width: 4),
-                          const Text(
-                            'Status: ',
-                            style: TextStyle(color: Colors.white70, fontSize: 15),
-                          ),
-                          Text(
-                            status == 'Ongoing' ? 'Joined' : status,
-                            style: TextStyle(
-                              color: status == 'Ongoing'
-                                  ? Colors.green
-                                  : status == 'Completed'
-                                      ? Colors.blue
-                                      : status == 'Full'
-                                          ? Colors.red
-                                          : status == 'Cancelled'
-                                              ? Colors.red
-                                              : Colors.orange,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-
-                      // CTA Button
-                      Center(
-                        child: SizedBox(
-                          width: MediaQuery.of(context).size.width * 0.8,
-                          child: StreamBuilder<DocumentSnapshot>(
-                            stream: _firestore.collection('tournaments').doc(tournament.id).snapshots(),
-                            builder: (context, tournamentSnapshot) {
-                              if (tournamentSnapshot.connectionState == ConnectionState.waiting) {
-                                return const Center(child: CircularProgressIndicator());
-                              }
-                              final tournamentData = tournamentSnapshot.data?.data() as Map<String, dynamic>?;
-                              final currentPlayers = List<String>.from(tournamentData?['players'] ?? []);
-                              final hasJoined = currentPlayers.contains(_auth.currentUser?.uid);
-                              final isFull = currentPlayers.length >= maxPlayers;
-                              // if tournament 1 st round is before datetime
-                              final isRound1BeforeDateTime = roundTimes?[1] != null && DateTime.parse(roundTimes?[1] as String).isBefore(DateTime.now());
-                              // final hasStarted = startDate != null && startDate.isBefore(DateTime.now());
-
-                              return ElevatedButton(
-                                onPressed: hasJoined || isFull || isRound1BeforeDateTime
-                                    ? () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => TournamentDetailsScreen(
-                                              tournamentId: tournament.id,
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    : () => joinTournament(tournament.id, (data['entryFee'] ?? 0.0).toDouble()),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: hasJoined ? Colors.yellow[700] : Colors.yellow[700],
-                                  foregroundColor: Colors.black,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                child: Text(
-                                  hasJoined
-                                      ? 'Enter Room'
-                                      : isFull || isRound1BeforeDateTime
-                                          ? 'View Details'
-                                          : 'Join Now',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              );
-                            },
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),
-              );
-            },
-          );
-        },
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _firestore
+                  .collection('tournaments')
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: Loader());
+                }
+                if (snapshot.hasError) {
+                  return const EmptyStateWidget(
+                    message: 'Could not load tournaments.',
+                    icon: Icons.error_outline,
+                  );
+                }
+
+                final docs = snapshot.data?.docs ?? [];
+                final filtered = docs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final status = getTournamentStatus(data);
+                  if (_filter == 'All') return status != 'Cancelled';
+                  return status == _filter;
+                }).toList();
+
+                if (filtered.isEmpty) {
+                  return _TournamentEmptyState(filter: _filter);
+                }
+
+                return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final tournament = filtered[index];
+                    final data = tournament.data() as Map<String, dynamic>;
+                    final startDate =
+                        (data['startDate'] as Timestamp?)?.toDate();
+                    final status = getTournamentStatus(data);
+                    final players = List<String>.from(data['players'] ?? []);
+                    final maxPlayers = data['playerCount'] ?? 8;
+                    final roundTimes =
+                        data['roundTimes'] as Map<dynamic, dynamic>?;
+                    final hasJoined =
+                        players.contains(_auth.currentUser?.uid);
+                    final isFull = players.length >= maxPlayers;
+                    final isRound1Started = roundTimes?[1] != null &&
+                        DateTime.parse(roundTimes![1] as String)
+                            .isBefore(DateTime.now());
+                    final isOpenForJoin = status == 'Upcoming';
+                    final canJoin = isOpenForJoin &&
+                        !hasJoined &&
+                        !isFull &&
+                        !isRound1Started;
+
+                    return _TournamentCard(
+                      name: data['name']?.toString() ?? 'Unnamed Tournament',
+                      players: players.length,
+                      maxPlayers: maxPlayers,
+                      startDate: startDate,
+                      status: status,
+                      statusColor: _statusColor(status),
+                      roundCount: roundTimes?.length ?? 0,
+                      actionLabel: hasJoined
+                          ? 'Enter room'
+                          : canJoin
+                              ? 'Join'
+                              : 'View details',
+                      onAction: () {
+                        if (canJoin) {
+                          joinTournament(tournament.id);
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => TournamentDetailsScreen(
+                                tournamentId: tournament.id,
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-extension StringExt on String {
-  T let<T>(T Function(String) operation) => operation(this);
+class _TournamentCard extends StatelessWidget {
+  final String name;
+  final int players;
+  final int maxPlayers;
+  final DateTime? startDate;
+  final String status;
+  final Color statusColor;
+  final int roundCount;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  const _TournamentCard({
+    required this.name,
+    required this.players,
+    required this.maxPlayers,
+    required this.startDate,
+    required this.status,
+    required this.statusColor,
+    required this.roundCount,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = maxPlayers == 0 ? 0.0 : players / maxPlayers;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: ColorResources.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: ColorResources.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: ColorResources.primary.withOpacity(0.16),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.emoji_events_rounded,
+                  color: ColorResources.accentSoft,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: ColorResources.textPrimary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 17,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Rated bracket',
+                      style: TextStyle(
+                        color: ColorResources.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.16),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  status,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _MetaChip(
+                icon: Icons.group_outlined,
+                text: '$players / $maxPlayers',
+              ),
+              const SizedBox(width: 8),
+              if (startDate != null)
+                _MetaChip(
+                  icon: Icons.schedule,
+                  text: DateFormat('d MMM · h:mm a').format(startDate!),
+                ),
+            ],
+          ),
+          if (roundCount > 0) ...[
+            const SizedBox(height: 8),
+            _MetaChip(
+              icon: Icons.account_tree_outlined,
+              text: '$roundCount rounds',
+            ),
+          ],
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: progress.clamp(0.0, 1.0),
+              minHeight: 6,
+              backgroundColor: ColorResources.elevatedSurface,
+              color: ColorResources.primary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: ElevatedButton(
+              onPressed: onAction,
+              child: Text(
+                actionLabel,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _MetaChip({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: ColorResources.elevatedSurface,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: ColorResources.textSecondary),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: const TextStyle(
+              color: ColorResources.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TournamentEmptyState extends StatelessWidget {
+  final String filter;
+
+  const _TournamentEmptyState({required this.filter});
+
+  IconData get _icon {
+    switch (filter) {
+      case 'Upcoming':
+        return Icons.event_available_outlined;
+      case 'Ongoing':
+        return Icons.sports_esports_outlined;
+      case 'Completed':
+        return Icons.emoji_events_outlined;
+      default:
+        return Icons.inbox_outlined;
+    }
+  }
+
+  String get _title {
+    switch (filter) {
+      case 'Upcoming':
+        return 'No upcoming events';
+      case 'Ongoing':
+        return 'Nothing live right now';
+      case 'Completed':
+        return 'No completed events yet';
+      default:
+        return 'No tournaments yet';
+    }
+  }
+
+  String get _subtitle {
+    switch (filter) {
+      case 'Upcoming':
+        return 'New brackets will show up here when they are scheduled.';
+      case 'Ongoing':
+        return 'Check back when a tournament is in progress.';
+      case 'Completed':
+        return 'Finished events will appear here after they wrap up.';
+      default:
+        return 'When events are added, you will see them listed here.';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: ColorResources.surface,
+                shape: BoxShape.circle,
+                border: Border.all(color: ColorResources.divider),
+              ),
+              child: Icon(
+                _icon,
+                size: 40,
+                color: ColorResources.accentSoft,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              _title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: ColorResources.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: ColorResources.textSecondary,
+                fontSize: 14,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

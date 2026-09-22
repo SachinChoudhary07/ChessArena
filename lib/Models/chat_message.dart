@@ -22,7 +22,11 @@ class ChatMessage {
   final String text;
   final DateTime time;
 
-  const ChatMessage({required this.id, required this.senderId, required this.text, required this.time});
+  const ChatMessage(
+      {required this.id,
+      required this.senderId,
+      required this.text,
+      required this.time});
 
   factory ChatMessage.fromMap(Map<String, dynamic> map) {
     DateTime timestamp;
@@ -35,7 +39,7 @@ class ChatMessage {
     } else {
       timestamp = DateTime.now();
     }
-    
+
     return ChatMessage(
       id: map['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
       senderId: map['sender'] ?? '',

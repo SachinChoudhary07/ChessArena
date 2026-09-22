@@ -29,7 +29,10 @@ class AutProvider with ChangeNotifier {
     try {
       final String? token = await FirebaseMessaging.instance.getToken();
       if (token != null && token.isNotEmpty) {
-        await _firestore.collection(AppConstants.usersCollection).doc(uid).update({AppConstants.fcmTokenField: token});
+        await _firestore
+            .collection(AppConstants.usersCollection)
+            .doc(uid)
+            .update({AppConstants.fcmTokenField: token});
       }
     } catch (e) {
       // Non-fatal – just log it
@@ -637,7 +640,7 @@ class AutProvider with ChangeNotifier {
           children: [
             Text('To appeal your ban, please contact us:'),
             SizedBox(height: 12),
-            Text('📧 Email: support@chess4cash.com'),
+            Text('📧 Email: support@chessarena.app'),
             Text('📱 WhatsApp: +91 9876543210'),
           ],
         ),

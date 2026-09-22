@@ -1,6 +1,6 @@
 {
-    "name": "chess_cash",
-    "short_name": "chess_cash",
+    "name": "ChessArena",
+    "short_name": "ChessArena",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -1,6 +1,9 @@
 import 'dart:math' show log;
 
+import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Screens/TournamentScreens/tornament_waiting_room.dart';
+import 'package:chess_cash/Widgets/loader.dart';
+import 'package:chess_cash/Widgets/premium_widgets.dart';
 import 'package:chess_cash/services/navigation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,10 +12,13 @@ import 'package:intl/intl.dart';
 
 class TournamentDetailsScreen extends StatelessWidget {
   final String tournamentId;
-  bool isFromTournament;
+  final bool isFromTournament;
 
-  TournamentDetailsScreen(
-      {super.key, required this.tournamentId, this.isFromTournament = true});
+  const TournamentDetailsScreen({
+    super.key,
+    required this.tournamentId,
+    this.isFromTournament = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -87,186 +93,233 @@ class TournamentDetailsScreen extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Tournament Details')),
-            body: const Center(child: Text('Something went wrong')),
+            appBar: const PremiumAppBar(title: 'Tournament'),
+            body: const EmptyStateWidget(
+              message: 'Something went wrong',
+              icon: Icons.error_outline,
+            ),
           );
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Tournament Details')),
-            body: const Center(child: CircularProgressIndicator()),
+          return const Scaffold(
+            appBar: PremiumAppBar(title: 'Tournament'),
+            body: Center(child: Loader()),
           );
         }
 
         final data = snapshot.data!.data() as Map<String, dynamic>;
         final roundTimes = data['roundTimes'] as Map<dynamic, dynamic>?;
-        final numberOfRounds = roundTimes?.length ?? 0;
+        final players = List<String>.from(data['players'] ?? []);
+        final maxPlayers = data['playerCount'] ?? 8;
 
         return DefaultTabController(
           length: 2,
           child: Scaffold(
-            appBar: AppBar(
-              title: Text(data['name'] ?? 'Tournament Details'),
-              bottom: const TabBar(
-                tabs: [
-                  Tab(text: 'Overview'),
-                  Tab(text: 'Matches'),
-                ],
-              ),
+            appBar: PremiumAppBar(
+              title: data['name']?.toString() ?? 'Tournament',
             ),
-            body: TabBarView(
+            body: Column(
               children: [
-                // Overview Tab
-                SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: ColorResources.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: ColorResources.divider),
+                    ),
+                    child: const TabBar(
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      dividerColor: Colors.transparent,
+                      indicator: BoxDecoration(
+                        color: ColorResources.primary,
+                        borderRadius: BorderRadius.all(Radius.circular(10)),
+                      ),
+                      labelColor: ColorResources.onPrimary,
+                      unselectedLabelColor: ColorResources.textSecondary,
+                      labelStyle: TextStyle(fontWeight: FontWeight.w800),
+                      tabs: [
+                        Tab(text: 'Overview'),
+                        Tab(text: 'Matches'),
+                      ],
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: TabBarView(
                     children: [
-                      // Prize Pool Card
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Prize Pool',
-                                style: Theme.of(context).textTheme.titleLarge,
+                      SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(18),
+                                border:
+                                    Border.all(color: ColorResources.divider),
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFF2A3A24),
+                                    Color(0xFF25282F),
+                                  ],
+                                ),
                               ),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Column(
-                                    children: [
-                                      const Text('Entry Fee'),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '₹${data['entryFee']?.toString() ?? '0'}',
-                                        style: const TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.green,
-                                        ),
-                                      ),
-                                    ],
+                                  const Text(
+                                    'EVENT',
+                                    style: TextStyle(
+                                      color: ColorResources.accentSoft,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 11,
+                                      letterSpacing: 1,
+                                    ),
                                   ),
-                                  Column(
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    data['name']?.toString() ?? 'Tournament',
+                                    style: const TextStyle(
+                                      color: ColorResources.textPrimary,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Row(
                                     children: [
-                                      const Text('Prize Amount'),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '₹${data['prizeAmount']?.toString() ?? '0'}',
-                                        style: const TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.green,
-                                        ),
+                                      _InfoPill(
+                                        label: 'Players',
+                                        value:
+                                            '${players.length}/$maxPlayers',
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const _InfoPill(
+                                        label: 'Format',
+                                        value: 'Bracket',
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _InfoPill(
+                                        label: 'Rounds',
+                                        value: '${roundTimes?.length ?? 0}',
                                       ),
                                     ],
                                   ),
                                 ],
                               ),
+                            ),
+                            if (roundTimes != null) ...[
+                              const SizedBox(height: 16),
+                              const ChessSectionHeader(title: 'Schedule'),
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: ColorResources.surface,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                      color: ColorResources.divider),
+                                ),
+                                child: Column(
+                                  children: roundTimes.entries.map((entry) {
+                                    final roundDateTime =
+                                        DateTime.parse(entry.value as String);
+                                    final isUpcoming =
+                                        roundDateTime.isAfter(DateTime.now());
+                                    return Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 10),
+                                      child: Row(
+                                        children: [
+                                          SizedBox(
+                                            width: 72,
+                                            child: Text(
+                                              'Round ${entry.key}',
+                                              style: const TextStyle(
+                                                color:
+                                                    ColorResources.textPrimary,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: Text(
+                                              DateFormat('d MMM · h:mm a')
+                                                  .format(roundDateTime),
+                                              style: TextStyle(
+                                                color: isUpcoming
+                                                    ? ColorResources
+                                                        .textPrimary
+                                                    : ColorResources
+                                                        .textSecondary,
+                                              ),
+                                            ),
+                                          ),
+                                          if (isUpcoming)
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: ColorResources.primary
+                                                    .withOpacity(0.18),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: const Text(
+                                                'Upcoming',
+                                                style: TextStyle(
+                                                  color: ColorResources
+                                                      .accentSoft,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
                             ],
-                          ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 16),
-
-                      // Schedule Card
-                      if (roundTimes != null)
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Match Schedule',
-                                  style: Theme.of(context).textTheme.titleLarge,
-                                ),
-                                const SizedBox(height: 16),
-                                ...roundTimes.entries.map((entry) {
-                                  final roundDateTime =
-                                      DateTime.parse(entry.value as String);
-                                  final isUpcoming =
-                                      roundDateTime.isAfter(DateTime.now());
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
-                                    child: Row(
-                                      children: [
-                                        SizedBox(
-                                          width: 80,
-                                          child: Text(
-                                            'Round ${entry.key}',
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Text(
-                                          DateFormat('d MMM, h:mm a')
-                                              .format(roundDateTime),
-                                          style: TextStyle(
-                                            color: isUpcoming
-                                                ? Colors.white
-                                                : Colors.grey,
-                                          ),
-                                        ),
-                                        if (isUpcoming)
-                                          Container(
-                                            margin:
-                                                const EdgeInsets.only(left: 8),
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: Colors.green,
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: const Text(
-                                              'Upcoming',
-                                              style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.white),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  );
-                                }),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
-                // Matches Tab
-                StreamBuilder<QuerySnapshot>(
+                      StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
-                      .collection('tournaments')
+                      .collection(isFromTournament
+                          ? 'tournaments'
+                          : 'user_tournaments')
                       .doc(tournamentId)
                       .collection('matches')
                       .orderBy('round', descending: true)
                       .snapshots(),
                   builder: (context, matchSnapshot) {
                     if (matchSnapshot.hasError) {
-                      return const Center(child: Text('Error loading matches'));
+                      return const EmptyStateWidget(
+                        message: 'Error loading matches',
+                        icon: Icons.error_outline,
+                      );
                     }
 
                     if (matchSnapshot.connectionState ==
                         ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const Center(child: Loader());
                     }
 
                     final matches = matchSnapshot.data!.docs;
                     if (matches.isEmpty) {
-                      return const Center(
-                          child: Text('No matches scheduled yet'));
+                      return const EmptyStateWidget(
+                        message: 'No matches scheduled yet',
+                        icon: Icons.sports_esports_outlined,
+                      );
                     }
 
                     // Group matches by round and sort them
@@ -300,30 +353,33 @@ class TournamentDetailsScreen extends StatelessWidget {
                                   vertical: 12, horizontal: 16),
                               margin: const EdgeInsets.only(bottom: 12),
                               decoration: BoxDecoration(
-                                color: Theme.of(context).primaryColor,
-                                borderRadius: BorderRadius.circular(8),
+                                color: ColorResources.primary.withOpacity(0.18),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: ColorResources.primary
+                                        .withOpacity(0.35)),
                               ),
                               child: Row(
                                 children: [
                                   Text(
                                     getRoundTitle(round, maxPlayers),
                                     style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
+                                      color: ColorResources.accentSoft,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
                                     ),
                                   ),
                                   const Spacer(),
                                   if (roundTimes != null &&
                                       roundTimes[round.toString()] != null)
                                     Text(
-                                      DateFormat('d MMM, h:mm a').format(
+                                      DateFormat('d MMM · h:mm a').format(
                                           DateTime.parse(
                                               roundTimes[round.toString()]
                                                   as String)),
                                       style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 14,
+                                        color: ColorResources.textSecondary,
+                                        fontSize: 13,
                                       ),
                                     ),
                                 ],
@@ -522,11 +578,54 @@ class TournamentDetailsScreen extends StatelessWidget {
                     );
                   },
                 ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _InfoPill extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoPill({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: ColorResources.elevatedSurface.withOpacity(0.75),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                color: ColorResources.textPrimary,
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(
+                color: ColorResources.textSecondary,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

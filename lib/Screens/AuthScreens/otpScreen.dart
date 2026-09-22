@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Providers/AuthProvider/AuthProvider.dart';
+import 'package:chess_cash/Widgets/premium_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:pinput/pinput.dart';
 import 'package:provider/provider.dart';
@@ -62,25 +64,31 @@ class _OtpscreenState extends State<Otpscreen> {
     final authProvider = Provider.of<AutProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Verify OTP")),
+      appBar: const PremiumAppBar(title: "Verify OTP"),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text("Enter the OTP sent to your number"),
+            const Text(
+              "Enter the OTP sent to your number",
+              style: TextStyle(color: ColorResources.textSecondary),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 24),
             Pinput(
               length: 6,
               controller: _otpController,
               keyboardType: TextInputType.number,
               defaultPinTheme: PinTheme(
-                width: 56,
+                width: 48,
                 height: 56,
-                textStyle: const TextStyle(fontSize: 20),
+                textStyle: const TextStyle(
+                    fontSize: 20, color: ColorResources.textPrimary),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey),
+                  color: ColorResources.elevatedSurface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: ColorResources.divider),
                 ),
               ),
             ),

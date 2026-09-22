@@ -30,7 +30,6 @@ class GameEndDialog extends StatefulWidget {
 
 class _GameEndDialogState extends State<GameEndDialog> {
   Map<String, dynamic>? gameData;
-  double? prizeAmount;
   int? eloChange;
   int? currentUserElo;
   int? opponentElo;
@@ -52,13 +51,9 @@ class _GameEndDialogState extends State<GameEndDialog> {
 
       if (gameDoc.exists) {
         gameData = gameDoc.data();
-        final entryFee = gameData?['entryFee'] ?? 0;
-        // Calculate prize amount: total pool (2 * entry fee) minus 18% admin commission
-        final totalPrizePool = entryFee * 2;
-        prizeAmount = entryFee > 0 ? totalPrizePool * 0.82 : 0;
       }
 
-      // If game is aborted, skip ELO and winner logic, but keep prizeAmount
+      // If game is aborted, skip ELO and winner logic
       if (widget.gameProvider.gameStatus == 'abort') {
         if (mounted) setState(() {});
         return;
@@ -147,25 +142,9 @@ class _GameEndDialogState extends State<GameEndDialog> {
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
+          color: ColorResources.surface,
           borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: _isAborted()
-                ? [
-                    Colors.blueGrey.withOpacity(0.1),
-                    Colors.blueGrey.withOpacity(0.05)
-                  ]
-                : widget.youWon
-                    ? [
-                        Colors.green.withOpacity(0.1),
-                        Colors.green.withOpacity(0.05)
-                      ]
-                    : [
-                        Colors.red.withOpacity(0.1),
-                        Colors.red.withOpacity(0.05)
-                      ],
-          ),
+          border: Border.all(color: ColorResources.divider),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -181,10 +160,12 @@ class _GameEndDialogState extends State<GameEndDialog> {
                           : Icons.sentiment_dissatisfied),
               size: 64,
               color: _isAborted()
-                  ? Colors.blueGrey
+                  ? ColorResources.textSecondary
                   : _isDraw()
-                      ? Colors.blue
-                      : (widget.youWon ? Colors.amber : Colors.grey),
+                      ? ColorResources.primaryLight
+                      : (widget.youWon
+                          ? ColorResources.accent
+                          : ColorResources.textSecondary),
             ),
             const SizedBox(height: 16),
 
@@ -198,10 +179,12 @@ class _GameEndDialogState extends State<GameEndDialog> {
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: _isAborted()
-                    ? Colors.blueGrey
+                    ? ColorResources.textSecondary
                     : _isDraw()
-                        ? Colors.blue
-                        : (widget.youWon ? Colors.green : Colors.red),
+                        ? ColorResources.primaryLight
+                        : (widget.youWon
+                            ? ColorResources.success
+                            : ColorResources.error),
               ),
             ),
             const SizedBox(height: 8),
@@ -210,7 +193,7 @@ class _GameEndDialogState extends State<GameEndDialog> {
               _getGameEndReason(),
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey[600],
+                color: ColorResources.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -222,10 +205,9 @@ class _GameEndDialogState extends State<GameEndDialog> {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.1),
+                color: ColorResources.elevatedSurface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: ColorResources.secondaryColor.withOpacity(0.3)),
+                border: Border.all(color: ColorResources.divider),
               ),
               child: Column(
                 children: [
@@ -234,7 +216,7 @@ class _GameEndDialogState extends State<GameEndDialog> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: ColorResources.secondaryColor,
+                      color: ColorResources.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -243,36 +225,6 @@ class _GameEndDialogState extends State<GameEndDialog> {
                   ],
                   _buildDetailRow('Game Mode', _getGameMode()),
                   _buildDetailRow('Duration', _getGameDuration()),
-                  if (!_isAborted() &&
-                      prizeAmount != null &&
-                      prizeAmount! > 0) ...[
-                    const Divider(height: 20),
-                    _buildDetailRow(
-                      'Prize Money',
-                      _isDraw()
-                          ? 'Refunded ₹${(prizeAmount! / 2).toStringAsFixed(0)}'
-                          : (widget.youWon
-                              ? '+₹${prizeAmount!.toStringAsFixed(0)}'
-                              : '₹0'),
-                      valueColor: _isDraw()
-                          ? Colors.blue
-                          : (widget.youWon ? Colors.green : null),
-                    ),
-                  ],
-                  if (_isAborted() &&
-                      prizeAmount != null &&
-                      prizeAmount! > 0) ...[
-                    const Divider(height: 20),
-                    const Text(
-                      'Entry fee will be refund in some time.',
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
                   if (!_isAborted() && eloChange != null) ...[
                     const Divider(height: 20),
                     _buildDetailRow(
@@ -326,8 +278,8 @@ class _GameEndDialogState extends State<GameEndDialog> {
               child: ElevatedButton(
                 onPressed: widget.onOkPressed,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: ColorResources.secondaryColor,
-                  foregroundColor: Colors.black,
+                  backgroundColor: ColorResources.primary,
+                  foregroundColor: ColorResources.textPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -397,8 +349,7 @@ class _GameEndDialogState extends State<GameEndDialog> {
   }
 
   String _getGameMode() {
-    final entryFee = gameData?['entryFee'] ?? 0;
-    return entryFee > 0 ? 'Paid (₹$entryFee)' : 'Free Match';
+    return 'Free Match';
   }
 
   String _getGameDuration() {

@@ -20,8 +20,11 @@ class TournamentDetails extends StatelessWidget {
     Future<String> getPlayerName(String? uid) async {
       if (uid == null) return 'TBD';
       try {
-        final playerDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-        return playerDoc.data()?['displayName'] ?? playerDoc.data()?['username'] ?? 'Unknown Player';
+        final playerDoc =
+            await FirebaseFirestore.instance.collection('users').doc(uid).get();
+        return playerDoc.data()?['displayName'] ??
+            playerDoc.data()?['username'] ??
+            'Unknown Player';
       } catch (e) {
         return 'Unknown Player';
       }
@@ -80,7 +83,10 @@ class TournamentDetails extends StatelessWidget {
     }
 
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('tournaments').doc(tournamentId).snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('tournaments')
+          .doc(tournamentId)
+          .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Scaffold(
@@ -140,7 +146,8 @@ class TournamentDetails extends StatelessWidget {
                 children: [
                   Icon(Icons.data_usage, size: 64, color: Colors.grey),
                   SizedBox(height: 16),
-                  Text('Tournament data not available', style: TextStyle(fontSize: 18)),
+                  Text('Tournament data not available',
+                      style: TextStyle(fontSize: 18)),
                 ],
               ),
             ),
@@ -150,14 +157,16 @@ class TournamentDetails extends StatelessWidget {
         final tournament = data as Map<String, dynamic>;
         final currentUser = FirebaseAuth.instance.currentUser;
         final players = List<String>.from(tournament['players'] ?? []);
-        final isJoined = currentUser != null && players.contains(currentUser.uid);
+        final isJoined =
+            currentUser != null && players.contains(currentUser.uid);
         final maxPlayers = tournament['maxPlayers'] as int? ?? 8;
         final status = tournament['status'] ?? 'unknown';
-        final startDateTime = tournament['startDateTime'] != null ? DateTime.parse(tournament['startDateTime']) : null;
-        final roundSchedules = tournament['roundSchedules'] as Map<String, dynamic>? ?? {};
+        final startDateTime = tournament['startDateTime'] != null
+            ? DateTime.parse(tournament['startDateTime'])
+            : null;
+        final roundSchedules =
+            tournament['roundSchedules'] as Map<String, dynamic>? ?? {};
         final numberOfRounds = tournament['numberOfRounds'] ?? 1;
-        final entryFee = tournament['entryFee'] ?? 0;
-        final prizeAmount = tournament['prizeAmount'] ?? 0;
         final roundTimes = tournament['roundTimes'] as Map<dynamic, dynamic>?;
 
         return DefaultTabController(
@@ -189,7 +198,10 @@ class TournamentDetails extends StatelessWidget {
                         width: double.infinity,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [ColorResources.primaryColor, ColorResources.primaryColor.withOpacity(0.8)],
+                            colors: [
+                              ColorResources.primaryColor,
+                              ColorResources.primaryColor.withOpacity(0.8)
+                            ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -216,10 +228,12 @@ class TournamentDetails extends StatelessWidget {
                                   const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          tournament['name'] ?? 'Unnamed Tournament',
+                                          tournament['name'] ??
+                                              'Unnamed Tournament',
                                           style: const TextStyle(
                                             fontSize: 24,
                                             fontWeight: FontWeight.bold,
@@ -228,10 +242,13 @@ class TournamentDetails extends StatelessWidget {
                                         ),
                                         const SizedBox(height: 4),
                                         Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color: _getStatusColor(status).withOpacity(0.2),
-                                            borderRadius: BorderRadius.circular(12),
+                                            color: _getStatusColor(status)
+                                                .withOpacity(0.2),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                           ),
                                           child: Text(
                                             status.toUpperCase(),
@@ -267,8 +284,12 @@ class TournamentDetails extends StatelessWidget {
                                   _buildInfoCard(
                                     icon: Icons.calendar_today,
                                     title: 'Start Date',
-                                    value: startDateTime != null ? '${startDateTime.day}/${startDateTime.month}' : 'TBD',
-                                    subtitle: startDateTime != null ? '${startDateTime.hour}:${startDateTime.minute.toString().padLeft(2, '0')}' : 'Not set',
+                                    value: startDateTime != null
+                                        ? '${startDateTime.day}/${startDateTime.month}'
+                                        : 'TBD',
+                                    subtitle: startDateTime != null
+                                        ? '${startDateTime.hour}:${startDateTime.minute.toString().padLeft(2, '0')}'
+                                        : 'Not set',
                                   ),
                                 ],
                               ),
@@ -291,15 +312,18 @@ class TournamentDetails extends StatelessWidget {
                                   onPressed: () {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Tournament joining functionality not available'),
+                                        content: Text(
+                                            'Tournament joining functionality not available'),
                                         backgroundColor: Colors.orange,
                                       ),
                                     );
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: ColorResources.primaryColor,
+                                    backgroundColor:
+                                        ColorResources.primaryColor,
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 16),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -311,14 +335,15 @@ class TournamentDetails extends StatelessWidget {
                                       SizedBox(width: 8),
                                       Text(
                                         'Join Tournament',
-                                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold),
                                       ),
                                     ],
                                   ),
                                 ),
                               ),
 
-                            // Prize Pool Card
                             Card(
                               child: Padding(
                                 padding: const EdgeInsets.all(16),
@@ -326,43 +351,13 @@ class TournamentDetails extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Prize Pool',
-                                      style: Theme.of(context).textTheme.titleLarge,
+                                      'Event type',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge,
                                     ),
-                                    const SizedBox(height: 16),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                      children: [
-                                        Column(
-                                          children: [
-                                            const Text('Entry Fee'),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '₹$entryFee',
-                                              style: const TextStyle(
-                                                fontSize: 24,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.green,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Column(
-                                          children: [
-                                            const Text('Prize Amount'),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '₹$prizeAmount',
-                                              style: const TextStyle(
-                                                fontSize: 24,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.green,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
+                                    const SizedBox(height: 12),
+                                    const Text('Rated tournament'),
                                   ],
                                 ),
                               ),
@@ -375,37 +370,53 @@ class TournamentDetails extends StatelessWidget {
                                 child: Padding(
                                   padding: const EdgeInsets.all(16),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Tournament Schedule',
-                                        style: Theme.of(context).textTheme.titleLarge,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge,
                                       ),
                                       const SizedBox(height: 16),
                                       ...List.generate(numberOfRounds, (index) {
                                         final round = index + 1;
-                                        final roundData = roundSchedules['round_$round'] as Map<String, dynamic>? ?? {};
-                                        final roundDateTime = roundData['dateTime'] != null ? DateTime.parse(roundData['dateTime']) : null;
+                                        final roundData =
+                                            roundSchedules['round_$round']
+                                                    as Map<String, dynamic>? ??
+                                                {};
+                                        final roundDateTime =
+                                            roundData['dateTime'] != null
+                                                ? DateTime.parse(
+                                                    roundData['dateTime'])
+                                                : null;
                                         final timer = roundData['timer'] ?? 0;
 
                                         return Padding(
-                                          padding: const EdgeInsets.only(bottom: 12),
+                                          padding:
+                                              const EdgeInsets.only(bottom: 12),
                                           child: Row(
                                             children: [
                                               Container(
                                                 width: 48,
                                                 height: 48,
                                                 decoration: BoxDecoration(
-                                                  color: ColorResources.primaryColor.withOpacity(0.9),
-                                                  borderRadius: BorderRadius.circular(12),
+                                                  color: ColorResources
+                                                      .primaryColor
+                                                      .withOpacity(0.9),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
                                                 ),
                                                 child: Center(
                                                   child: Text(
                                                     'R$round',
                                                     style: TextStyle(
                                                       fontSize: 16,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: ColorResources.secondaryColor,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: ColorResources
+                                                          .secondaryColor,
                                                     ),
                                                   ),
                                                 ),
@@ -413,21 +424,27 @@ class TournamentDetails extends StatelessWidget {
                                               const SizedBox(width: 16),
                                               Expanded(
                                                 child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
                                                       'Round $round',
                                                       style: const TextStyle(
                                                         fontSize: 16,
-                                                        fontWeight: FontWeight.bold,
+                                                        fontWeight:
+                                                            FontWeight.bold,
                                                       ),
                                                     ),
                                                     const SizedBox(height: 4),
                                                     if (roundDateTime != null)
                                                       Text(
-                                                        DateFormat('d MMM, h:mm a').format(roundDateTime),
+                                                        DateFormat(
+                                                                'd MMM, h:mm a')
+                                                            .format(
+                                                                roundDateTime),
                                                         style: TextStyle(
-                                                          color: Colors.grey[600],
+                                                          color:
+                                                              Colors.grey[600],
                                                           fontSize: 14,
                                                         ),
                                                       ),
@@ -465,13 +482,19 @@ class TournamentDetails extends StatelessWidget {
 
                 // Matches Tab
                 StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance.collection('tournaments').doc(tournamentId).collection('matches').orderBy('round', descending: true).snapshots(),
+                  stream: FirebaseFirestore.instance
+                      .collection('tournaments')
+                      .doc(tournamentId)
+                      .collection('matches')
+                      .orderBy('round', descending: true)
+                      .snapshots(),
                   builder: (context, matchSnapshot) {
                     if (matchSnapshot.hasError) {
                       return const Center(child: Text('Error loading matches'));
                     }
 
-                    if (matchSnapshot.connectionState == ConnectionState.waiting) {
+                    if (matchSnapshot.connectionState ==
+                        ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
 
@@ -484,11 +507,15 @@ class TournamentDetails extends StatelessWidget {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.sports_esports, size: 64, color: Colors.grey),
+                            Icon(Icons.sports_esports,
+                                size: 64, color: Colors.grey),
                             SizedBox(height: 16),
-                            Text('No matches scheduled yet', style: TextStyle(fontSize: 16)),
+                            Text('No matches scheduled yet',
+                                style: TextStyle(fontSize: 16)),
                             SizedBox(height: 8),
-                            Text('Matches will be created when players join', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                            Text('Matches will be created when players join',
+                                style: TextStyle(
+                                    fontSize: 14, color: Colors.grey)),
                           ],
                         ),
                       );
@@ -521,7 +548,8 @@ class TournamentDetails extends StatelessWidget {
                           children: [
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 12, horizontal: 16),
                               margin: const EdgeInsets.only(bottom: 12),
                               decoration: BoxDecoration(
                                 color: Theme.of(context).primaryColor,
@@ -538,9 +566,13 @@ class TournamentDetails extends StatelessWidget {
                                     ),
                                   ),
                                   const Spacer(),
-                                  if (roundTimes != null && roundTimes[round.toString()] != null)
+                                  if (roundTimes != null &&
+                                      roundTimes[round.toString()] != null)
                                     Text(
-                                      DateFormat('d MMM, h:mm a').format(DateTime.parse(roundTimes[round.toString()] as String)),
+                                      DateFormat('d MMM, h:mm a').format(
+                                          DateTime.parse(
+                                              roundTimes[round.toString()]
+                                                  as String)),
                                       style: const TextStyle(
                                         color: Colors.white70,
                                         fontSize: 14,
@@ -551,7 +583,8 @@ class TournamentDetails extends StatelessWidget {
                             ),
                             ...roundMatches.map((match) {
                               final matchId = match.id;
-                              final matchData = match.data() as Map<String, dynamic>;
+                              final matchData =
+                                  match.data() as Map<String, dynamic>;
                               return Card(
                                 margin: const EdgeInsets.only(bottom: 12),
                                 child: Padding(
@@ -559,28 +592,39 @@ class TournamentDetails extends StatelessWidget {
                                   child: Column(
                                     children: [
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
                                         children: [
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 4),
                                             decoration: BoxDecoration(
-                                              color: matchData['status'] == 'completed'
+                                              color: matchData['status'] ==
+                                                      'completed'
                                                   ? Colors.green
-                                                  : matchData['status'] == 'ongoing'
+                                                  : matchData['status'] ==
+                                                          'ongoing'
                                                       ? Colors.orange
                                                       : Colors.blue,
-                                              borderRadius: BorderRadius.circular(12),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                             ),
                                             child: Text(
-                                              matchData['status']?.toString().toUpperCase() ?? 'PENDING',
-                                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                                              matchData['status']
+                                                      ?.toString()
+                                                      .toUpperCase() ??
+                                                  'PENDING',
+                                              style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12),
                                             ),
                                           ),
                                         ],
                                       ),
                                       const SizedBox(height: 16),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceAround,
                                         children: [
                                           Column(
                                             children: [
@@ -589,15 +633,30 @@ class TournamentDetails extends StatelessWidget {
                                               ),
                                               const SizedBox(height: 8),
                                               FutureBuilder<String>(
-                                                future: matchData['player1'] == FirebaseAuth.instance.currentUser?.uid ? Future.value('You') : getPlayerName(matchData['player1']?.toString()),
+                                                future: matchData['player1'] ==
+                                                        FirebaseAuth.instance
+                                                            .currentUser?.uid
+                                                    ? Future.value('You')
+                                                    : getPlayerName(
+                                                        matchData['player1']
+                                                            ?.toString()),
                                                 builder: (context, snapshot) {
-                                                  if (snapshot.connectionState == ConnectionState.waiting) {
+                                                  if (snapshot
+                                                          .connectionState ==
+                                                      ConnectionState.waiting) {
                                                     return const CircularProgressIndicator();
                                                   }
                                                   return Text(
                                                     snapshot.data ?? 'TBD',
                                                     style: TextStyle(
-                                                      color: matchData['player1'] == FirebaseAuth.instance.currentUser?.uid ? Colors.green : Colors.white,
+                                                      color: matchData[
+                                                                  'player1'] ==
+                                                              FirebaseAuth
+                                                                  .instance
+                                                                  .currentUser
+                                                                  ?.uid
+                                                          ? Colors.green
+                                                          : Colors.white,
                                                     ),
                                                   );
                                                 },
@@ -618,15 +677,30 @@ class TournamentDetails extends StatelessWidget {
                                               ),
                                               const SizedBox(height: 8),
                                               FutureBuilder<String>(
-                                                future: matchData['player2'] == FirebaseAuth.instance.currentUser?.uid ? Future.value('You') : getPlayerName(matchData['player2']?.toString()),
+                                                future: matchData['player2'] ==
+                                                        FirebaseAuth.instance
+                                                            .currentUser?.uid
+                                                    ? Future.value('You')
+                                                    : getPlayerName(
+                                                        matchData['player2']
+                                                            ?.toString()),
                                                 builder: (context, snapshot) {
-                                                  if (snapshot.connectionState == ConnectionState.waiting) {
+                                                  if (snapshot
+                                                          .connectionState ==
+                                                      ConnectionState.waiting) {
                                                     return const CircularProgressIndicator();
                                                   }
                                                   return Text(
                                                     snapshot.data ?? 'TBD',
                                                     style: TextStyle(
-                                                      color: matchData['player2'] == FirebaseAuth.instance.currentUser?.uid ? Colors.green : Colors.white,
+                                                      color: matchData[
+                                                                  'player2'] ==
+                                                              FirebaseAuth
+                                                                  .instance
+                                                                  .currentUser
+                                                                  ?.uid
+                                                          ? Colors.green
+                                                          : Colors.white,
                                                     ),
                                                   );
                                                 },
@@ -638,7 +712,8 @@ class TournamentDetails extends StatelessWidget {
                                       if (matchData['winner'] != null) ...[
                                         const SizedBox(height: 16),
                                         FutureBuilder<String>(
-                                          future: getPlayerName(matchData['winner']?.toString()),
+                                          future: getPlayerName(
+                                              matchData['winner']?.toString()),
                                           builder: (context, snapshot) {
                                             return Text(
                                               'Winner: ${snapshot.data ?? 'Unknown'}',
@@ -650,17 +725,33 @@ class TournamentDetails extends StatelessWidget {
                                           },
                                         ),
                                       ],
-                                      if ((matchData['player1'] == FirebaseAuth.instance.currentUser?.uid || matchData['player2'] == FirebaseAuth.instance.currentUser?.uid) &&
-                                          isMatchTimeNear(tournament['roundTimes'] ?? {}, round) &&
+                                      if ((matchData['player1'] ==
+                                                  FirebaseAuth.instance
+                                                      .currentUser?.uid ||
+                                              matchData['player2'] ==
+                                                  FirebaseAuth.instance
+                                                      .currentUser?.uid) &&
+                                          isMatchTimeNear(
+                                              tournament['roundTimes'] ?? {},
+                                              round) &&
                                           matchData['winnerId'] == null) ...[
                                         const SizedBox(height: 16),
                                         ElevatedButton(
                                           onPressed: () {
-                                            push(context, TournamentWaitingRoom(roomCode: matchId, tournamentId: tournamentId, player1: matchData['player1'], player2: matchData['player2']));
+                                            push(
+                                                context,
+                                                TournamentWaitingRoom(
+                                                    roomCode: matchId,
+                                                    tournamentId: tournamentId,
+                                                    player1:
+                                                        matchData['player1'],
+                                                    player2:
+                                                        matchData['player2']));
                                           },
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.green,
-                                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 32, vertical: 12),
                                           ),
                                           child: const Text(
                                             'Play Match',
@@ -683,7 +774,6 @@ class TournamentDetails extends StatelessWidget {
                     );
                   },
                 ),
-
               ],
             ),
           ),

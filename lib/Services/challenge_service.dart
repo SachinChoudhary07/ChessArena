@@ -9,10 +9,12 @@ class ChallengeService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
 
   /// Validates if a challenge is still valid (not expired and not already processed)
-  static Future<ChallengeValidationResult> validateChallenge(String challengeId) async {
+  static Future<ChallengeValidationResult> validateChallenge(
+      String challengeId) async {
     try {
       debugPrint('Validating challenge: $challengeId');
-      final challengeDoc = await _firestore.collection('challenges').doc(challengeId).get();
+      final challengeDoc =
+          await _firestore.collection('challenges').doc(challengeId).get();
 
       if (!challengeDoc.exists) {
         debugPrint('Challenge not found: $challengeId');
@@ -24,7 +26,8 @@ class ChallengeService {
       }
 
       final challenge = Challenge.fromMap(challengeDoc.data()!, challengeId);
-      debugPrint('Challenge created at: ${challenge.createdAt}, expires at: ${challenge.expiresAt}, isExpired: ${challenge.isExpired}');
+      debugPrint(
+          'Challenge created at: ${challenge.createdAt}, expires at: ${challenge.expiresAt}, isExpired: ${challenge.isExpired}');
 
       // Check if challenge is expired
       if (challenge.isExpired) {
@@ -47,7 +50,8 @@ class ChallengeService {
 
       // Check if challenge is already processed
       if (challenge.status != 'pending') {
-        debugPrint('Challenge already processed: $challengeId, status: ${challenge.status}');
+        debugPrint(
+            'Challenge already processed: $challengeId, status: ${challenge.status}');
         return ChallengeValidationResult(
           isValid: false,
           message: 'Challenge has already been ${challenge.status}',
@@ -74,11 +78,13 @@ class ChallengeService {
   /// Check if user has sufficient balance
   static Future<bool> _hasEnoughBalance(String userId, double amount) async {
     try {
-      debugPrint('💰 ChallengeService: Checking balance for user $userId, amount: $amount');
+      debugPrint(
+          '💰 ChallengeService: Checking balance for user $userId, amount: $amount');
       final userDoc = await _firestore.collection('users').doc(userId).get();
       final currentBalance = (userDoc.data()?['Balance'] ?? 0.0) as num;
       final hasEnough = currentBalance >= amount;
-      debugPrint('💰 ChallengeService: User balance: $currentBalance, Required: $amount, Has enough: $hasEnough');
+      debugPrint(
+          '💰 ChallengeService: User balance: $currentBalance, Required: $amount, Has enough: $hasEnough');
       return hasEnough;
     } catch (e) {
       debugPrint('❌ ChallengeService: Error checking balance: $e');
@@ -111,7 +117,8 @@ class ChallengeService {
   }
 
   /// Accepts a challenge and creates a game
-  static Future<ChallengeAcceptResult> acceptChallenge(String challengeId) async {
+  static Future<ChallengeAcceptResult> acceptChallenge(
+      String challengeId) async {
     try {
       final validation = await validateChallenge(challengeId);
       if (!validation.isValid) {
@@ -141,28 +148,6 @@ class ChallengeService {
         );
       }
 
-      // Check balance for both users
-      final challengerHasBalance = await _hasEnoughBalance(challenge.challengerUid, challenge.amount.toDouble());
-      final opponentHasBalance = await _hasEnoughBalance(challenge.opponentUid, challenge.amount.toDouble());
-
-      if (!challengerHasBalance || !opponentHasBalance) {
-        return ChallengeAcceptResult(
-          success: false,
-          message: 'Insufficient balance for one or both players',
-          roomCode: null,
-        );
-      }
-
-      // Deduct amount from both players
-      await _firestore.collection('users').doc(challenge.challengerUid).update({
-        'Balance': FieldValue.increment(-challenge.amount),
-      });
-      await _firestore.collection('users').doc(challenge.opponentUid).update({
-        'Balance': FieldValue.increment(-challenge.amount),
-      });
-
-      debugPrint('💰 ChallengeService: Deducted ${challenge.amount} from both players');
-
       // Generate room code and create game
       final roomCode = _generateRoomCode();
       final gameData = {
@@ -174,7 +159,7 @@ class ChallengeService {
         'createdAt': FieldValue.serverTimestamp(),
         'gameName': 'Challenge Game',
         'time': challenge.timeControl,
-        'entryFee': challenge.amount.toDouble(),
+        'entryFee': 0,
         'challengeId': challengeId,
       };
 
@@ -189,7 +174,8 @@ class ChallengeService {
       });
 
       // Send notification to challenger about acceptance
-      await _sendAcceptanceNotification(challenge.challengerUid, challenge.opponentUid, roomCode);
+      await _sendAcceptanceNotification(
+          challenge.challengerUid, challenge.opponentUid, roomCode);
 
       return ChallengeAcceptResult(
         success: true,
@@ -229,7 +215,8 @@ class ChallengeService {
       });
 
       // Send notification to challenger about rejection
-      await _sendRejectionNotification(challenge.challengerUid, challenge.opponentUid);
+      await _sendRejectionNotification(
+          challenge.challengerUid, challenge.opponentUid);
 
       return true;
     } catch (e) {
@@ -239,19 +226,23 @@ class ChallengeService {
   }
 
   /// Send notification to challenger about acceptance
-  static Future<void> _sendAcceptanceNotification(String challengerUid, String opponentUid, String roomCode) async {
+  static Future<void> _sendAcceptanceNotification(
+      String challengerUid, String opponentUid, String roomCode) async {
     try {
       // Get opponent name
-      final opponentDoc = await _firestore.collection('users').doc(opponentUid).get();
+      final opponentDoc =
+          await _firestore.collection('users').doc(opponentUid).get();
       final opponentName = opponentDoc.data()?['username'] ?? 'A player';
 
       // Get challenger FCM token
-      final challengerDoc = await _firestore.collection('users').doc(challengerUid).get();
+      final challengerDoc =
+          await _firestore.collection('users').doc(challengerUid).get();
       final token = challengerDoc.data()?['fcmToken'];
       if (token == null) return;
 
       // Send FCM notification (you'll need to implement this similar to the challenge notification)
-      debugPrint('📱 ChallengeService: Sending acceptance notification to challenger');
+      debugPrint(
+          '📱 ChallengeService: Sending acceptance notification to challenger');
       // TODO: Implement FCM notification for acceptance
     } catch (e) {
       debugPrint('Error sending acceptance notification: $e');
@@ -259,22 +250,24 @@ class ChallengeService {
   }
 
   /// Send notification to challenger about rejection
-  static Future<void> _sendRejectionNotification(String challengerUid, String opponentUid) async {
+  static Future<void> _sendRejectionNotification(
+      String challengerUid, String opponentUid) async {
     try {
       // Get opponent name
-      final opponentDoc = await _firestore.collection('users').doc(opponentUid).get();
+      final opponentDoc =
+          await _firestore.collection('users').doc(opponentUid).get();
       final opponentName = opponentDoc.data()?['username'] ?? 'A player';
 
       // Get challenger FCM token
-      final challengerDoc = await _firestore.collection('users').doc(challengerUid).get();
+      final challengerDoc =
+          await _firestore.collection('users').doc(challengerUid).get();
       final token = challengerDoc.data()?['fcmToken'];
       if (token == null) return;
 
       // Send FCM notification (you'll need to implement this similar to the challenge notification)
-      debugPrint('📱 ChallengeService: Sending rejection notification to challenger');
+      debugPrint(
+          '📱 ChallengeService: Sending rejection notification to challenger');
       // Implement FCM notification for rejection
-      
-      
     } catch (e) {
       debugPrint('Error sending rejection notification: $e');
     }

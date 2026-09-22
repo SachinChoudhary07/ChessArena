@@ -9,12 +9,13 @@ class CreateTournamentProvider extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
 
-  final TextEditingController tournamentNameController = TextEditingController();
+  final TextEditingController tournamentNameController =
+      TextEditingController();
   final TextEditingController entryFeeController = TextEditingController();
   final TextEditingController prizeAmountController = TextEditingController();
   final formKey = GlobalKey<FormState>();
 
-  int selectedPlayerCount = 8; // Default to 8 players
+  int selectedPlayerCount = 4; // Default to 4 players
   DateTime? startDate;
   DateTime? endDate;
 
@@ -57,7 +58,8 @@ class CreateTournamentProvider extends ChangeNotifier {
 
       // Check if round time is after start date and before end date
       if (roundTimes[round]!.isBefore(startDate!)) {
-        throw Exception('Round $round time must be after tournament start date');
+        throw Exception(
+            'Round $round time must be after tournament start date');
       }
       if (roundTimes[round]!.isAfter(endDate!)) {
         throw Exception('Round $round time must be before tournament end date');
@@ -74,15 +76,17 @@ class CreateTournamentProvider extends ChangeNotifier {
       notifyListeners();
 
       // Create tournament document
-      final tournamentRef = await _firestore.collection('user_tournaments').add({
+      final tournamentRef =
+          await _firestore.collection('user_tournaments').add({
         'name': tournamentNameController.text,
-        'entryFee': double.parse(entryFeeController.text),
-        'prizeAmount': double.parse(prizeAmountController.text),
+        'entryFee': 0,
+        'prizeAmount': 0,
         'playerCount': selectedPlayerCount,
         'startDate': Timestamp.fromDate(startDate!),
         'endDate': Timestamp.fromDate(endDate!),
         'numberOfRounds': numberOfRounds,
-        'roundTimes': roundTimes.map((key, value) => MapEntry(key.toString(), value.toIso8601String())),
+        'roundTimes': roundTimes.map(
+            (key, value) => MapEntry(key.toString(), value.toIso8601String())),
         'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
         'winnerId': '',
@@ -95,7 +99,7 @@ class CreateTournamentProvider extends ChangeNotifier {
       await _generateTournamentMatches(tournamentRef.id);
 
       // Automatically join the tournament creator
-      await joinTournament(tournamentRef.id, double.parse(entryFeeController.text));
+      await joinTournament(tournamentRef.id, 0);
 
       _isLoading = false;
       notifyListeners();
@@ -115,27 +119,13 @@ class CreateTournamentProvider extends ChangeNotifier {
         throw Exception('Please login to join tournament');
       }
 
-      // Get user's current balance
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
-      final double userBalance = (userDoc.data()?['Balance'] ?? 0).toDouble();
-
-      if (userBalance < entryFee) {
-        throw Exception('Insufficient balance! Need ₹${entryFee.toStringAsFixed(2)} to join');
-      }
-
-      // Start a transaction to handle balance deduction and tournament joining
+      // Free events only — skip wallet checks.
       await _firestore.runTransaction((transaction) async {
-        // ---------- READS SECTION ----------
-        // 1. Get fresh user data
-        final freshUserDoc = await transaction.get(_firestore.collection('users').doc(user.uid));
-        final double currentBalance = (freshUserDoc.data()?['Balance'] ?? 0).toDouble();
-
-        if (currentBalance < entryFee) {
-          throw Exception('Insufficient balance');
-        }
+        await transaction.get(_firestore.collection('users').doc(user.uid));
 
         // 2. Get tournament data
-        final tournamentDoc = await transaction.get(_firestore.collection('user_tournaments').doc(tournamentId));
+        final tournamentDoc = await transaction
+            .get(_firestore.collection('user_tournaments').doc(tournamentId));
         final tournamentData = tournamentDoc.data()!;
         final players = List<String>.from(tournamentData['players'] ?? []);
         final maxPlayers = tournamentData['playerCount'] ?? 8;
@@ -143,6 +133,14 @@ class CreateTournamentProvider extends ChangeNotifier {
         // Check if tournament is cancelled
         if (tournamentData['status'] == 'cancelled') {
           throw Exception('This tournament has been cancelled');
+        }
+        if (tournamentData['status'] == 'completed' ||
+            tournamentData['winner'] != null) {
+          throw Exception('This tournament is already completed');
+        }
+        final endDate = tournamentData['endDate'] as Timestamp?;
+        if (endDate != null && DateTime.now().isAfter(endDate.toDate())) {
+          throw Exception('This tournament is already completed');
         }
 
         if (players.contains(user.uid)) {
@@ -154,7 +152,13 @@ class CreateTournamentProvider extends ChangeNotifier {
         }
 
         // 3. Get all round-1 matches
-        final roundOneMatches = await _firestore.collection('user_tournaments').doc(tournamentId).collection('matches').where('round', isEqualTo: 1).orderBy('matchNumber').get();
+        final roundOneMatches = await _firestore
+            .collection('user_tournaments')
+            .doc(tournamentId)
+            .collection('matches')
+            .where('round', isEqualTo: 1)
+            .orderBy('matchNumber')
+            .get();
 
         // 4. Find the first available slot by reading each match
         DocumentReference? targetMatchRef;
@@ -189,22 +193,9 @@ class CreateTournamentProvider extends ChangeNotifier {
         transaction.update(
           _firestore.collection('users').doc(user.uid),
           {
-            'Balance': currentBalance - entryFee,
             'tournaments': FieldValue.arrayUnion([tournamentId])
           },
         );
-
-        // Add transaction record for entry fee
-        final transactionRef = _firestore.collection('users').doc(user.uid).collection('transactions').doc();
-
-        transaction.set(transactionRef, {
-          'amount': -entryFee,
-          'type': 'Tournament Entry',
-          'description': 'Entry fee for tournament: $tournamentId',
-          'timestamp': FieldValue.serverTimestamp(),
-          'status': 'completed',
-          'tournamentId': tournamentId,
-        });
 
         // 2. Update tournament's player list
         transaction.update(
@@ -244,7 +235,11 @@ class CreateTournamentProvider extends ChangeNotifier {
       final roundTime = roundTimes[round]!;
 
       for (int match = 1; match <= matchesPerRound; match++) {
-        await _firestore.collection('user_tournaments').doc(tournamentId).collection('matches').add({
+        await _firestore
+            .collection('user_tournaments')
+            .doc(tournamentId)
+            .collection('matches')
+            .add({
           'round': round,
           'matchNumber': match,
           'status': 'pending',

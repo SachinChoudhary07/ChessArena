@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:chess_cash/Constant/app_constant.dart';
+import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:flutter/material.dart';
 
 class Loader extends StatefulWidget {
@@ -43,7 +44,7 @@ class _LoaderState extends State<Loader> with SingleTickerProviderStateMixin {
             angle: _rotationAnimation.value,
             child: Image.asset(
               AppConstants.loaderImage,
-              color: Colors.white,
+              color: ColorResources.accent,
               width: 50,
               height: 50,
             ),

@@ -6,6 +6,7 @@ import 'package:flutter/cupertino.dart';
 
 import '../../Screens/GameScreens/GamePlay.dart';
 import '../../Models/chat_message.dart';
+import '../../Services/moderation_service.dart';
 
 class ChessGameProvider with ChangeNotifier {
   // Game state
@@ -251,22 +252,27 @@ class ChessGameProvider with ChangeNotifier {
 
     // Initialize chatMessages if it doesn't exist
     if (data['chatMessages'] == null) {
-      print("🎲 GameProvider: No chatMessages field found, initializing empty array");
+      print(
+          "🎲 GameProvider: No chatMessages field found, initializing empty array");
       _chatMessages = [];
     } else {
       try {
         final chatData = data['chatMessages'];
         if (chatData is List) {
           final chatList = List<Map<String, dynamic>>.from(chatData);
-          final newMessages = chatList.map((msg) => ChatMessage.fromMap(msg)).toList();
+          final newMessages =
+              chatList.map((msg) => ChatMessage.fromMap(msg)).toList();
 
-          print("🎲 GameProvider: New messages count: ${newMessages.length}, Current messages count: ${_chatMessages.length}");
+          print(
+              "🎲 GameProvider: New messages count: ${newMessages.length}, Current messages count: ${_chatMessages.length}");
 
           // Simply update messages
           _chatMessages = newMessages;
-          print("🎲 GameProvider: Final message count: ${_chatMessages.length}");
+          print(
+              "🎲 GameProvider: Final message count: ${_chatMessages.length}");
         } else {
-          print("⚠️ GameProvider: chatMessages is not a List, it's: ${chatData.runtimeType}");
+          print(
+              "⚠️ GameProvider: chatMessages is not a List, it's: ${chatData.runtimeType}");
           _chatMessages = [];
         }
       } catch (e) {
@@ -291,22 +297,27 @@ class ChessGameProvider with ChangeNotifier {
       // Handle game end conditions that might be set from UI
       if (_gameStatus == 'draw' && _winner == null) {
         print("🎲 GameProvider: Draw detected from UI - handling refund");
-        
+
         // Check if balance has already been updated using Firestore
         if (data['balanceUpdated'] == true) {
-          print("🎲 GameProvider: Balance already updated (from Firestore data), skipping draw refund");
+          print(
+              "🎲 GameProvider: Balance already updated (from Firestore data), skipping draw refund");
         } else {
           _handleDrawRefund(_roomCode);
         }
       } else if (_winner != null && _gameStatus != 'draw') {
         // Handle win conditions (checkmate, stalemate, resignation, timeout)
-        final winnerColor = _winner == 'white' ? PieceColor.white : PieceColor.black;
-        print("🎲 GameProvider: Win detected from UI - handling prize distribution");
-        print("🎲 GameProvider: _balanceUpdated flag in Firestore update: $_balanceUpdated");
-        
+        final winnerColor =
+            _winner == 'white' ? PieceColor.white : PieceColor.black;
+        print(
+            "🎲 GameProvider: Win detected from UI - handling prize distribution");
+        print(
+            "🎲 GameProvider: _balanceUpdated flag in Firestore update: $_balanceUpdated");
+
         // Check if balance has already been updated using Firestore
         if (data['balanceUpdated'] == true) {
-          print("🎲 GameProvider: Balance already updated (from Firestore data), skipping");
+          print(
+              "🎲 GameProvider: Balance already updated (from Firestore data), skipping");
         } else {
           _updateWinnerBalance(winnerColor, _roomCode);
         }
@@ -316,8 +327,10 @@ class ChessGameProvider with ChangeNotifier {
           print("🎲 GameProvider: Updating stats and history");
           _updateUserStats(_playerId, _playerColor == winnerColor);
           _updateUserStats(_opponentId!, _playerColor != winnerColor);
-          _recordGameHistory(_playerId, _playerColor == winnerColor, _opponentId!);
-          _recordGameHistory(_opponentId!, _playerColor != winnerColor, _playerId);
+          _recordGameHistory(
+              _playerId, _playerColor == winnerColor, _opponentId!);
+          _recordGameHistory(
+              _opponentId!, _playerColor != winnerColor, _playerId);
           _statsUpdated = true;
         } else {
           print("🎲 GameProvider: Stats already updated, skipping");
@@ -1014,25 +1027,6 @@ class ChessGameProvider with ChangeNotifier {
     _winner = null;
     _gameTimer?.cancel();
 
-    // Refund logic for abort
-    final gameDoc = await _firestore.collection('games').doc(_roomCode).get();
-    final gameData = gameDoc.data();
-    final entryFeeRaw = gameData?['entryFee'] ?? gameData?['amount'] ?? 0;
-    final entryFeeAmount = entryFeeRaw is String ? int.tryParse(entryFeeRaw) ?? 0 : (entryFeeRaw is num ? entryFeeRaw.toInt() : 0);
-
-    if (entryFeeAmount > 0 && gameData?['balanceUpdated'] != true) {
-      await _firestore.runTransaction((transaction) async {
-        final currentGameDoc = await transaction.get(_firestore.collection('games').doc(_roomCode));
-        if (currentGameDoc.data()?['balanceUpdated'] == true) return;
-
-        transaction.update(_firestore.collection('users').doc(_playerId), {'Balance': FieldValue.increment(entryFeeAmount)});
-        transaction.update(_firestore.collection('users').doc(_opponentId!), {'Balance': FieldValue.increment(entryFeeAmount)});
-        transaction.update(_firestore.collection('games').doc(_roomCode), {'balanceUpdated': true});
-      });
-      _balanceUpdated = true;
-      print("💰 GameProvider: Refunded ₹$entryFeeAmount to both players for abort");
-    }
-
     _updateGameInFirestore(null);
     notifyListeners();
   }
@@ -1067,144 +1061,15 @@ class ChessGameProvider with ChangeNotifier {
 
   Future<void> _updateWinnerBalance(
       PieceColor winnerColor, String roomCode) async {
-    print("💰 GameProvider: Starting balance update for winner: $winnerColor");
-
-    final winnerId = winnerColor == PieceColor.white ? _playerId : _opponentId!;
-    final loserId = winnerColor == PieceColor.white ? _opponentId! : _playerId;
-    
-    // Check if balance has already been updated for this game using Firestore
-    final gameDoc = await _firestore.collection('games').doc(roomCode).get();
-    final gameData = gameDoc.data();
-    
-    if (gameData?['balanceUpdated'] == true) {
-      print("💰 GameProvider: Balance already updated for this game (from Firestore), skipping duplicate update");
-      return;
-    }
-
-    final entryFee = await _firestore.collection('games').doc(roomCode).get();
-    final gameData2 = entryFee.data();
-
-    // Check both possible field names for entry fee and convert to number
-    final entryFeeRaw = gameData2?['entryFee'] ?? gameData2?['amount'] ?? 0;
-    final entryFeeAmount = entryFeeRaw is String ? int.tryParse(entryFeeRaw) ?? 0 : (entryFeeRaw is num ? entryFeeRaw.toInt() : 0);
-
-    if (entryFeeAmount > 0) {
-      // Calculate total prize pool (entry fee from both players)
-      final totalPrizePool = entryFeeAmount * 2; // Both players paid entry fee
-      // Calculate winner amount: total prize pool minus 18% admin commission
-      final winnerAmount = totalPrizePool * 0.82; // 100% - 18% = 82%
-      
-      print("💰 GameProvider: About to update balance for winner: $winnerId with amount: $winnerAmount");
-      
-      // Use a transaction to ensure atomicity
-      await _firestore.runTransaction((transaction) async {
-        // Check again if balance was updated during transaction
-        final currentGameDoc = await transaction.get(_firestore.collection('games').doc(roomCode));
-        if (currentGameDoc.data()?['balanceUpdated'] == true) {
-          print("💰 GameProvider: Balance already updated during transaction, aborting");
-          return;
-        }
-        
-        // Update winner's balance
-        transaction.update(
-          _firestore.collection('users').doc(winnerId),
-          {'Balance': FieldValue.increment(winnerAmount)}
-        );
-        
-        // Mark game as balance updated
-        transaction.update(
-          _firestore.collection('games').doc(roomCode),
-          {'balanceUpdated': true}
-        );
-      });
-
-      // Mark balance as updated locally too
-      _balanceUpdated = true;
-      print("💰 GameProvider: _balanceUpdated flag after update: $_balanceUpdated");
-
-      print(
-          "💰 GameProvider: Updated winner's balance with prize money: $winnerAmount (after 18% admin deduction from total pool of $totalPrizePool)");
-    } else {
-      print("💰 GameProvider: No entry fee found for the game");
-    }
+    return;
   }
 
-  // Handle draw refunds
   Future<void> _handleDrawRefund(String roomCode) async {
-    print("💰 GameProvider: Handling draw refund for room: $roomCode");
-    
-    // Check if balance has already been updated for this game using Firestore
-    final gameDoc = await _firestore.collection('games').doc(roomCode).get();
-    final gameData = gameDoc.data();
-    
-    if (gameData?['balanceUpdated'] == true) {
-      print("💰 GameProvider: Balance already updated for this game (from Firestore), skipping duplicate refund");
-      return;
-    }
-    
-    try {
-      final gameDoc2 = await _firestore.collection('games').doc(roomCode).get();
-      final gameData2 = gameDoc2.data();
-
-      // Check both possible field names for entry fee and convert to number
-      final entryFeeRaw = gameData2?['entryFee'] ?? gameData2?['amount'] ?? 0;
-      final entryFeeAmount = entryFeeRaw is String ? int.tryParse(entryFeeRaw) ?? 0 : (entryFeeRaw is num ? entryFeeRaw.toInt() : 0);
-
-      if (entryFeeAmount > 0) {
-        // Use a transaction to ensure atomicity
-        await _firestore.runTransaction((transaction) async {
-          // Check again if balance was updated during transaction
-          final currentGameDoc = await transaction.get(_firestore.collection('games').doc(roomCode));
-          if (currentGameDoc.data()?['balanceUpdated'] == true) {
-            print("💰 GameProvider: Balance already updated during transaction, aborting refund");
-            return;
-          }
-          
-          // Refund both players their entry fee
-          transaction.update(
-            _firestore.collection('users').doc(_playerId),
-            {'Balance': FieldValue.increment(entryFeeAmount)}
-          );
-
-          transaction.update(
-            _firestore.collection('users').doc(_opponentId!),
-            {'Balance': FieldValue.increment(entryFeeAmount)}
-          );
-          
-          // Mark game as balance updated
-          transaction.update(
-            _firestore.collection('games').doc(roomCode),
-            {'balanceUpdated': true}
-          );
-        });
-
-        // Mark balance as updated locally too
-        _balanceUpdated = true;
-
-        print(
-            "💰 GameProvider: Refunded ₹$entryFeeAmount to both players for draw");
-      } else {
-        print("💰 GameProvider: No entry fee found for draw refund");
-      }
-    } catch (e) {
-      print("❌ GameProvider: Error handling draw refund: $e");
-    }
+    return;
   }
 
-// Add to GameProvider.dart
   Future<void> _recordGameHistory(
       String userId, bool isWinner, String opponentName) async {
-    final entryFee = await _firestore.collection('games').doc(_roomCode).get();
-    final gameData = entryFee.data();
-
-    // Check both possible field names for entry fee and convert to number
-    final entryFeeRaw = gameData?['entryFee'] ?? gameData?['amount'] ?? 0;
-    final entryFeeAmount = entryFeeRaw is String ? int.tryParse(entryFeeRaw) ?? 0 : (entryFeeRaw is num ? entryFeeRaw.toInt() : 0);
-
-    // Calculate prize amount: total pool (2 * entry fee) minus 18% admin commission
-    final totalPrizePool = entryFeeAmount * 2;
-    final prizeAmount = totalPrizePool * 0.82;
-
     await _firestore
         .collection('users')
         .doc(userId)
@@ -1212,15 +1077,14 @@ class ChessGameProvider with ChangeNotifier {
         .doc(_roomCode)
         .set({
       'datetime': FieldValue.serverTimestamp(),
-      'entry_fees': entryFeeAmount, // Already converted to int
+      'entry_fees': 0,
       'game_name': 'Chess Match',
       'opponent': opponentName,
-      'prize': prizeAmount.round(), // Round to nearest integer
+      'prize': 0,
       'result': isWinner ? 'win' : 'loss'
     });
   }
 
-// Add to GameProvider.dart
   /// Updates Elo ratings for both winner and loser based on the new rating system:
   ///
   /// 1. Equal Elo ratings: Winner gets +15, Loser gets -15
@@ -1382,17 +1246,9 @@ class ChessGameProvider with ChangeNotifier {
         transaction.update(
             tournamentDocRef, {'winnerId': winnerId, 'status': 'completed'});
 
-        // Credit prize amount to winner's wallet (after 18% admin commission)
-        final num prize = tournamentSnap.data()?['prizeAmount'] ?? 0;
-        if (prize > 0) {
-          final winnerAmount = prize * 0.82; // Apply 18% admin commission
-          final userRef = _firestore.collection('users').doc(winnerId);
-          transaction.update(userRef, {
-            'Balance': FieldValue.increment(winnerAmount),
-          });
-          print(
-              "💰 Tournament: Updated winner's balance with prize money: $winnerAmount (after 18% admin deduction from total prize of $prize)");
-        }
+        // Tournament complete — no cash prizes.
+        transaction.update(
+            tournamentDocRef, {'winnerId': winnerId, 'status': 'completed'});
       }
 
       // WRITES
@@ -1578,14 +1434,18 @@ class ChessGameProvider with ChangeNotifier {
   // -------------------------------
   Future<void> sendChat(String text) async {
     print("🎲 GameProvider: Sending chat message: '$text'");
-    final docRef = tournamentId != null ? _matchesCollection(tournamentId!).doc(_roomCode) : _firestore.collection('games').doc(_roomCode);
+    final cleaned = ModerationService.sanitizeChat(text);
+    if (cleaned.isEmpty) return;
+    final docRef = tournamentId != null
+        ? _matchesCollection(tournamentId!).doc(_roomCode)
+        : _firestore.collection('games').doc(_roomCode);
 
     final messageId = DateTime.now().millisecondsSinceEpoch.toString();
     final timestamp = DateTime.now();
 
     final messageData = {
       'id': messageId,
-      'text': text,
+      'text': cleaned,
       'sender': _playerId,
       'ts': timestamp,
     };
