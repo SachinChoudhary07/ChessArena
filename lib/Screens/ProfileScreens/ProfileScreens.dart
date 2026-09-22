@@ -220,6 +220,14 @@ class _ProfilescreensState extends State<Profilescreens> {
                     ),
                   ),
                   _RowTile(
+                    icon: Icons.description_outlined,
+                    title: 'Terms of service',
+                    onTap: () => launchUrl(
+                      Uri.parse(LegalUrls.termsOfService),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                  ),
+                  _RowTile(
                     icon: Icons.help_outline,
                     title: 'Account deletion help',
                     onTap: () => launchUrl(

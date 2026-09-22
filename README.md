@@ -133,6 +133,7 @@ firebase deploy --only firestore:rules,storage
 
 ### Host legal pages
 Upload files from `/legal` to your domain and point Play Console + `LegalUrls` to them.
+Current production host: https://chessarena-legal.netlify.app
 
 ---
 

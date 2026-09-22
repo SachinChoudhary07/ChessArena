@@ -52,3 +52,9 @@ android/key.properties
 .env
 .env.*
 **/firebase_options.dart
+
+# Legal deploy artifacts
+legal/node_modules/
+legal-*.zip
+legal-deploy.zip
+legal-site.zip

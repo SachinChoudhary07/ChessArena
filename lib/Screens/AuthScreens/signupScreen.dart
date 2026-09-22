@@ -403,9 +403,25 @@ class _RegisterPageState extends State<RegisterPage> {
                                                             _openUrl(LegalUrls
                                                                 .privacyPolicy),
                                                 ),
+                                                const TextSpan(text: ' and '),
+                                                TextSpan(
+                                                  text: 'Terms of Service',
+                                                  style: const TextStyle(
+                                                    color: ColorResources
+                                                        .accentSoft,
+                                                    fontWeight:
+                                                        FontWeight.w700,
+                                                    decoration: TextDecoration
+                                                        .underline,
+                                                  ),
+                                                  recognizer:
+                                                      TapGestureRecognizer()
+                                                        ..onTap = () =>
+                                                            _openUrl(LegalUrls
+                                                                .termsOfService),
+                                                ),
                                                 const TextSpan(
-                                                    text:
-                                                        ' and Terms of ChessArena.'),
+                                                    text: ' of ChessArena.'),
                                               ],
                                             ),
                                           ),
