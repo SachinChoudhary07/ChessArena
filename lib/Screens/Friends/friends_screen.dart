@@ -280,7 +280,7 @@ class _NoFriendsCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Challenge a player to start a friendship. Once they accept, they will show up here as online or offline.',
+            'Play an online match and become friends — then you can challenge.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: ColorResources.textSecondary,

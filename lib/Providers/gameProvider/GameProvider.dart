@@ -348,23 +348,28 @@ class ChessGameProvider with ChangeNotifier {
     _lastMoveTime = DateTime.now();
 
     _gameTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_gameStatus == 'playing') {
-        if (_currentPlayer == PieceColor.white) {
-          _whiteTimeLeft--;
-          if (_whiteTimeLeft <= 0) {
-            print("🎲 GameProvider: White player ran out of time");
-            _endGame('black', 'timeout');
-          }
-        } else {
-          _blackTimeLeft--;
-          if (_blackTimeLeft <= 0) {
-            print("🎲 GameProvider: Black player ran out of time");
-            _endGame('white', 'timeout');
-          }
+      if (_gameStatus != 'playing') return;
+
+      // Only the side whose turn it is should tick + write the clock.
+      // Both devices previously decremented every second and pushed to
+      // Firestore, so time dropped ~2s per real second.
+      if (_currentPlayer != _playerColor) return;
+
+      if (_currentPlayer == PieceColor.white) {
+        _whiteTimeLeft--;
+        if (_whiteTimeLeft <= 0) {
+          print("🎲 GameProvider: White player ran out of time");
+          _endGame('black', 'timeout');
         }
-        _updateTimersInFirestore();
-        notifyListeners();
+      } else {
+        _blackTimeLeft--;
+        if (_blackTimeLeft <= 0) {
+          print("🎲 GameProvider: Black player ran out of time");
+          _endGame('white', 'timeout');
+        }
       }
+      _updateTimersInFirestore();
+      notifyListeners();
     });
   }
 

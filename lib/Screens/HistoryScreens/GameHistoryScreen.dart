@@ -29,9 +29,10 @@ class _GameHistoryScreenState extends State<GameHistoryScreen> {
         title: AppConstants.history,
       ),
       body: userId == null
-          ? const EmptyStateWidget(
-              message: 'Sign in to see your match history.',
-              icon: Icons.history,
+          ? const _HistoryEmptyState(
+              title: 'Sign in required',
+              message: 'Sign in to see your match history and results.',
+              icon: Icons.lock_outline_rounded,
             )
           : StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -47,10 +48,12 @@ class _GameHistoryScreenState extends State<GameHistoryScreen> {
 
                 final docs = snapshot.data?.docs ?? [];
                 if (docs.isEmpty) {
-                  return const EmptyStateWidget(
+                  return const _HistoryEmptyState(
+                    title: 'No matches yet',
                     message:
-                        'No matches yet. Play a rated game and it will show up here.',
-                    icon: Icons.history,
+                        'Play a rated online game and your wins, losses, and results will show up here.',
+                    icon: Icons.auto_stories_rounded,
+                    showHints: true,
                   );
                 }
 
@@ -153,10 +156,12 @@ class _GameHistoryScreenState extends State<GameHistoryScreen> {
                     const SizedBox(height: 16),
                     if (visible.isEmpty)
                       const Padding(
-                        padding: EdgeInsets.only(top: 40),
-                        child: EmptyStateWidget(
-                          message: 'Nothing in this filter yet.',
-                          icon: Icons.filter_list,
+                        padding: EdgeInsets.only(top: 24),
+                        child: _HistoryEmptyState(
+                          title: 'Nothing here',
+                          message:
+                              'No matches match this filter. Try All, or play more rated games.',
+                          icon: Icons.filter_alt_outlined,
                         ),
                       )
                     else
@@ -168,6 +173,143 @@ class _GameHistoryScreenState extends State<GameHistoryScreen> {
                 );
               },
             ),
+    );
+  }
+}
+
+class _HistoryEmptyState extends StatelessWidget {
+  final String title;
+  final String message;
+  final IconData icon;
+  final bool showHints;
+
+  const _HistoryEmptyState({
+    required this.title,
+    required this.message,
+    required this.icon,
+    this.showHints = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 28),
+      children: [
+        ChessCard(
+          padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+          child: Column(
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      ColorResources.primary.withOpacity(0.28),
+                      ColorResources.elevatedSurface,
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: ColorResources.primary.withOpacity(0.35),
+                  ),
+                ),
+                child: Icon(
+                  icon,
+                  size: 32,
+                  color: ColorResources.accentSoft,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: ColorResources.textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: ColorResources.textSecondary,
+                  fontSize: 13,
+                  height: 1.45,
+                ),
+              ),
+              if (showHints) ...[
+                const SizedBox(height: 22),
+                const _HistoryHintRow(
+                  icon: Icons.sports_esports_rounded,
+                  label: 'Play a rated online match',
+                ),
+                const SizedBox(height: 10),
+                const _HistoryHintRow(
+                  icon: Icons.emoji_events_outlined,
+                  label: 'Wins and losses are saved here',
+                ),
+                const SizedBox(height: 10),
+                const _HistoryHintRow(
+                  icon: Icons.trending_up_rounded,
+                  label: 'Track your progress over time',
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HistoryHintRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _HistoryHintRow({
+    required this.icon,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: ColorResources.elevatedSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: ColorResources.divider),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: ColorResources.primary.withOpacity(0.16),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: ColorResources.accentSoft),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: ColorResources.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

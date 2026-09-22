@@ -408,18 +408,62 @@ class _GameScreenState extends State<GameScreen> {
   // UI helpers for friend request action row & banner
   // ---------------------------------------------------------
 
+  Widget _actionIconButton({
+    required IconData icon,
+    required VoidCallback? onPressed,
+    Color? iconColor,
+    Color? backgroundColor,
+    Color? borderColor,
+    String? tooltip,
+  }) {
+    final enabled = onPressed != null;
+    final fg = iconColor ??
+        (enabled ? ColorResources.textPrimary : ColorResources.textSecondary);
+    return Tooltip(
+      message: tooltip ?? '',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: backgroundColor ?? ColorResources.elevatedSurface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: borderColor ?? ColorResources.divider,
+                width: 1,
+              ),
+            ),
+            child: Icon(icon, size: 22, color: fg.withOpacity(enabled ? 1 : 0.55)),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildActionRow() {
     // Only show friend actions for opponent info (top)
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          IconButton(
+          _actionIconButton(
             icon: _isChatOpen
-                ? const Icon(Icons.chat_bubble_outline)
-                : const Icon(Icons.chat),
-            color: ColorResources.textSecondary,
+                ? Icons.chat_bubble_rounded
+                : Icons.forum_rounded,
+            tooltip: 'Chat',
+            iconColor: _isChatOpen
+                ? ColorResources.onPrimary
+                : ColorResources.textPrimary,
+            backgroundColor: _isChatOpen
+                ? ColorResources.primary
+                : ColorResources.elevatedSurface,
+            borderColor: _isChatOpen
+                ? ColorResources.primaryLight
+                : ColorResources.divider,
             onPressed: () {
               setState(() {
                 _isChatOpen = !_isChatOpen;
@@ -429,36 +473,41 @@ class _GameScreenState extends State<GameScreen> {
               }
             },
           ),
+          const SizedBox(width: 8),
 
           // Display the most recent message inline (fades after 15 s)
-          Consumer<ChessGameProvider>(
-            builder: (_, provider, __) {
-              final messages = provider.chatMessages;
-              final latestMessage = messages.isNotEmpty ? messages.last : null;
-              if (latestMessage == null || latestMessage.text.isEmpty)
-                return const SizedBox();
-              // Optionally hide my own messages – uncomment next line if needed
-              // if (latestMessage.senderId == FirebaseAuth.instance.currentUser?.uid) return SizedBox();
-              return Container(
-                width: MediaQuery.of(context).size.width / 1.7,
-                padding: const EdgeInsets.only(
-                    right: 8.0, left: 8.0, top: 4.0, bottom: 4.0),
-                margin: const EdgeInsets.only(
-                    right: 8.0, left: 8.0, top: 4.0, bottom: 4.0),
-                decoration: BoxDecoration(
-                  color: ColorResources.elevatedSurface,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  latestMessage.text,
-                  style: const TextStyle(
-                      fontSize: 12, color: ColorResources.textPrimary),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              );
-            },
+          Expanded(
+            child: Consumer<ChessGameProvider>(
+              builder: (_, provider, __) {
+                final messages = provider.chatMessages;
+                final latestMessage =
+                    messages.isNotEmpty ? messages.last : null;
+                if (latestMessage == null || latestMessage.text.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14.0, vertical: 10.0),
+                  decoration: BoxDecoration(
+                    color: ColorResources.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: ColorResources.divider),
+                  ),
+                  child: Text(
+                    latestMessage.text,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: ColorResources.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                );
+              },
+            ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 8),
           ..._friendActionIcons(),
         ],
       ),
@@ -469,42 +518,50 @@ class _GameScreenState extends State<GameScreen> {
     switch (_friendStatus) {
       case FriendStatus.none:
         return [
-          IconButton(
-            icon: const Icon(Icons.person_add),
+          _actionIconButton(
+            icon: Icons.person_add_alt_1_rounded,
+            tooltip: 'Add friend',
+            iconColor: ColorResources.accentSoft,
+            borderColor: ColorResources.primary.withOpacity(0.45),
             onPressed: _sendFriendRequest,
           ),
         ];
       case FriendStatus.pending:
         return [
-          IconButton(
-            icon: Icon(
-              Icons.hourglass_bottom_sharp,
-              color: ColorResources.secondaryColor,
-            ),
+          _actionIconButton(
+            icon: Icons.hourglass_top_rounded,
+            tooltip: 'Request pending',
+            iconColor: ColorResources.warning,
+            borderColor: ColorResources.warning.withOpacity(0.4),
             onPressed: null,
           ),
         ];
       case FriendStatus.friends:
         return [
-          const IconButton(
-            icon: Icon(
-              Icons.people,
-              color: Colors.green,
-            ),
-            color: Colors.green,
+          _actionIconButton(
+            icon: Icons.verified_rounded,
+            tooltip: 'Friends',
+            iconColor: ColorResources.success,
+            borderColor: ColorResources.success.withOpacity(0.45),
             onPressed: null,
           ),
         ];
       case FriendStatus.requestReceived:
         return [
-          IconButton(
-            icon: const Icon(Icons.check),
-            color: Colors.green,
+          _actionIconButton(
+            icon: Icons.check_rounded,
+            tooltip: 'Accept',
+            iconColor: ColorResources.onPrimary,
+            backgroundColor: ColorResources.success,
+            borderColor: ColorResources.primaryLight,
             onPressed: _acceptFriendRequest,
           ),
-          IconButton(
-            icon: const Icon(Icons.close),
-            color: Colors.red,
+          const SizedBox(width: 8),
+          _actionIconButton(
+            icon: Icons.close_rounded,
+            tooltip: 'Decline',
+            iconColor: ColorResources.error,
+            borderColor: ColorResources.error.withOpacity(0.45),
             onPressed: _rejectFriendRequest,
           ),
         ];
@@ -775,22 +832,42 @@ class _GameScreenState extends State<GameScreen> {
           centerTitle: true,
           title: const Text(AppConstants.appName),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.more_vert),
-              onPressed: () {
-                // We'll get move counts from the latest snapshot
-                final snapshot = _latestGameSnapshot;
-                int moveCountWhite = 0;
-                int moveCountBlack = 0;
-                if (snapshot != null && snapshot.data() != null) {
-                  final data = snapshot.data() as Map<String, dynamic>;
-                  moveCountWhite = (data['moveCountWhite'] ?? 0) as int;
-                  moveCountBlack = (data['moveCountBlack'] ?? 0) as int;
-                }
-                _showGameMenu(context,
-                    moveCountWhite: moveCountWhite,
-                    moveCountBlack: moveCountBlack);
-              },
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    // We'll get move counts from the latest snapshot
+                    final snapshot = _latestGameSnapshot;
+                    int moveCountWhite = 0;
+                    int moveCountBlack = 0;
+                    if (snapshot != null && snapshot.data() != null) {
+                      final data = snapshot.data() as Map<String, dynamic>;
+                      moveCountWhite = (data['moveCountWhite'] ?? 0) as int;
+                      moveCountBlack = (data['moveCountBlack'] ?? 0) as int;
+                    }
+                    _showGameMenu(context,
+                        moveCountWhite: moveCountWhite,
+                        moveCountBlack: moveCountBlack);
+                  },
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: ColorResources.elevatedSurface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: ColorResources.divider),
+                    ),
+                    child: const Icon(
+                      Icons.grid_view_rounded,
+                      size: 20,
+                      color: ColorResources.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -1254,52 +1331,151 @@ class _GameScreenState extends State<GameScreen> {
     print("🎮 GameScreen: Opening game menu");
     final bool canAbort = moveCountWhite == 0 || moveCountBlack == 0;
     final bool canResign = moveCountWhite > 0 && moveCountBlack > 0;
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Game Menu'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (canAbort)
-                ListTile(
-                  leading: const Icon(Icons.cancel),
-                  title: const Text('Abort'),
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext sheetContext) {
+        return Container(
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+          decoration: BoxDecoration(
+            color: ColorResources.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: ColorResources.divider),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: ColorResources.divider,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Game options',
+                      style: TextStyle(
+                        color: ColorResources.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                if (canAbort)
+                  _gameMenuTile(
+                    icon: Icons.close_rounded,
+                    iconBg: ColorResources.error.withOpacity(0.15),
+                    iconColor: ColorResources.error,
+                    title: 'Abort',
+                    subtitle: 'End before moves are played',
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _confirmAbort();
+                    },
+                  ),
+                if (canResign)
+                  _gameMenuTile(
+                    icon: Icons.flag_rounded,
+                    iconBg: ColorResources.warning.withOpacity(0.15),
+                    iconColor: ColorResources.warning,
+                    title: 'Resign',
+                    subtitle: 'Forfeit this game',
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _confirmResign();
+                    },
+                  ),
+                _gameMenuTile(
+                  icon: Icons.handshake_rounded,
+                  iconBg: ColorResources.primary.withOpacity(0.18),
+                  iconColor: ColorResources.accentSoft,
+                  title: 'Offer draw',
+                  subtitle: 'Ask your opponent to split the point',
                   onTap: () {
-                    Navigator.pop(context);
-                    _confirmAbort();
+                    Navigator.pop(sheetContext);
+                    _confirmDraw();
                   },
                 ),
-              if (canResign)
-                ListTile(
-                  leading: const Icon(Icons.flag),
-                  title: const Text('Resign'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _confirmResign();
-                  },
-                ),
-              ListTile(
-                leading: const Icon(Icons.handshake),
-                title: const Text('Offer Draw'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _confirmDraw();
-                },
-              ),
-              // ListTile(
-              //   leading: const Icon(Icons.exit_to_app),
-              //   title: const Text('Leave Game'),
-              //   onTap: () {
-              //     Navigator.pop(context);
-              //     _confirmLeaveGame();
-              //   },
-              // ),
-            ],
+                const SizedBox(height: 8),
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  Widget _gameMenuTile({
+    required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Material(
+        color: ColorResources.elevatedSurface,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: ColorResources.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          color: ColorResources.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: ColorResources.textSecondary,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

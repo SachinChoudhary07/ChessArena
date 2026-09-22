@@ -7,8 +7,11 @@ plugins {
 
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file("key.properties")
+def hasReleaseKeystore = false
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    hasReleaseKeystore = keystoreProperties['storeFile'] != null &&
+            keystoreProperties['storeFile'].toString().trim()
 }
 
 android {
@@ -39,29 +42,25 @@ android {
         }
     }
 
-    // REMOVE OR COMMENT OUT THIS BLOCK, AS IT'S HARDCODING THE WRONG ALIAS
-    // signingConfigs {
-    //     release {
-    //         storeFile file("my-release-key.jks")
-    //         storePassword "CHESS4CASH"
-    //         keyAlias "CHESS4CASH" // This is the problematic line!
-    //         keyPassword "CHESS4CASH"
-    //     }
-    // }
-
-
-    signingConfigs { // <-- UNCOMMENT THIS BLOCK
-        release {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile file(keystoreProperties['storeFile'])
-            storePassword keystoreProperties['storePassword']
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            // Use release keystore when present; otherwise fall back to debug so local builds work.
+            if (hasReleaseKeystore) {
+                signingConfig signingConfigs.release
+            } else {
+                signingConfig signingConfigs.debug
+            }
             minifyEnabled false
             shrinkResources false
             debuggable false
