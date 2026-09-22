@@ -5,6 +5,8 @@ Play rated matches, challenge friends, join tournaments, and climb the Elo leade
 
 Designed as a **Play Store–ready** skill chess product with a modern dark UI, ready for freelancers and studios to white-label, customize, and ship.
 
+> **CodeCanyon / buyer docs:** see [`DOCUMENTATION.md`](DOCUMENTATION.md) for the full feature overview, game rules, user journeys, Firebase model, and listing notes.
+
 ---
 
 ## Why buy / use this project?

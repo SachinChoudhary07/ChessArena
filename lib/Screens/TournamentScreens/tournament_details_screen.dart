@@ -2,12 +2,14 @@ import 'dart:math' show log;
 
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Screens/TournamentScreens/tornament_waiting_room.dart';
+import 'package:chess_cash/Services/tournament_join_service.dart';
 import 'package:chess_cash/Widgets/loader.dart';
 import 'package:chess_cash/Widgets/premium_widgets.dart';
 import 'package:chess_cash/services/navigation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
 
 class TournamentDetailsScreen extends StatelessWidget {
@@ -213,6 +215,12 @@ class TournamentDetailsScreen extends StatelessWidget {
                                   ),
                                 ],
                               ),
+                            ),
+                            const SizedBox(height: 14),
+                            _TournamentJoinBar(
+                              tournamentId: tournamentId,
+                              isPublic: isFromTournament,
+                              data: data,
                             ),
                             if (roundTimes != null) ...[
                               const SizedBox(height: 16),
@@ -624,6 +632,128 @@ class _InfoPill extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TournamentJoinBar extends StatefulWidget {
+  final String tournamentId;
+  final bool isPublic;
+  final Map<String, dynamic> data;
+
+  const _TournamentJoinBar({
+    required this.tournamentId,
+    required this.isPublic,
+    required this.data,
+  });
+
+  @override
+  State<_TournamentJoinBar> createState() => _TournamentJoinBarState();
+}
+
+class _TournamentJoinBarState extends State<_TournamentJoinBar> {
+  bool _joining = false;
+
+  Future<void> _onJoin() async {
+    setState(() => _joining = true);
+    try {
+      await TournamentJoinService.join(
+        tournamentId: widget.tournamentId,
+        isPublic: widget.isPublic,
+      );
+      Fluttertoast.showToast(
+        msg: 'Successfully joined tournament!',
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+      );
+    } catch (e) {
+      Fluttertoast.showToast(
+        msg: e.toString().replaceAll('Exception:', '').trim(),
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
+    } finally {
+      if (mounted) setState(() => _joining = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final joined = TournamentJoinService.hasJoined(widget.data);
+    final canJoin = TournamentJoinService.canJoin(widget.data);
+    final status = TournamentJoinService.statusOf(widget.data);
+
+    if (joined) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: ColorResources.primary.withOpacity(0.14),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: ColorResources.primary.withOpacity(0.35)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.check_circle_rounded, color: ColorResources.accentSoft),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'You are registered for this tournament',
+                style: TextStyle(
+                  color: ColorResources.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (!canJoin) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: ColorResources.elevatedSurface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: ColorResources.divider),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline, color: ColorResources.textSecondary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                status == 'Upcoming'
+                    ? 'Joining is closed for this event'
+                    : 'Joining unavailable · $status',
+                style: const TextStyle(
+                  color: ColorResources.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton.icon(
+        onPressed: _joining ? null : _onJoin,
+        icon: _joining
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.login_rounded),
+        label: Text(
+          _joining ? 'Joining...' : 'Join tournament',
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:chess_cash/Constant/color_resources.dart';
+import 'package:chess_cash/Services/tournament_join_service.dart';
 import 'package:chess_cash/Widgets/loader.dart';
 import 'package:chess_cash/Widgets/premium_widgets.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -112,116 +113,26 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
   }
 
   String getTournamentStatus(Map<String, dynamic> data) {
-    final startDate = (data['startDate'] as Timestamp?)?.toDate();
-    final endDate = (data['endDate'] as Timestamp?)?.toDate();
-    final now = DateTime.now();
-    final players = List<String>.from(data['players'] ?? []);
-    final maxPlayers = data['playerCount'] ?? 8;
-
-    if (data['status'] == 'cancelled') return 'Cancelled';
-    if (players.length >= maxPlayers) return 'Full';
-    if (data['winner'] != null || (endDate != null && now.isAfter(endDate))) {
-      return 'Completed';
-    }
-    if (startDate != null) {
-      if (startDate.isBefore(now)) return 'Ongoing';
-      return 'Upcoming';
-    }
-    return 'Upcoming';
+    return TournamentJoinService.statusOf(data);
   }
 
   Future<void> joinTournament(String tournamentId) async {
     try {
-      final user = _auth.currentUser;
-      if (user == null) {
-        Fluttertoast.showToast(
-          msg: 'Please login to join tournament',
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
-        );
-        return;
-      }
-
-      await _firestore.runTransaction((transaction) async {
-        final tournamentDoc = await transaction
-            .get(_firestore.collection('tournaments').doc(tournamentId));
-        final tournamentData = tournamentDoc.data()!;
-        final players = List<String>.from(tournamentData['players'] ?? []);
-        final maxPlayers = tournamentData['playerCount'] ?? 8;
-
-        if (tournamentData['status'] == 'cancelled') {
-          throw Exception('This tournament has been cancelled');
-        }
-
-        final liveStatus = getTournamentStatus(tournamentData);
-        if (liveStatus == 'Completed') {
-          throw Exception('This tournament is already completed');
-        }
-        if (liveStatus == 'Ongoing') {
-          throw Exception('This tournament has already started');
-        }
-        if (liveStatus == 'Full') {
-          throw Exception('Tournament is full');
-        }
-
-        if (players.contains(user.uid)) {
-          throw Exception('Already joined this tournament');
-        }
-        if (players.length >= maxPlayers) {
-          throw Exception('Tournament is full');
-        }
-
-        final roundOneMatches = await _firestore
-            .collection('tournaments')
-            .doc(tournamentId)
-            .collection('matches')
-            .where('round', isEqualTo: 1)
-            .orderBy('matchNumber')
-            .get();
-
-        DocumentReference? targetMatchRef;
-        String? targetField;
-
-        for (final match in roundOneMatches.docs) {
-          final matchRef = match.reference;
-          final freshSnap = await transaction.get(matchRef);
-          final freshData = freshSnap.data();
-          if (freshData == null) continue;
-
-          if (freshData['player1'] == null) {
-            targetMatchRef = matchRef;
-            targetField = 'player1';
-            break;
-          }
-          if (freshData['player2'] == null) {
-            targetMatchRef = matchRef;
-            targetField = 'player2';
-            break;
-          }
-        }
-
-        if (targetMatchRef == null || targetField == null) {
-          throw Exception('Tournament is full');
-        }
-
-        transaction.update(
-          _firestore.collection('users').doc(user.uid),
-          {'tournaments': FieldValue.arrayUnion([tournamentId])},
-        );
-        transaction.update(
-          _firestore.collection('tournaments').doc(tournamentId),
-          {
-            'players': FieldValue.arrayUnion([user.uid]),
-            'currentPlayers': FieldValue.increment(1),
-          },
-        );
-        transaction.update(targetMatchRef, {targetField: user.uid});
-      });
-
+      await TournamentJoinService.join(
+        tournamentId: tournamentId,
+        isPublic: true,
+      );
       Fluttertoast.showToast(
         msg: 'Successfully joined tournament!',
         backgroundColor: Colors.green,
         textColor: Colors.white,
+      );
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TournamentDetailsScreen(tournamentId: tournamentId),
+        ),
       );
     } catch (e) {
       Fluttertoast.showToast(
@@ -359,16 +270,8 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
                     final roundTimes =
                         data['roundTimes'] as Map<dynamic, dynamic>?;
                     final hasJoined =
-                        players.contains(_auth.currentUser?.uid);
-                    final isFull = players.length >= maxPlayers;
-                    final isRound1Started = roundTimes?[1] != null &&
-                        DateTime.parse(roundTimes![1] as String)
-                            .isBefore(DateTime.now());
-                    final isOpenForJoin = status == 'Upcoming';
-                    final canJoin = isOpenForJoin &&
-                        !hasJoined &&
-                        !isFull &&
-                        !isRound1Started;
+                        TournamentJoinService.hasJoined(data);
+                    final canJoin = TournamentJoinService.canJoin(data);
 
                     return _TournamentCard(
                       name: data['name']?.toString() ?? 'Unnamed Tournament',
@@ -378,24 +281,18 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
                       status: status,
                       statusColor: _statusColor(status),
                       roundCount: roundTimes?.length ?? 0,
-                      actionLabel: hasJoined
-                          ? 'Enter room'
-                          : canJoin
-                              ? 'Join'
-                              : 'View details',
-                      onAction: () {
-                        if (canJoin) {
-                          joinTournament(tournament.id);
-                        } else {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => TournamentDetailsScreen(
-                                tournamentId: tournament.id,
-                              ),
+                      hasJoined: hasJoined,
+                      canJoin: canJoin,
+                      onJoin: () => joinTournament(tournament.id),
+                      onOpenDetails: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TournamentDetailsScreen(
+                              tournamentId: tournament.id,
                             ),
-                          );
-                        }
+                          ),
+                        );
                       },
                     );
                   },
@@ -417,8 +314,10 @@ class _TournamentCard extends StatelessWidget {
   final String status;
   final Color statusColor;
   final int roundCount;
-  final String actionLabel;
-  final VoidCallback onAction;
+  final bool hasJoined;
+  final bool canJoin;
+  final VoidCallback onJoin;
+  final VoidCallback onOpenDetails;
 
   const _TournamentCard({
     required this.name,
@@ -428,8 +327,10 @@ class _TournamentCard extends StatelessWidget {
     required this.status,
     required this.statusColor,
     required this.roundCount,
-    required this.actionLabel,
-    required this.onAction,
+    required this.hasJoined,
+    required this.canJoin,
+    required this.onJoin,
+    required this.onOpenDetails,
   });
 
   @override
@@ -446,63 +347,67 @@ class _TournamentCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: ColorResources.primary.withOpacity(0.16),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.emoji_events_rounded,
-                  color: ColorResources.accentSoft,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: ColorResources.textPrimary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 17,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Rated bracket',
-                      style: TextStyle(
-                        color: ColorResources.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.16),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
+          InkWell(
+            onTap: onOpenDetails,
+            borderRadius: BorderRadius.circular(12),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: ColorResources.primary.withOpacity(0.16),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.emoji_events_rounded,
+                    color: ColorResources.accentSoft,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: ColorResources.textPrimary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 17,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        hasJoined ? 'You are registered' : 'Rated bracket',
+                        style: const TextStyle(
+                          color: ColorResources.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.16),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    status,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 14),
           Row(
@@ -537,17 +442,57 @@ class _TournamentCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: ElevatedButton(
-              onPressed: onAction,
-              child: Text(
-                actionLabel,
-                style: const TextStyle(fontWeight: FontWeight.w800),
+          if (canJoin)
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 46,
+                    child: OutlinedButton(
+                      onPressed: onOpenDetails,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: ColorResources.textPrimary,
+                        side: const BorderSide(color: ColorResources.divider),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Details',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: SizedBox(
+                    height: 46,
+                    child: ElevatedButton.icon(
+                      onPressed: onJoin,
+                      icon: const Icon(Icons.login_rounded, size: 18),
+                      label: const Text(
+                        'Join',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton(
+                onPressed: onOpenDetails,
+                child: Text(
+                  hasJoined ? 'Enter room' : 'View details',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

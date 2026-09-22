@@ -335,72 +335,196 @@ class _ChallengeWaitingRoomState extends State<ChallengeWaitingRoom> {
   }
 
   Widget _buildRejectedView() {
+    final opponent = _opponentName ?? 'Opponent';
+    final timeLabel = _timeControl?.trim().isNotEmpty == true
+        ? _timeControl!
+        : 'Rated game';
+
     return Container(
-      decoration: BoxDecoration(
+      width: double.infinity,
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [ColorResources.primaryColor, ColorResources.secondaryColor],
+          colors: [
+            ColorResources.background,
+            Color(0xFF1E2229),
+            ColorResources.background,
+          ],
         ),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.close,
-            size: 80,
-            color: Colors.red,
-          ),
-          const SizedBox(height: 40),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                const Text(
-                  'Challenge Rejected',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '${_opponentName ?? 'Opponent'} rejected your challenge',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ColorResources.primaryColor,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 128,
+                          height: 128,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: ColorResources.error.withOpacity(0.08),
+                          ),
+                        ),
+                        Container(
+                          width: 96,
+                          height: 96,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: ColorResources.error.withOpacity(0.14),
+                            border: Border.all(
+                              color: ColorResources.error.withOpacity(0.35),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.sports_esports_outlined,
+                            size: 40,
+                            color: ColorResources.error,
+                          ),
+                        ),
+                        Positioned(
+                          right: 8,
+                          bottom: 8,
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: ColorResources.surface,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: ColorResources.error,
+                                width: 2,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              size: 20,
+                              color: ColorResources.error,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Back to Challenges'),
+                    const SizedBox(height: 28),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: ColorResources.error.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: ColorResources.error.withOpacity(0.35),
+                        ),
+                      ),
+                      child: const Text(
+                        'DECLINED',
+                        style: TextStyle(
+                          color: ColorResources.error,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Challenge declined',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: ColorResources.textPrimary,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '$opponent turned down this match. You can challenge them again anytime.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: ColorResources.textSecondary,
+                        fontSize: 14,
+                        height: 1.45,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: ColorResources.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: ColorResources.divider),
+                      ),
+                      child: Column(
+                        children: [
+                          _RejectedDetailRow(
+                            icon: Icons.person_outline_rounded,
+                            label: 'Opponent',
+                            value: opponent,
+                          ),
+                          const SizedBox(height: 12),
+                          Divider(
+                            height: 1,
+                            color: ColorResources.divider.withOpacity(0.8),
+                          ),
+                          const SizedBox(height: 12),
+                          _RejectedDetailRow(
+                            icon: Icons.timer_outlined,
+                            label: 'Time control',
+                            value: timeLabel,
+                          ),
+                          const SizedBox(height: 12),
+                          Divider(
+                            height: 1,
+                            color: ColorResources.divider.withOpacity(0.8),
+                          ),
+                          const SizedBox(height: 12),
+                          _RejectedDetailRow(
+                            icon: Icons.tag_rounded,
+                            label: 'Room',
+                            value: widget.roomCode,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ColorResources.primary,
+                    foregroundColor: ColorResources.onPrimary,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 20),
+                  label: const Text(
+                    'Back to challenges',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -473,6 +597,58 @@ class _ChallengeWaitingRoomState extends State<ChallengeWaitingRoom> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _RejectedDetailRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _RejectedDetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: ColorResources.elevatedSurface,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: ColorResources.accentSoft),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: ColorResources.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+        ),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: ColorResources.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
