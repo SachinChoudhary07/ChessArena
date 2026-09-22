@@ -47,7 +47,6 @@ dependencies:
   squares:
   flutter_chess_board:
   firebase_database:
-  razorpay_flutter:
   intl:
   firebase_storage:
   flutter_native_splash:
@@ -62,7 +61,11 @@ dependencies:
   chess:
   tuple: ^2.0.2
   cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
   share_plus: ^10.0.0
+  # 6.3.2+ pulls url_launcher_android 6.3.30, which needs Kotlin 2.3
+  # (compilerOptions). This project uses Kotlin 1.8.22 / AGP 8.1.1.
+  url_launcher: 6.3.1
   firebase_messaging:
   flutter_local_notifications:
   googleapis_auth: ^1.6.0
@@ -78,6 +81,18 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.3
+
+dependency_overrides:
+  url_launcher_android: 6.3.14
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/Icons/app_icon.png"
+  adaptive_icon_background: "#0D2A1F"
+  adaptive_icon_foreground: "assets/Icons/app_icon.png"
+  remove_alpha_ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -93,6 +108,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/Icons/splash_Icon.png
+    - assets/Icons/app_icon.png
     - assets/images/
     - assets/black_peice/
     - assets/white_peice/
@@ -128,7 +144,8 @@ flutter:
 
 
 flutter_native_splash:
-  color: "#42a5f5"
-  image: assets/Icons/splash_Icon.png
-  color_dark: "#042a49"
-  image_dark: assets/Icons/splash_Icon.png
+  color: "#1A1C21"
+  color_dark: "#1A1C21"
+  android_12:
+    color: "#1A1C21"
+    color_dark: "#1A1C21"

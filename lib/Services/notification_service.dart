@@ -9,8 +9,10 @@ class NotificationService {
 
   static const String _channelId = 'high_importance_channel_sound';
   static const String _channelName = 'High Importance Notifications';
-  static const String _channelDescription = 'This channel is used for important notifications.';
-  static const String _soundFileName = 'notification'; // without extension for Android
+  static const String _channelDescription =
+      'This channel is used for important notifications.';
+  static const String _soundFileName =
+      'notification'; // without extension for Android
 
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -22,8 +24,10 @@ class NotificationService {
     const DarwinInitializationSettings initializationSettingsIOS =
         DarwinInitializationSettings();
 
-    const InitializationSettings initializationSettings = InitializationSettings(
-        android: initializationSettingsAndroid, iOS: initializationSettingsIOS);
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+            android: initializationSettingsAndroid,
+            iOS: initializationSettingsIOS);
 
     await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
@@ -48,7 +52,8 @@ class NotificationService {
     final notification = message.notification;
     if (notification == null) return;
 
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
       _channelId,
       _channelName,
       channelDescription: _channelDescription,
@@ -78,4 +83,4 @@ class NotificationService {
       platformChannelSpecifics,
     );
   }
-} 
+}

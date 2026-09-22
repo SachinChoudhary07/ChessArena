@@ -28,11 +28,8 @@ const headingSm = TextStyle(
   fontSize: 30,
 );
 
-const headingMd = TextStyle(
-    fontFamily: 'Nunito',
-    fontWeight: FontWeight.w800,
-    fontSize: 36
-);
+const headingMd =
+    TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.w800, fontSize: 36);
 
 const textMd = TextStyle(
   fontFamily: 'Nunito',
@@ -57,14 +54,5 @@ const displayMd = TextStyle(
   fontWeight: FontWeight.w800,
 );
 
-const displayLg = TextStyle(
-    fontFamily: 'Nunito',
-    fontWeight: FontWeight.w800,
-    fontSize: 110
-);
-
-
-
-
-
-
+const displayLg =
+    TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.w800, fontSize: 110);

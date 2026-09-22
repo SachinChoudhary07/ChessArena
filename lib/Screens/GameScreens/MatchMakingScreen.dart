@@ -59,14 +59,14 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
 
   void _initializeAnimation() {
     _searchAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 500),
       vsync: this,
+      duration: const Duration(milliseconds: 1200),
     );
 
-    _searchAnimation = Tween<double>(begin: -0.1, end: 0.1).animate(
+    _searchAnimation = Tween<double>(begin: 0.92, end: 1.08).animate(
       CurvedAnimation(
         parent: _searchAnimationController,
-        curve: Curves.easeInCirc,
+        curve: Curves.easeInOut,
       ),
     );
 
@@ -91,17 +91,24 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
   void _startPhaseCheckTimer() {
     _phaseCheckTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (mounted && _matchmakingStartTime != null) {
-        final elapsedSeconds = DateTime.now().difference(_matchmakingStartTime!).inSeconds;
+        final elapsedSeconds =
+            DateTime.now().difference(_matchmakingStartTime!).inSeconds;
 
         // Check if we need to switch to phase 2
         if (elapsedSeconds >= 15 && !_isInPhase2) {
-          print("🎮 MatchMaking: Timer forcing phase 2 check at ${elapsedSeconds}s");
+          print(
+              "🎮 MatchMaking: Timer forcing phase 2 check at ${elapsedSeconds}s");
           _isInPhase2 = true;
 
           // Force a queue check by fetching the current queue
-          _firestore.collection('matchmaking_queue').orderBy('timestamp').get().then((snapshot) {
+          _firestore
+              .collection('matchmaking_queue')
+              .orderBy('timestamp')
+              .get()
+              .then((snapshot) {
             if (snapshot.docs.isNotEmpty) {
-              print("🎮 MatchMaking: Forcing queue re-evaluation with ${snapshot.docs.length} players");
+              print(
+                  "🎮 MatchMaking: Forcing queue re-evaluation with ${snapshot.docs.length} players");
 
               // Manually trigger the matchmaking logic
               _checkQueueForMatches(snapshot.docs);
@@ -114,7 +121,8 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
     });
   }
 
-  Future<void> _checkQueueForMatches(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) async {
+  Future<void> _checkQueueForMatches(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) async {
     final now = DateTime.now();
     bool foundSuitableOpponent = false;
     int availableOpponents = 0;
@@ -134,7 +142,9 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
       bool isMatch = false;
 
       // Calculate actual time elapsed since matchmaking started
-      final matchmakingElapsedSeconds = _matchmakingStartTime != null ? now.difference(_matchmakingStartTime!).inSeconds : 0;
+      final matchmakingElapsedSeconds = _matchmakingStartTime != null
+          ? now.difference(_matchmakingStartTime!).inSeconds
+          : 0;
 
       if (matchmakingElapsedSeconds < 15) {
         // Phase 1: First 15 seconds - ELO-based matching
@@ -143,14 +153,17 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
 
         print(
             "🎮 MatchMaking: Phase 1 (ELO-based) - Elapsed: ${matchmakingElapsedSeconds}s - Checking opponent - ID: $opponentId, ELO: $opponentElo");
-        print("🎮 MatchMaking: Wait time: ${waitingDuration}s, Allowed ELO range: ±$allowedRange");
+        print(
+            "🎮 MatchMaking: Wait time: ${waitingDuration}s, Allowed ELO range: ±$allowedRange");
 
-        if ((opponentElo - currentUserElo).abs() <= allowedRange && matchTime == widget.time) {
+        if ((opponentElo - currentUserElo).abs() <= allowedRange &&
+            matchTime == widget.time) {
           isMatch = true;
         }
       } else {
         // Phase 2: After 15 seconds - Match with any player with same time
-        print("🎮 MatchMaking: Phase 2 (Any player) - Elapsed: ${matchmakingElapsedSeconds}s - Checking opponent - ID: $opponentId, ELO: $opponentElo");
+        print(
+            "🎮 MatchMaking: Phase 2 (Any player) - Elapsed: ${matchmakingElapsedSeconds}s - Checking opponent - ID: $opponentId, ELO: $opponentElo");
 
         if (matchTime == widget.time) {
           isMatch = true;
@@ -160,37 +173,43 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
       if (isMatch) {
         print("🎮 MatchMaking: Match found! Opponent ID: $opponentId");
         foundSuitableOpponent = true;
-        
+
         // Add a small random delay to prevent simultaneous game room creation
         final randomDelay = Random().nextInt(300) + 100; // 100-400ms delay
-        print("🎮 MatchMaking: Adding ${randomDelay}ms delay before creating game room");
+        print(
+            "🎮 MatchMaking: Adding ${randomDelay}ms delay before creating game room");
         await Future.delayed(Duration(milliseconds: randomDelay));
-        
+
         await _createGameRoom(opponentId);
         break;
       }
     }
-    
+
     // Update status based on available opponents and current phase
     if (mounted) {
       if (availableOpponents == 0) {
         setState(() {
           _searchStatus = "Searching for opponent...";
-          _searchSubStatus = "You're the first player! Waiting for others to join...";
+          _searchSubStatus =
+              "You're the first player! Waiting for others to join...";
         });
       } else if (!foundSuitableOpponent && availableOpponents > 0) {
         // Calculate actual time elapsed since matchmaking started for status
-        final matchmakingElapsedSeconds = _matchmakingStartTime != null ? now.difference(_matchmakingStartTime!).inSeconds : 0;
+        final matchmakingElapsedSeconds = _matchmakingStartTime != null
+            ? now.difference(_matchmakingStartTime!).inSeconds
+            : 0;
 
         if (matchmakingElapsedSeconds < 15) {
           setState(() {
             _searchStatus = "Searching for opponent...";
-            _searchSubStatus = "Found $availableOpponents players, searching for skill-matched opponent...";
+            _searchSubStatus =
+                "Found $availableOpponents players, searching for skill-matched opponent...";
           });
         } else {
           setState(() {
             _searchStatus = "Broadening search...";
-            _searchSubStatus = "Searching among all available players with same time format...";
+            _searchSubStatus =
+                "Searching among all available players with same time format...";
           });
         }
       }
@@ -203,7 +222,8 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
       _matchmakingStartTime = DateTime.now(); // Set matchmaking start time
       _isInPhase2 = false; // Reset phase flag
       _startPhaseCheckTimer(); // Start the periodic phase check timer
-      final docRef = _firestore.collection('matchmaking_queue').doc(currentUserId);
+      final docRef =
+          _firestore.collection('matchmaking_queue').doc(currentUserId);
       await docRef.set({
         'uid': currentUserId,
         'eloRating': currentUserElo,
@@ -218,8 +238,13 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
       _startPhaseCheckTimer(); // Start the periodic phase check timer
     }
 
-    matchmakingListener = _firestore.collection('matchmaking_queue').orderBy('timestamp').snapshots().listen((snapshot) async {
-      print("🎮 MatchMaking: Queue updated - ${snapshot.docs.length} players in queue");
+    matchmakingListener = _firestore
+        .collection('matchmaking_queue')
+        .orderBy('timestamp')
+        .snapshots()
+        .listen((snapshot) async {
+      print(
+          "🎮 MatchMaking: Queue updated - ${snapshot.docs.length} players in queue");
 
       await _checkQueueForMatches(snapshot.docs);
     });
@@ -230,7 +255,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
     await matchmakingListener?.cancel();
     _phaseCheckTimer?.cancel(); // Cancel the phase check timer
     print("🎮 GameRoom: Matchmaking listener cancelled");
-    
+
     // Reset search status when match is found
     if (mounted) {
       setState(() {
@@ -307,14 +332,15 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
       gameId = gameDoc.id;
       print("🎮 GameRoom: Game created with ID: $gameId");
     } else {
-      print("🎮 GameRoom: Opponent should create game, removing from queue and waiting");
+      print(
+          "🎮 GameRoom: Opponent should create game, removing from queue and waiting");
       await _firestore
           .collection('matchmaking_queue')
           .doc(currentUserId)
           .delete();
       await _firestore.collection('matchmaking_queue').doc(opponentId).delete();
       print("🎮 GameRoom: Both players removed from queue");
-      
+
       print("🎮 GameRoom: Waiting for opponent to create game");
       await Future.delayed(const Duration(milliseconds: 1000));
 
@@ -337,7 +363,8 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
 
         if (querySnapshot.docs.isNotEmpty) {
           gameId = querySnapshot.docs.first.id;
-          print("🎮 GameRoom: Found game with ID: $gameId on attempt $attempts");
+          print(
+              "🎮 GameRoom: Found game with ID: $gameId on attempt $attempts");
           break;
         } else {
           print("🎮 GameRoom: Game not found on attempt $attempts, waiting...");
@@ -481,12 +508,15 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
 
   void _updateSearchStatus() {
     // Only show "no players available" message after both phases have been attempted
-    final matchmakingElapsedSeconds = _matchmakingStartTime != null ? DateTime.now().difference(_matchmakingStartTime!).inSeconds : 0;
-        
+    final matchmakingElapsedSeconds = _matchmakingStartTime != null
+        ? DateTime.now().difference(_matchmakingStartTime!).inSeconds
+        : 0;
+
     if (matchmakingElapsedSeconds >= 45 && !_showNoPlayersMessage) {
       setState(() {
         _searchStatus = "No players available right now";
-        _searchSubStatus = "Try again in a few minutes or try a different time format";
+        _searchSubStatus =
+            "Try again in a few minutes or try a different time format";
         _showNoPlayersMessage = true;
       });
 
@@ -526,139 +556,192 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
     super.dispose();
   }
 
+  String _formatWaitTime(int seconds) {
+    final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (seconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$secs';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final ratingLabel =
+        currentUserName != null ? '${currentUserElo} rating' : 'Loading…';
+
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Finding a game'),
+      ),
       body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 100),
-            Padding(
-              padding: const EdgeInsets.all(18.0),
-              child: Column(
-                children: [
-                  Text(
-                    _searchStatus,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _searchSubStatus,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.grey, fontSize: 14),
-                  ),
-                  if (_showNoPlayersMessage) ...[
-                    const SizedBox(height: 20),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+                decoration: BoxDecoration(
+                  color: ColorResources.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: ColorResources.divider),
+                ),
+                child: Column(
+                  children: [
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        border: Border.all(color: Colors.orange, width: 1),
-                        borderRadius: BorderRadius.circular(8),
+                        color: ColorResources.elevatedSurface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: ColorResources.divider),
                       ),
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.info_outline,
-                            color: Colors.orange,
-                            size: 24,
+                      child: Text(
+                        '${widget.time}  •  Rated',
+                        style: const TextStyle(
+                          color: ColorResources.accentSoft,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildPlayerCard(
+                            currentUserName ?? AppConstants.you,
+                            profile ?? AppConstants.defaultProfileImage,
+                            ratingLabel,
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            "Suggestions:",
-                            style: TextStyle(
-                              color: Colors.orange,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            "• Try a different time format (1 min, 5 min, 10 min)\n• Check back in a few minutes",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                            ),
-                          ),
-                          if (_isAutoCancelling) ...[
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withOpacity(0.1),
-                                border: Border.all(color: Colors.red, width: 1),
-                                borderRadius: BorderRadius.circular(6),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Column(
+                            children: [
+                              Text(
+                                _formatWaitTime(_waitingTimeSeconds),
+                                style: const TextStyle(
+                                  color: ColorResources.textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                  fontFeatures: [FontFeature.tabularFigures()],
+                                ),
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.timer,
-                                    color: Colors.red,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    "Returning to dashboard in $_autoCancelCountdown seconds",
-                                    style: const TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
+                              const SizedBox(height: 6),
+                              const Text(
+                                'VS',
+                                style: TextStyle(
+                                  color: ColorResources.textSecondary,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  letterSpacing: 1.2,
+                                ),
                               ),
-                            ),
-                          ],
-                          const SizedBox(height: 16),
-                        ],
+                            ],
+                          ),
+                        ),
+                        Expanded(child: _buildSearchingCard()),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+                    const SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(strokeWidth: 2.4),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _searchStatus,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: ColorResources.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _searchSubStatus,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: ColorResources.textSecondary,
+                        fontSize: 13,
+                        height: 1.4,
                       ),
                     ),
                   ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 50),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildPlayerCard(
-                  currentUserName ?? AppConstants.you,
-                  profile ?? AppConstants.defaultProfileImage,
                 ),
-                Text(
-                  "VS",
-                  style: TextStyle(
-                    color: ColorResources.secondaryColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 22,
+              ),
+              if (_showNoPlayersMessage) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: ColorResources.elevatedSurface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: ColorResources.warning),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        color: ColorResources.warning,
+                        size: 22,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'No one in this queue right now',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: ColorResources.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Try another time control, or come back in a few minutes.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: ColorResources.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      if (_isAutoCancelling) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          'Returning home in $_autoCancelCountdown seconds',
+                          style: const TextStyle(
+                            color: ColorResources.warning,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                _buildSearchingCard(),
               ],
-            ),
-            const Spacer(),
-            _buildCancelButton(),
-          ],
+              const Spacer(),
+              _buildCancelButton(),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildPlayerCard(String label, String imagePath) {
+  Widget _buildPlayerCard(String label, String imagePath, String subtitle) {
     return Column(
       children: [
         Container(
-          height: 100,
-          width: 100,
+          height: 88,
+          width: 88,
           decoration: BoxDecoration(
-            border: Border.all(color: ColorResources.secondaryColor, width: 3),
-            borderRadius: BorderRadius.circular(12),
+            shape: BoxShape.circle,
+            border: Border.all(color: ColorResources.primary, width: 2.5),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(9),
+          child: ClipOval(
             child: CachedNetworkImage(
               imageUrl: imagePath,
               fit: BoxFit.cover,
@@ -666,17 +749,34 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
                 AppConstants.defaultProfileImage,
                 fit: BoxFit.cover,
               ),
-              errorWidget: (context, url, error) => const Icon(Icons.error),
+              errorWidget: (context, url, error) => Image.asset(
+                AppConstants.defaultProfileImage,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
         ),
         const SizedBox(height: 10),
         Text(
           label,
-          style: TextStyle(
-            color: ColorResources.secondaryColor,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: ColorResources.textPrimary,
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: ColorResources.textSecondary,
+            fontSize: 12,
           ),
         ),
       ],
@@ -686,34 +786,46 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
   Widget _buildSearchingCard() {
     return Column(
       children: [
-        Container(
-          height: 100,
-          width: 100,
-          decoration: BoxDecoration(
-            border: Border.all(color: ColorResources.secondaryColor, width: 3),
-            borderRadius: BorderRadius.circular(12),
-            // color: Colors.purple.shade800,
-          ),
-          child: AnimatedBuilder(
-            animation: _searchAnimation,
-            builder: (context, child) {
-              return Transform.rotate(
-                angle: _searchAnimation.value,
-                child: Icon(
-                  Icons.search,
-                  color: ColorResources.secondaryColor,
-                  size: 45,
-                ),
-              );
-            },
+        AnimatedBuilder(
+          animation: _searchAnimation,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _searchAnimation.value,
+              child: child,
+            );
+          },
+          child: Container(
+            height: 88,
+            width: 88,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: ColorResources.elevatedSurface,
+              border: Border.all(color: ColorResources.divider, width: 2),
+            ),
+            child: const Icon(
+              Icons.person_search_outlined,
+              color: ColorResources.accentSoft,
+              size: 36,
+            ),
           ),
         ),
         const SizedBox(height: 10),
         const Text(
-          "Searching...",
+          'Opponent',
+          textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.white,
+            color: ColorResources.textPrimary,
+            fontWeight: FontWeight.w700,
             fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 2),
+        const Text(
+          'Searching…',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: ColorResources.textSecondary,
+            fontSize: 12,
           ),
         ),
       ],
@@ -721,21 +833,12 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
   }
 
   Widget _buildCancelButton() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 40),
-      child: ElevatedButton.icon(
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: OutlinedButton(
         onPressed: _handleManualCancel,
-        icon: const Icon(Icons.close),
-        label: const Text(AppConstants.cancel),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          side: const BorderSide(color: Colors.orange, width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
+        child: const Text('Cancel search'),
       ),
     );
   }
@@ -749,7 +852,7 @@ class _MatchMakingScreenState extends State<MatchMakingScreen>
     _waitingTimer?.cancel();
     _countdownTimer?.cancel();
     _phaseCheckTimer?.cancel(); // Cancel the new timer
-    
+
     if (mounted) {
       Navigator.pop(context);
     }

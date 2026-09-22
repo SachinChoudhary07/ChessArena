@@ -22,6 +22,8 @@ class ProfileProvider with ChangeNotifier {
   String? profileImageUrl;
   String? name;
   String? email;
+  int eloRating = 1200;
+  int gamesPlayed = 0;
 
   bool isLoading = false;
   bool isLoggedIn = false;
@@ -32,15 +34,19 @@ class ProfileProvider with ChangeNotifier {
   }
 
   Future<void> fetchUserProfile() async {
-    setLoading(true);
+    final firstLoad = name == null;
+    if (firstLoad) setLoading(true);
     try {
       if (currentUser != null) {
         final doc =
             await _firestore.collection('users').doc(currentUser!.uid).get();
         if (doc.exists) {
-          profileImageUrl = doc['profileImage'];
-          name = doc['username'];
-          email = doc['email'];
+          final data = doc.data() ?? {};
+          profileImageUrl = data['profileImage'];
+          name = data['username'];
+          email = data['email'];
+          eloRating = (data['eloRating'] as num?)?.toInt() ?? 1200;
+          gamesPlayed = (data['gamesPlayed'] as num?)?.toInt() ?? 0;
         }
       }
     } catch (e) {

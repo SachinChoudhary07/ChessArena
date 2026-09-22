@@ -1,3 +1,4 @@
+import 'package:chess_cash/Widgets/premium_widgets.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -40,11 +41,8 @@ class _PlayWithOnlineFriendScreenState extends State<PlayWithOnlineFriendScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Play with Friends'),
-        backgroundColor: ColorResources.primaryColor,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: ColorResources.secondaryColor,
-          indicatorColor: ColorResources.secondaryColor,
           tabs: const [
             Tab(text: 'Send Challenge'),
             Tab(text: 'Challenge History'),
@@ -73,11 +71,10 @@ class _SendChallengeTab extends StatelessWidget {
     return Consumer<PlayWithOnlineFriendProvider>(
       builder: (context, provider, _) {
         return Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Friend Dropdown
               Text(
                 'Select Friend',
                 style: Theme.of(context).textTheme.titleMedium,
@@ -88,38 +85,41 @@ class _SendChallengeTab extends StatelessWidget {
                   : DropdownButtonHideUnderline(
                       child: DropdownButton2<FriendInfo>(
                         value: provider.selectedFriend,
-                        hint: const Text('Choose a friend'),
+                        hint: const Text(
+                          'Choose a friend',
+                          style: TextStyle(color: ColorResources.textSecondary),
+                        ),
                         isExpanded: true,
                         items: provider.friends
                             .map((f) => DropdownMenuItem<FriendInfo>(
                                   value: f,
-                                  child: Row(
-                                    children: [
-                                      Text(f.name),
-                                    ],
+                                  child: Text(
+                                    f.name,
+                                    style: const TextStyle(
+                                        color: ColorResources.textPrimary),
                                   ),
                                 ))
                             .toList(),
                         onChanged: provider.setSelectedFriend,
                         buttonStyleData: ButtonStyleData(
+                          height: 50,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                                color: ColorResources.secondaryColor),
+                            color: ColorResources.elevatedSurface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: ColorResources.divider),
                           ),
                         ),
                         dropdownStyleData: DropdownStyleData(
                           decoration: BoxDecoration(
+                            color: ColorResources.elevatedSurface,
                             borderRadius: BorderRadius.circular(12),
-                            border:
-                                Border.all(color: ColorResources.primaryColor),
+                            border: Border.all(color: ColorResources.divider),
                           ),
                         ),
                       ),
                     ),
               const SizedBox(height: 16),
-
-              // Time control selection
               Text('Select Time Control',
                   style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
@@ -136,98 +136,67 @@ class _SendChallengeTab extends StatelessWidget {
                     '30 min',
                     '60 min',
                   ]
-                      .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                      .map((t) => DropdownMenuItem(
+                            value: t,
+                            child: Text(
+                              t,
+                              style: const TextStyle(
+                                  color: ColorResources.textPrimary),
+                            ),
+                          ))
                       .toList(),
                   onChanged: (val) {
                     if (val != null) provider.setSelectedTime(val);
                   },
                   buttonStyleData: ButtonStyleData(
+                    height: 50,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: ColorResources.secondaryColor),
+                      color: ColorResources.elevatedSurface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: ColorResources.divider),
                     ),
                   ),
                   dropdownStyleData: DropdownStyleData(
                     decoration: BoxDecoration(
+                      color: ColorResources.elevatedSurface,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: ColorResources.primaryColor),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Amount selection
-              Text('Select Amount',
-                  style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              DropdownButtonHideUnderline(
-                child: DropdownButton2<int>(
-                  value: provider.selectedAmount,
-                  isExpanded: true,
-                  items: const [0, 10, 20, 50, 100]
-                      .map((amt) =>
-                          DropdownMenuItem(value: amt, child: Text('₹$amt')))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) provider.setSelectedAmount(val);
-                  },
-                  buttonStyleData: ButtonStyleData(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: ColorResources.secondaryColor),
-                    ),
-                  ),
-                  dropdownStyleData: DropdownStyleData(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: ColorResources.primaryColor),
+                      border: Border.all(color: ColorResources.divider),
                     ),
                   ),
                 ),
               ),
               const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: ColorResources.primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  onPressed: provider.isSendingChallenge
-                      ? null
-                      : () async {
-                          final result = await provider.sendChallenge();
-                          if (context.mounted) {
-                            if (result.success && result.roomCode != null) {
-                              // Navigate to challenge waiting room
-                              push(
-                                  context,
-                                  ChallengeWaitingRoom(
-                                    roomCode: result.roomCode!,
-                                    challengeId: result.challengeId!,
-                                  ));
-                            } else {
-                              // Show error message
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(result.message),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
+              provider.isSendingChallenge
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : ChessPrimaryButton(
+                      label: 'Send challenge',
+                      icon: Icons.sports_esports_outlined,
+                      onPressed: () async {
+                        final result = await provider.sendChallenge();
+                        if (context.mounted) {
+                          if (result.success && result.roomCode != null) {
+                            push(
+                              context,
+                              ChallengeWaitingRoom(
+                                roomCode: result.roomCode!,
+                                challengeId: result.challengeId!,
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(result.message),
+                                backgroundColor: ColorResources.error,
+                              ),
+                            );
                           }
-                        },
-                  child: provider.isSendingChallenge
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('Challenge', style: TextStyle(fontSize: 16)),
-                ),
-              ),
+                        }
+                      },
+                    ),
             ],
           ),
         );

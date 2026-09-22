@@ -30,13 +30,16 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     }
     if (newPass.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Your new password should be at least 6 characters long.')),
+        const SnackBar(
+            content: Text(
+                'Your new password should be at least 6 characters long.')),
       );
       return;
     }
     if (newPass != confirm) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('The new passwords you entered do not match.')),
+        const SnackBar(
+            content: Text('The new passwords you entered do not match.')),
       );
       return;
     }
@@ -145,7 +148,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _submit,
-                child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Change Password'),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Change Password'),
               ),
             ),
           ],

@@ -7,6 +7,7 @@ import 'package:chess_cash/Providers/gameProvider/GameProvider.dart';
 import 'package:chess_cash/Widgets/bottomNavBar.dart';
 import 'package:chess_cash/Widgets/loader.dart';
 import 'package:chess_cash/Models/chat_message.dart';
+import 'package:chess_cash/Services/moderation_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -415,8 +416,10 @@ class _GameScreenState extends State<GameScreen> {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           IconButton(
-            icon: _isChatOpen ? const Icon(Icons.chat_bubble_outline) : const Icon(Icons.chat),
-            color: Colors.grey,
+            icon: _isChatOpen
+                ? const Icon(Icons.chat_bubble_outline)
+                : const Icon(Icons.chat),
+            color: ColorResources.textSecondary,
             onPressed: () {
               setState(() {
                 _isChatOpen = !_isChatOpen;
@@ -432,20 +435,24 @@ class _GameScreenState extends State<GameScreen> {
             builder: (_, provider, __) {
               final messages = provider.chatMessages;
               final latestMessage = messages.isNotEmpty ? messages.last : null;
-              if (latestMessage == null || latestMessage.text.isEmpty) return const SizedBox();
+              if (latestMessage == null || latestMessage.text.isEmpty)
+                return const SizedBox();
               // Optionally hide my own messages – uncomment next line if needed
               // if (latestMessage.senderId == FirebaseAuth.instance.currentUser?.uid) return SizedBox();
               return Container(
                 width: MediaQuery.of(context).size.width / 1.7,
-                padding: const EdgeInsets.only(right: 8.0, left: 8.0, top: 4.0, bottom: 4.0),
-                margin: const EdgeInsets.only(right: 8.0, left: 8.0, top: 4.0, bottom: 4.0),
+                padding: const EdgeInsets.only(
+                    right: 8.0, left: 8.0, top: 4.0, bottom: 4.0),
+                margin: const EdgeInsets.only(
+                    right: 8.0, left: 8.0, top: 4.0, bottom: 4.0),
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
+                  color: ColorResources.elevatedSurface,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   latestMessage.text,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[800]),
+                  style: const TextStyle(
+                      fontSize: 12, color: ColorResources.textPrimary),
                   overflow: TextOverflow.ellipsis,
                 ),
               );
@@ -524,7 +531,7 @@ class _GameScreenState extends State<GameScreen> {
           duration: const Duration(milliseconds: 300),
           height: bottomSheetHeight,
           decoration: const BoxDecoration(
-            color: Color(0xFF2C2C2C), // Dark theme like chess.com
+            color: ColorResources.surface,
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
@@ -536,7 +543,7 @@ class _GameScreenState extends State<GameScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: const BoxDecoration(
-                  color: Color(0xFF1E1E1E),
+                  color: ColorResources.elevatedSurface,
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(20),
                     topRight: Radius.circular(20),
@@ -572,9 +579,11 @@ class _GameScreenState extends State<GameScreen> {
                 child: Consumer<ChessGameProvider>(
                   builder: (_, provider, __) {
                     final messages = provider.chatMessages;
-                    print("🎮 GameScreen: Chat messages count: ${messages.length}");
+                    print(
+                        "🎮 GameScreen: Chat messages count: ${messages.length}");
                     if (messages.isNotEmpty) {
-                      print("🎮 GameScreen: Latest message: ${messages.last.text}");
+                      print(
+                          "🎮 GameScreen: Latest message: ${messages.last.text}");
                     }
                     return Container(
                       padding: const EdgeInsets.all(16),
@@ -608,10 +617,11 @@ class _GameScreenState extends State<GameScreen> {
                   left: 16,
                   right: 16,
                   top: 16,
-                  bottom: 16 + keyboardHeight, // Add keyboard height to bottom padding
+                  bottom: 16 +
+                      keyboardHeight, // Add keyboard height to bottom padding
                 ),
                 decoration: const BoxDecoration(
-                  color: Color(0xFF1E1E1E),
+                  color: ColorResources.elevatedSurface,
                   borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(20),
                     bottomRight: Radius.circular(20),
@@ -622,7 +632,7 @@ class _GameScreenState extends State<GameScreen> {
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFF3C3C3C),
+                          color: ColorResources.elevatedSurface,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: TextField(
@@ -650,7 +660,8 @@ class _GameScreenState extends State<GameScreen> {
                       onPressed: () {
                         final text = chatController.text.trim();
                         if (text.isNotEmpty) {
-                          Provider.of<ChessGameProvider>(context, listen: false).sendChat(text);
+                          Provider.of<ChessGameProvider>(context, listen: false)
+                              .sendChat(text);
                           chatController.clear();
                         }
                       },
@@ -666,48 +677,91 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildMessageBubble(ChatMessage message) {
-    final isMyMessage = message.senderId == FirebaseAuth.instance.currentUser?.uid;
+    final isMyMessage =
+        message.senderId == FirebaseAuth.instance.currentUser?.uid;
 
     return Align(
       alignment: isMyMessage ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isMyMessage ? const Color(0xFF4A90E2) : const Color(0xFF3C3C3C),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!isMyMessage) ...[
-              const Icon(
-                Icons.sports_esports,
-                color: Colors.white,
-                size: 16,
-              ),
-              const SizedBox(width: 4),
-            ],
-            Flexible(
-              child: Text(
-                message.text,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
+      child: GestureDetector(
+        onLongPress: isMyMessage
+            ? null
+            : () => _showModerationSheet(message),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: isMyMessage
+                ? ColorResources.primary
+                : ColorResources.elevatedSurface,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  message.text,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                  ),
                 ),
               ),
-            ),
-            if (isMyMessage) ...[
-              const SizedBox(width: 4),
-              const Icon(
-                Icons.sports_esports,
-                color: Colors.white,
-                size: 16,
-              ),
+              if (!isMyMessage) ...[
+                const SizedBox(width: 4),
+                const Icon(Icons.more_horiz, color: Colors.white54, size: 16),
+              ],
             ],
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  void _showModerationSheet(ChatMessage message) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.flag_outlined),
+                title: const Text('Report message'),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await ModerationService.reportUser(
+                    reportedUid: message.senderId,
+                    reason: 'abusive_chat',
+                    messageText: message.text,
+                    roomCode: widget.roomCode,
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Report submitted')),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.block),
+                title: const Text('Block player'),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await ModerationService.blockUser(message.senderId);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Player blocked. You can leave the game.')),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -718,12 +772,8 @@ class _GameScreenState extends State<GameScreen> {
       child: Scaffold(
         // backgroundColor: Colors.brown.shade100,
         appBar: AppBar(
-          // backgroundColor: Colors.transparent,
           centerTitle: true,
-          title: const Text(
-            AppConstants.appName,
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
+          title: const Text(AppConstants.appName),
           actions: [
             IconButton(
               icon: const Icon(Icons.more_vert),
@@ -876,29 +926,35 @@ class _GameScreenState extends State<GameScreen> {
         : (isWhitePlayer ? (player1Name ?? 'You') : (player2Name ?? 'You'));
 
     final playerElo = isOpponent
-        ? (isWhitePlayer ? player2Elo : player1Elo) : (isWhitePlayer ? player1Elo : player2Elo);
+        ? (isWhitePlayer ? player2Elo : player1Elo)
+        : (isWhitePlayer ? player1Elo : player2Elo);
 
-    final playerImage = (isOpponent ? (isWhitePlayer ? player2Image : player1Image) : (isWhitePlayer ? player1Image : player2Image)) ?? '';
+    final playerImage = (isOpponent
+            ? (isWhitePlayer ? player2Image : player1Image)
+            : (isWhitePlayer ? player1Image : player2Image)) ??
+        '';
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.transparent,
-        // border: Border.all(
-        //   color: isActive ? Colors.green : Colors.grey,
-        //   width: 2,
-        // ),
-        borderRadius: BorderRadius.circular(12),
+        color: ColorResources.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color:
+              isActive ? ColorResources.primaryLight : ColorResources.divider,
+        ),
       ),
       child: Row(
         children: [
           Container(
-            width: 45,
-            height: 45,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: isActive ? Colors.green : Colors.grey,
+                color:
+                    isActive ? ColorResources.success : ColorResources.divider,
                 width: 2,
               ),
             ),
@@ -922,18 +978,19 @@ class _GameScreenState extends State<GameScreen> {
                 Text(
                   playerName,
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: ColorResources.textPrimary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'ELO: ${playerElo.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
+                  'ELO ${playerElo.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: ColorResources.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -943,15 +1000,23 @@ class _GameScreenState extends State<GameScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-                color: timeLeft < 60 ? Colors.red : Colors.black12,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: ColorResources.secondaryColor)),
+                color: timeLeft < 60
+                    ? ColorResources.error.withOpacity(0.2)
+                    : ColorResources.elevatedSurface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: timeLeft < 60
+                        ? ColorResources.error
+                        : ColorResources.divider)),
             child: Text(
               gameProvider.formatTime(timeLeft),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: timeLeft < 60
+                    ? ColorResources.warning
+                    : ColorResources.textPrimary,
                 fontSize: 16,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w700,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ),
@@ -970,13 +1035,20 @@ class _GameScreenState extends State<GameScreen> {
     // player always sees their own pieces at the bottom of the screen.
     final shouldFlipBoard = gameProvider.playerColor == PieceColor.black;
 
-    const String lightWoodAsset = 'assets/wood_light.jpg';
-    const String darkWoodAsset = 'assets/wood_dark.png';
-
     return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFF8B4513), width: 4),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: ColorResources.divider, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: GridView.builder(
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -997,54 +1069,49 @@ class _GameScreenState extends State<GameScreen> {
           // selection highlighting handled elsewhere
           final isPossibleMove = gameProvider.possibleMoves.contains(position);
           final isWhiteSquare = (row + col) % 2 == 0;
+          final isSelected = gameProvider.selectedPosition == position;
 
           final isKingInCheckSquare = gameProvider.kingInCheck != null &&
               gameProvider.kingInCheck == position;
 
-          final String squareAsset =
-              isWhiteSquare ? lightWoodAsset : darkWoodAsset;
-
           return GestureDetector(
             onTap: () => gameProvider.onSquareTapped(row, col),
-            child: Stack(
-              children: [
-                // The wood texture background
-                Container(
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage(squareAsset),
-                      fit: BoxFit.cover,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 140),
+              curve: Curves.easeOut,
+              color: isWhiteSquare
+                  ? ColorResources.lightSquare
+                  : ColorResources.darkSquare,
+              child: Stack(
+                children: [
+                  if (isSelected)
+                    Container(color: ColorResources.selectedSquare),
+                  if (isKingInCheckSquare)
+                    Container(color: ColorResources.checkSquare),
+                  if (isPossibleMove && !isKingInCheckSquare)
+                    Center(
+                      child: Container(
+                        width: piece != null ? 36 : 10,
+                        height: piece != null ? 36 : 10,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: piece != null
+                              ? Border.all(
+                                  color: ColorResources.accent.withOpacity(0.7),
+                                  width: 2,
+                                )
+                              : null,
+                          color: piece == null
+                              ? ColorResources.validMove
+                              : Colors.transparent,
+                        ),
+                      ),
                     ),
+                  Center(
+                    child: piece != null ? _buildPieceWidget(piece) : null,
                   ),
-                ),
-                // Overlay for king in check
-                if (isKingInCheckSquare)
-                  Container(
-                    color: const Color.fromARGB(
-                        180, 187, 87, 87), // semi-transparent red
-                  ),
-                // Overlay for possible move (only if not king in check)
-                if (isPossibleMove && !isKingInCheckSquare)
-                  Container(
-                    color: const Color.fromARGB(
-                        120, 124, 179, 66), // semi-transparent green
-                  ),
-                // The piece or possible move indicator
-                Center(
-                  child: piece != null
-                      ? _buildPieceWidget(piece)
-                      : isPossibleMove
-                          ? Container(
-                              width: 14,
-                              height: 14,
-                              decoration: const BoxDecoration(
-                                color: Colors.grey,
-                                shape: BoxShape.circle,
-                              ),
-                            )
-                          : null,
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
@@ -1071,7 +1138,7 @@ class _GameScreenState extends State<GameScreen> {
 
   Widget _buildGameStatus(ChessGameProvider gameProvider) {
     String statusText = '';
-    Color statusColor = Colors.blue;
+    Color statusColor = ColorResources.primaryLight;
 
     final winnerColor = gameProvider.winner;
     final playerColor = gameProvider.playerColor.toString().split('.').last;
@@ -1081,7 +1148,9 @@ class _GameScreenState extends State<GameScreen> {
 
     if (!isGameOver) {
       statusText = gameProvider.isMyTurn ? 'Your Turn' : 'Opponent\'s Turn';
-      statusColor = gameProvider.isMyTurn ? Colors.green : Colors.orange;
+      statusColor = gameProvider.isMyTurn
+          ? ColorResources.success
+          : ColorResources.warning;
     } else {
       switch (gameProvider.gameStatus) {
         case 'checkmate':
@@ -1127,10 +1196,10 @@ class _GameScreenState extends State<GameScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.2),
-        border: Border(top: BorderSide(color: statusColor, width: 2)),
+        color: ColorResources.surface,
+        border: Border(top: BorderSide(color: statusColor.withOpacity(0.6))),
       ),
       child: Text(
         statusText,

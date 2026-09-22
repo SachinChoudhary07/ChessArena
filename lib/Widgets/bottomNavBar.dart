@@ -1,16 +1,18 @@
 import 'dart:async';
 
 import 'package:chess_cash/Constant/app_constant.dart';
+import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Providers/AuthProvider/AuthProvider.dart';
 import 'package:chess_cash/Screens/AuthScreens/loginScreen.dart';
 import 'package:chess_cash/Screens/Dashboard/DashboardScreen.dart';
 import 'package:chess_cash/Screens/Friends/friends_screen.dart';
 import 'package:chess_cash/Screens/HistoryScreens/GameHistoryScreen.dart';
 import 'package:chess_cash/Screens/ProfileScreens/ProfileScreens.dart';
-import 'package:chess_cash/Screens/WalletScreens/WalletScreen.dart';
+import 'package:chess_cash/Screens/LeaderBoard/EloLeaderBoard.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 // Global key to access BottomNavBar state
@@ -26,11 +28,12 @@ class BottomNavBar extends StatefulWidget {
 
 class _BottomNavBarState extends State<BottomNavBar> {
   int _selectedIndex = 0;
+  DateTime? _lastBackPress;
   StreamSubscription<DocumentSnapshot>? _banStatusSubscription;
 
   final List<Widget> _pages = [
     const Dashboardscreen(),
-    const WalletScreen(),
+    const EloLeaderboard(),
     const GameHistoryScreen(),
     const FriendsScreen(),
     const Profilescreens(),
@@ -136,39 +139,163 @@ class _BottomNavBarState extends State<BottomNavBar> {
     }
   }
 
+  void _handleSystemBack() {
+    // From any other tab, go Home first.
+    if (_selectedIndex != 0) {
+      setState(() => _selectedIndex = 0);
+      return;
+    }
+
+    final now = DateTime.now();
+    final shouldExit = _lastBackPress != null &&
+        now.difference(_lastBackPress!) < const Duration(seconds: 2);
+
+    if (shouldExit) {
+      SystemNavigator.pop();
+      return;
+    }
+
+    _lastBackPress = now;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Press back again to exit'),
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        showUnselectedLabels: true,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: Colors.amber,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: AppConstants.home,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleSystemBack();
+      },
+      child: Scaffold(
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: _pages,
+        ),
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: ColorResources.surface,
+            border: const Border(
+              top: BorderSide(color: ColorResources.divider),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.25),
+                blurRadius: 12,
+                offset: const Offset(0, -2),
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet),
-            label: AppConstants.wallet,
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(6, 10, 6, 10),
+              child: Row(
+                children: [
+                  _NavItem(
+                    icon: Icons.sports_esports_rounded,
+                    label: AppConstants.home,
+                    selected: _selectedIndex == 0,
+                    onTap: () => _onItemTapped(0),
+                  ),
+                  _NavItem(
+                    icon: Icons.military_tech_rounded,
+                    label: 'Ratings',
+                    selected: _selectedIndex == 1,
+                    onTap: () => _onItemTapped(1),
+                  ),
+                  _NavItem(
+                    icon: Icons.auto_stories_rounded,
+                    label: AppConstants.history,
+                    selected: _selectedIndex == 2,
+                    onTap: () => _onItemTapped(2),
+                  ),
+                  _NavItem(
+                    icon: Icons.handshake_rounded,
+                    label: 'Friends',
+                    selected: _selectedIndex == 3,
+                    onTap: () => _onItemTapped(3),
+                  ),
+                  _NavItem(
+                    icon: Icons.account_circle_rounded,
+                    label: AppConstants.profile,
+                    selected: _selectedIndex == 4,
+                    onTap: () => _onItemTapped(4),
+                  ),
+                ],
+              ),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: AppConstants.history,
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group),
-            label: 'Friends',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: AppConstants.profile,
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              width: 46,
+              height: 34,
+              decoration: BoxDecoration(
+                color: selected ? ColorResources.primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(
+                icon,
+                size: 22,
+                color: selected
+                    ? ColorResources.onPrimary
+                    : ColorResources.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 5),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                color: selected
+                    ? ColorResources.accentSoft
+                    : ColorResources.textSecondary,
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+              ),
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

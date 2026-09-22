@@ -40,7 +40,8 @@ String? validatePassword(String? value) {
 }
 
 String? validateEmail(String? value) {
-  String pattern = r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$';
+  String pattern =
+      r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$';
   RegExp regex = new RegExp(pattern);
   if (!regex.hasMatch(value ?? ''))
     return 'Please use a valid mail';
@@ -58,4 +59,5 @@ String? validateConfirmPassword(String? password, String? confirmPassword) {
   }
 }
 
-String? validateEmptyField(String? text) => text == null || text.isEmpty ? "notBeEmpty" : null;
+String? validateEmptyField(String? text) =>
+    text == null || text.isEmpty ? "notBeEmpty" : null;

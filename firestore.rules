@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isMe(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if isMe(userId);
+      allow update: if isMe(userId)
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['eloRating', 'isBanned', 'Balance']);
+      allow delete: if isMe(userId);
+
+      match /blocked/{blockedId} {
+        allow read, write: if isMe(userId);
+      }
+      match /gamehistory/{gameId} {
+        allow read: if isMe(userId);
+        allow write: if signedIn();
+      }
+    }
+
+    match /games/{gameId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if signedIn();
+      allow delete: if false;
+    }
+
+    match /challenges/{id} {
+      allow read, create: if signedIn();
+      allow update: if signedIn();
+      allow delete: if false;
+    }
+
+    match /matchmaking_queue/{id} {
+      allow read, write: if signedIn() && request.auth.uid == id;
+    }
+
+    match /tournaments/{id} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      match /matches/{matchId} {
+        allow read, write: if signedIn();
+      }
+    }
+
+    match /user_tournaments/{id} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      match /matches/{matchId} {
+        allow read, write: if signedIn();
+      }
+    }
+
+    match /reports/{id} {
+      allow create: if signedIn()
+        && request.resource.data.reporterId == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+  }
+}

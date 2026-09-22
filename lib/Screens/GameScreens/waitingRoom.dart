@@ -174,7 +174,6 @@ class _EnhancedWaitingRoomState extends State<EnhancedWaitingRoom> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Waiting Room"),
-        backgroundColor: ColorResources.primaryColor,
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance

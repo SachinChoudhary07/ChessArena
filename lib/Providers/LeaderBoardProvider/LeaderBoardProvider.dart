@@ -24,10 +24,11 @@ class LeaderBoardProvider with ChangeNotifier {
       _leaderboard = snapshot.docs.map((doc) {
         final data = doc.data();
         return {
+          'uid': doc.id,
           'profilePictureUrl': data['profileImage'] ?? '',
           'name': data['username'] ?? 'Unknown',
-          'eloRating': data['eloRating'] ?? 0,
-          'points': data['ranking'] ?? 0,
+          'eloRating': (data['eloRating'] ?? 0) as num,
+          'gamesPlayed': data['gamesPlayed'] ?? 0,
         };
       }).toList();
       _errorMessage = '';

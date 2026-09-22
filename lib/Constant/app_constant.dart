@@ -9,7 +9,8 @@ class AppConstants {
   static const String defaultProfileImage = 'assets/images/pawn_image.jpg';
 
   // App Info
-  static const String appName = 'Chess4Cash';
+  static const String appName = 'ChessArena';
+  static const String appMotto = 'Play free. Climb your Elo.';
 
   // Authentication Texts
   static const String google = 'Continue with Google';
@@ -29,9 +30,9 @@ class AppConstants {
   static const String addMoney = 'Add Money';
   static const String withdraw = 'Withdraw';
   static const String playFreeMatch = 'Play Free Match';
-  static const String joinPaidContest = 'Play Paid Match';
+  static const String joinPaidContest = 'Play Match';
   static const String tournaments = 'Tournaments';
-  static const String createContest = 'Create/Join Contest';
+  static const String createContest = 'Create/Join Event';
   static const String playWithFriends = 'Play With Friends';
   static const String playWithOnlineFriends = 'Play With Online Friends';
 

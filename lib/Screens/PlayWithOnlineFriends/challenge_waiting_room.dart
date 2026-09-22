@@ -35,7 +35,10 @@ class _ChallengeWaitingRoomState extends State<ChallengeWaitingRoom> {
 
   Future<void> _fetchChallengeDetails() async {
     try {
-      final challengeDoc = await FirebaseFirestore.instance.collection('challenges').doc(widget.challengeId).get();
+      final challengeDoc = await FirebaseFirestore.instance
+          .collection('challenges')
+          .doc(widget.challengeId)
+          .get();
 
       if (challengeDoc.exists) {
         final data = challengeDoc.data()!;
@@ -44,7 +47,10 @@ class _ChallengeWaitingRoomState extends State<ChallengeWaitingRoom> {
         final amount = data['amount'] as int;
 
         // Fetch opponent name
-        final opponentDoc = await FirebaseFirestore.instance.collection('users').doc(opponentUid).get();
+        final opponentDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(opponentUid)
+            .get();
         final opponentName = opponentDoc.data()?['username'] ?? 'Opponent';
 
         setState(() {
@@ -63,7 +69,12 @@ class _ChallengeWaitingRoomState extends State<ChallengeWaitingRoom> {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) return;
 
-      final gameHistoryDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).collection('gamehistory').doc(gameRoomCode).get();
+      final gameHistoryDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('gamehistory')
+          .doc(gameRoomCode)
+          .get();
 
       if (gameHistoryDoc.exists) {
         final gameResult = gameHistoryDoc.data()?['result'] as String?;
@@ -116,14 +127,16 @@ class _ChallengeWaitingRoomState extends State<ChallengeWaitingRoom> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Challenge Sent'),
-        backgroundColor: ColorResources.primaryColor,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance.collection('challenges').doc(widget.challengeId).snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection('challenges')
+            .doc(widget.challengeId)
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -218,7 +231,9 @@ class _ChallengeWaitingRoomState extends State<ChallengeWaitingRoom> {
             child: Column(
               children: [
                 Text(
-                  status == 'pending' ? 'Waiting for response...' : 'Challenge Status',
+                  status == 'pending'
+                      ? 'Waiting for response...'
+                      : 'Challenge Status',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -226,7 +241,8 @@ class _ChallengeWaitingRoomState extends State<ChallengeWaitingRoom> {
                 ),
                 const SizedBox(height: 20),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     border: Border.all(color: ColorResources.primaryColor),
                     color: Colors.grey[100],
@@ -263,7 +279,8 @@ class _ChallengeWaitingRoomState extends State<ChallengeWaitingRoom> {
                         ),
                         const Spacer(),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.orange,
                             borderRadius: BorderRadius.circular(4),
@@ -283,7 +300,7 @@ class _ChallengeWaitingRoomState extends State<ChallengeWaitingRoom> {
                   const SizedBox(height: 16),
                   if (_timeControl != null && _amount != null)
                     Text(
-                      '$_timeControl • ₹$_amount',
+                      _timeControl ?? 'Rated game',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,

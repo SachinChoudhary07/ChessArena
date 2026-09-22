@@ -1,4 +1,3 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -174,14 +173,21 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final snap = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).collection('friends').get();
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('friends')
+          .get();
 
       // Fetch usernames for each friend UID
       final List<FriendInfo> loaded = [];
       for (final doc in snap.docs) {
         final uid = doc.id;
         try {
-          final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid)
+              .get();
           final username = userDoc.data()?['username'] ?? 'Friend';
           loaded.add(FriendInfo(uid: uid, name: username));
         } catch (_) {
@@ -204,7 +210,8 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
   void _setupPresenceListeners() {
     // Cancel removed subscriptions
     final currentUids = _friends.map((f) => f.uid).toSet();
-    final toRemove = _presenceSubs.keys.where((k) => !currentUids.contains(k)).toList();
+    final toRemove =
+        _presenceSubs.keys.where((k) => !currentUids.contains(k)).toList();
     for (final uid in toRemove) {
       _presenceSubs.remove(uid)?.cancel();
       _friendOnlineMap.remove(uid);
@@ -259,43 +266,24 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
       );
     }
 
-    _isSendingChallenge = true;
-    notifyListeners();
-
     try {
-      // Check if user has sufficient balance for the challenge amount
-      if (_selectedAmount > 0) {
-        final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get();
-        final currentBalance = (userDoc.data()?['Balance'] ?? 0.0) as num;
-
-        if (currentBalance < _selectedAmount) {
-          debugPrint('❌ Insufficient balance: $currentBalance < $_selectedAmount');
-          _isSendingChallenge = false;
-          notifyListeners();
-          return ChallengeSendResult(
-            success: false,
-            message: 'Insufficient balance to send challenge',
-            roomCode: null,
-          );
-        }
-      }
-
-      // Generate room code for the challenge
       final roomCode = _generateRoomCode();
 
       // Create challenge document and get the ID
-      final challengeRef = await FirebaseFirestore.instance.collection('challenges').add({
+      final challengeRef =
+          await FirebaseFirestore.instance.collection('challenges').add({
         'challenger': currentUser.uid,
         'opponent': _selectedFriend!.uid,
         'timeControl': _selectedTime,
-        'amount': _selectedAmount,
+        'amount': 0,
         'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
         'roomCode': roomCode, // Add room code to challenge
       });
 
       // Send push notification to opponent with challenge ID
-      await _sendChallengeNotification(currentUser.uid, _selectedFriend!.uid, challengeRef.id);
+      await _sendChallengeNotification(
+          currentUser.uid, _selectedFriend!.uid, challengeRef.id);
 
       _isSendingChallenge = false;
       notifyListeners();
@@ -346,7 +334,9 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
 
     try {
       // Fetch challenges where current user is either challenger or opponent
-      final challengesQuery = await FirebaseFirestore.instance.collection('challenges').where('status', whereIn: ['accepted', 'rejected', 'expired']).get();
+      final challengesQuery = await FirebaseFirestore.instance
+          .collection('challenges')
+          .where('status', whereIn: ['accepted', 'rejected', 'expired']).get();
 
       final List<ChallengeHistoryItem> loadedHistory = [];
 
@@ -361,14 +351,19 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
         final gameRoomCode = data['gameRoomCode'] as String?;
 
         // Only include challenges where current user participated
-        if (challengerUid == currentUser.uid || opponentUid == currentUser.uid) {
+        if (challengerUid == currentUser.uid ||
+            opponentUid == currentUser.uid) {
           // Determine if current user is challenger or opponent
           final isChallenger = challengerUid == currentUser.uid;
           final otherUserUid = isChallenger ? opponentUid : challengerUid;
 
           // Fetch other user's name
-          final otherUserDoc = await FirebaseFirestore.instance.collection('users').doc(otherUserUid).get();
-          final otherUserName = otherUserDoc.data()?['username'] ?? 'Unknown Player';
+          final otherUserDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(otherUserUid)
+              .get();
+          final otherUserName =
+              otherUserDoc.data()?['username'] ?? 'Unknown Player';
 
           // Determine result based on status and user role
           String result;
@@ -376,7 +371,12 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
             // Check if there's a game result
             if (gameRoomCode != null) {
               // Try to find game result in gamehistory
-              final gameHistoryDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).collection('gamehistory').doc(gameRoomCode).get();
+              final gameHistoryDoc = await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentUser.uid)
+                  .collection('gamehistory')
+                  .doc(gameRoomCode)
+                  .get();
 
               if (gameHistoryDoc.exists) {
                 final gameResult = gameHistoryDoc.data()?['result'] as String?;
@@ -431,26 +431,38 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
   // Push notification via FCM HTTP v1 legacy API
   // ---------------------------------------------------------------------------
 
-  static const String _fcmEndpoint = 'https://fcm.googleapis.com/v1/projects/chess4cash-37f67/messages:send';
+  static const String _fcmEndpoint =
+      'https://fcm.googleapis.com/v1/projects/chess4cash-37f67/messages:send';
 
-  Future<void> _sendChallengeNotification(String challengerUid, String opponentUid, String challengeId) async {
+  Future<void> _sendChallengeNotification(
+      String challengerUid, String opponentUid, String challengeId) async {
     try {
       // Obtain OAuth2 token via service account
       final accessToken = await generateFcmAccessToken();
 
       // Fetch challenger name
-      final challengerDoc = await FirebaseFirestore.instance.collection('users').doc(challengerUid).get();
+      final challengerDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(challengerUid)
+          .get();
       final challengerName = challengerDoc.data()?['username'] ?? 'A player';
 
       // Fetch opponent FCM token
-      final opponentDoc = await FirebaseFirestore.instance.collection('users').doc(opponentUid).get();
+      final opponentDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(opponentUid)
+          .get();
       final token = opponentDoc.data()?['fcmToken'];
       if (token == null) return;
 
       final payload = {
         "message": {
           "token": token,
-          "notification": {"title": "New Chess Challenge!", "body": "$challengerName challenged you to a $_selectedTime game${_selectedAmount > 0 ? ' for ₹$_selectedAmount' : ''}."},
+          "notification": {
+            "title": "New Chess Challenge!",
+            "body":
+                "$challengerName challenged you to a $_selectedTime game."
+          },
           "android": {
             "notification": {
               "icon": "ic_launcher", // ensure exists in drawable
@@ -458,7 +470,11 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
               "tag": "challenge_$challengerUid" // collapse duplicates
             }
           },
-          "data": {"type": "challenge", "challengerUid": challengerUid, "challengeId": challengeId}
+          "data": {
+            "type": "challenge",
+            "challengerUid": challengerUid,
+            "challengeId": challengeId
+          }
         }
       };
 
@@ -471,7 +487,8 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
         body: jsonEncode(payload),
       );
 
-      debugPrint('FCM response status: ${response.statusCode} ${response.body}');
+      debugPrint(
+          'FCM response status: ${response.statusCode} ${response.body}');
     } catch (e) {
       debugPrint('Error sending FCM notification: $e');
     }

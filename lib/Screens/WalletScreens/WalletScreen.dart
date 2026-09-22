@@ -9,7 +9,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../Providers/WalletProvider/WalletProvider.dart';
-import '../../Widgets/loader.dart';
+import 'package:chess_cash/Widgets/loader.dart';
+import 'package:chess_cash/Widgets/premium_widgets.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -36,9 +37,9 @@ class _WalletScreenState extends State<WalletScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: const PremiumAppBar(
         automaticallyImplyLeading: false,
-        title: const Text(AppConstants.wallet),
+        title: AppConstants.wallet,
       ),
       body: Consumer<WalletProvider>(
         builder: (context, walletProvider, child) {
@@ -47,20 +48,20 @@ class _WalletScreenState extends State<WalletScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   AppConstants.totalBalance,
                   style: TextStyle(
-                    fontSize: 16,
-                    color: ColorResources.secondaryColor,
+                    fontSize: 14,
+                    color: ColorResources.textSecondary,
                   ),
                 ),
                 Helper.heightSizedBox(8),
                 Text(
                   '₹${walletProvider.balance}',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: ColorResources.secondaryColor,
+                    color: ColorResources.textPrimary,
                   ),
                 ),
                 Helper.heightSizedBox(16),
@@ -86,11 +87,12 @@ class _WalletScreenState extends State<WalletScreen> {
                   ],
                 ),
                 Helper.heightSizedBox(16),
-                Text(
+                const Text(
                   AppConstants.viewTransaction,
                   style: TextStyle(
                     fontSize: 16,
-                    color: ColorResources.secondaryColor,
+                    color: ColorResources.textPrimary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 Helper.heightSizedBox(8),
@@ -108,8 +110,9 @@ class _WalletScreenState extends State<WalletScreen> {
                         return const Center(child: Loader());
                       }
                       if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return const Center(
-                            child: Text("No transactions found."));
+                        return const EmptyStateWidget(
+                            message: "No transactions found.",
+                            icon: Icons.receipt_long_outlined);
                       }
 
                       return ListView.builder(
@@ -147,9 +150,9 @@ class _WalletScreenState extends State<WalletScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
         decoration: BoxDecoration(
-          color: color,
-          border: Border.all(color: ColorResources.secondaryColor),
-          borderRadius: BorderRadius.circular(8),
+          color: ColorResources.surface,
+          border: Border.all(color: ColorResources.divider),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
           label,
@@ -165,8 +168,9 @@ class _WalletScreenState extends State<WalletScreen> {
       margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border.all(color: ColorResources.secondaryColor),
-        borderRadius: BorderRadius.circular(8),
+        color: ColorResources.surface,
+        border: Border.all(color: ColorResources.divider),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
@@ -194,7 +198,7 @@ class _WalletScreenState extends State<WalletScreen> {
         ),
         Text(
           value,
-          style: TextStyle(color: ColorResources.secondaryColor),
+          style: const TextStyle(color: ColorResources.textSecondary),
         ),
       ],
     );
@@ -297,10 +301,10 @@ class _WalletScreenState extends State<WalletScreen> {
       onPressed: () {
         controller.text = amount;
       },
-      backgroundColor: ColorResources.secondaryColor.withOpacity(0.1),
-      labelStyle: TextStyle(
-        color: ColorResources.secondaryColor,
-        fontWeight: FontWeight.bold,
+      backgroundColor: ColorResources.elevatedSurface,
+      labelStyle: const TextStyle(
+        color: ColorResources.accentSoft,
+        fontWeight: FontWeight.w600,
       ),
     );
   }

@@ -202,7 +202,6 @@ class _TournamentWaitingRoomState extends State<TournamentWaitingRoom> {
           automaticallyImplyLeading:
               false, // This removes the back button from AppBar
           title: const Text("Waiting Room"),
-          backgroundColor: ColorResources.primaryColor,
         ),
         body: StreamBuilder<DocumentSnapshot>(
           stream: FirebaseFirestore.instance

@@ -2,15 +2,16 @@ import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Screens/CreateTournament/createTournament.dart';
 import 'package:chess_cash/Screens/GameScreens/MatchMakingScreen.dart';
-import 'package:chess_cash/Screens/PaidMatch/PlayPaidMatch.dart';
+import 'package:chess_cash/Screens/LeaderBoard/EloLeaderBoard.dart';
 import 'package:chess_cash/Screens/TournamentScreens/tournaments_screen.dart';
 import 'package:chess_cash/Services/navigation.dart';
-import 'package:chess_cash/Widgets/bottomNavBar.dart';
-import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:chess_cash/Widgets/premium_widgets.dart';
+import 'package:chess_cash/Widgets/shimmer_avatar.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../Constant/ui_helper.dart';
 import '../PlayWithOnlineFriends/play_with_online_friend.dart';
 
 class Dashboardscreen extends StatefulWidget {
@@ -23,152 +24,122 @@ class Dashboardscreen extends StatefulWidget {
 class _DashboardscreenState extends State<Dashboardscreen> {
   String selectedTime = '3 min';
 
+  static const _times = [
+    _TimeOption('3 min', '3m', 'Blitz'),
+    _TimeOption('5 min', '5m', 'Blitz'),
+    _TimeOption('10 min', '10m', 'Rapid'),
+    _TimeOption('15 min', '15m', 'Rapid'),
+    _TimeOption('30 min', '30m', 'Rapid'),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: ColorResources.primaryColor,
-        body: SingleChildScrollView(
-          child: Padding(
-            padding:
-                const EdgeInsets.only(top: 20, bottom: 20, left: 20, right: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Align(
-                  alignment: Alignment.topRight,
-                  child: InkWell(
-                    onTap: () {
-                      // Navigate to wallet screen (index 1)
-                      bottomNavBarKey.currentState?.changeIndex(1);
-                    },
-                    child: const Icon(
-                      Icons.account_balance_wallet_outlined,
-                      size: 33,
-                    ),
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    return Scaffold(
+      body: SafeArea(
+        child: StreamBuilder<DocumentSnapshot>(
+          stream: uid == null
+              ? null
+              : FirebaseFirestore.instance
+                  .collection(AppConstants.usersCollection)
+                  .doc(uid)
+                  .snapshots(),
+          builder: (context, snapshot) {
+            final data = snapshot.data?.data() as Map<String, dynamic>?;
+            final name = data?['username']?.toString() ?? 'Player';
+            final image = data?['profileImage']?.toString() ?? '';
+            final elo = (data?['eloRating'] ?? 1200);
+            final games = data?['gamesPlayed'] ?? 0;
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _HomeHeader(
+                    name: name,
+                    imageUrl: image,
+                    elo: '$elo',
                   ),
-                ),
-                Image.asset(
-                  AppConstants.splashIcon,
-                  height: 200,
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: ColorResources.secondaryColor)),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.access_time_filled_sharp),
-                        Expanded(
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton2<String>(
-                              value: selectedTime,
-                              items: <String>[
-                                '1 min',
-                                '3 min',
-                                '5 min',
-                                '10 min',
-                                '15 min',
-                                '30 min',
-                                '60 min'
-                              ]
-                                  .map((number) => DropdownMenuItem(
-                                        value: number,
-                                        child: Text(
-                                          number,
-                                          style: TextStyle(
-                                              color: ColorResources
-                                                  .secondaryColor),
-                                        ),
-                                      ))
-                                  .toList(),
-                              onChanged: (String? newValue) {
-                                if (newValue != null) {
-                                  setState(() {
-                                    selectedTime = newValue;
-                                  });
-                                }
-                              },
-                            ),
-                          ),
+                  const SizedBox(height: 16),
+                  _PlayHeroCard(
+                    selectedTime: selectedTime,
+                    times: _times,
+                    onSelectTime: (time) => setState(() => selectedTime = time),
+                    onPlay: _startMatchmaking,
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _StatChip(
+                          icon: Icons.trending_up,
+                          label: 'Rating',
+                          value: '$elo',
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _StatChip(
+                          icon: Icons.sports_esports_outlined,
+                          label: 'Games',
+                          value: '$games',
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _StatChip(
+                          icon: Icons.workspace_premium_outlined,
+                          label: 'Mode',
+                          value: 'Rated',
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                Helper.heightSizedBox(10),
-                _buildButton(AppConstants.playFreeMatch, Icons.play_arrow,
-                    ColorResources.secondaryColor, () {
-                  _startMatchmaking();
-                }),
-                _buildButton(AppConstants.joinPaidContest, Icons.attach_money,
-                    ColorResources.secondaryColor, () {
-                  push(context, PlayPaidMatch(defaultTime: selectedTime));
-                }),
-                _buildButton(AppConstants.tournaments, Icons.emoji_events,
-                    ColorResources.secondaryColor, () {
-                  push(context, const TournamentsScreen());
-                }),
-                _buildButton(
-                    AppConstants.createContest,
-                    Icons.compare_arrows_sharp,
-                    ColorResources.secondaryColor, () {
-                  push(context, const CreateTournament());
-                }),
-                // _buildButton(
-                //     AppConstants.playWithFriends,
-                //     Icons.people_outline_rounded,
-                //     ColorResources.secondaryColor, () {
-                //   push(context, const PlayWithFriends());
-                // }),
-                _buildButton(
-                    AppConstants.playWithFriends,
-                    Icons.people_outline_rounded,
-                    ColorResources.secondaryColor, () {
-                  push(context, const PlayWithOnlineFriendScreen());
-                }),
-                Helper.heightSizedBox(20),
-              ],
-            ),
-          ),
+                  const SizedBox(height: 22),
+                  const ChessSectionHeader(title: 'Play another way'),
+                  GameModeCard(
+                    title: 'Challenge a friend',
+                    subtitle: 'Send a rated invite to someone on your list',
+                    icon: Icons.people_alt_outlined,
+                    onTap: () {
+                      push(context, const PlayWithOnlineFriendScreen());
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  GameModeCard(
+                    title: 'Tournaments',
+                    subtitle: 'Join a bracket and climb the field',
+                    icon: Icons.emoji_events_outlined,
+                    onTap: () {
+                      push(context, const TournamentsScreen());
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  GameModeCard(
+                    title: 'Private room',
+                    subtitle: 'Create a code and play with anyone',
+                    icon: Icons.meeting_room_outlined,
+                    onTap: () {
+                      push(context, const CreateTournament());
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  GameModeCard(
+                    title: 'Elo leaderboard',
+                    subtitle: 'See how you rank against other players',
+                    icon: Icons.leaderboard_outlined,
+                    onTap: () {
+                      push(context, const EloLeaderboard());
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ),
-    );
-  }
-
-  Widget _buildButton(String text, IconData icon, iconColor, onTap) {
-    return Column(
-      children: [
-        Helper.heightSizedBox(10),
-        InkWell(
-          splashColor: Colors.black,
-          onTap: onTap,
-          child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
-              decoration: BoxDecoration(
-                  border: Border.all(color: ColorResources.secondaryColor),
-                  borderRadius: BorderRadius.circular(10)),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Icon(
-                    icon,
-                    color: iconColor,
-                    size: 35,
-                  ),
-                  Helper.widthSizedBox(),
-                  Text(
-                    text,
-                    style: TextStyle(
-                        color: ColorResources.secondaryColor, fontSize: 18),
-                  )
-                ],
-              )),
-        ),
-        Helper.heightSizedBox(10)
-      ],
     );
   }
 
@@ -181,6 +152,332 @@ class _DashboardscreenState extends State<Dashboardscreen> {
       context,
       MaterialPageRoute(
         builder: (context) => MatchMakingScreen(time: selectedTime),
+      ),
+    );
+  }
+}
+
+class _TimeOption {
+  final String value;
+  final String short;
+  final String pace;
+  const _TimeOption(this.value, this.short, this.pace);
+}
+
+class _HomeHeader extends StatelessWidget {
+  final String name;
+  final String imageUrl;
+  final String elo;
+
+  const _HomeHeader({
+    required this.name,
+    required this.imageUrl,
+    required this.elo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        ShimmerAvatar(
+          imageUrl: imageUrl,
+          radius: 24,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Hi, $name',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: ColorResources.textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'Find a rated game in seconds',
+                style: TextStyle(
+                  color: ColorResources.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: ColorResources.primary.withOpacity(0.16),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: ColorResources.primary.withOpacity(0.4)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.military_tech,
+                  size: 16, color: ColorResources.accentSoft),
+              const SizedBox(width: 4),
+              Text(
+                elo,
+                style: const TextStyle(
+                  color: ColorResources.accentSoft,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PlayHeroCard extends StatelessWidget {
+  final String selectedTime;
+  final List<_TimeOption> times;
+  final ValueChanged<String> onSelectTime;
+  final VoidCallback onPlay;
+
+  const _PlayHeroCard({
+    required this.selectedTime,
+    required this.times,
+    required this.onSelectTime,
+    required this.onPlay,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: ColorResources.divider),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF2A3A24),
+            Color(0xFF25282F),
+            Color(0xFF1F2228),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -8,
+              top: -8,
+              child: Opacity(
+                opacity: 0.22,
+                child: _MiniBoard(size: 132),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: ColorResources.primary.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'RATED MATCH',
+                      style: TextStyle(
+                        color: ColorResources.accentSoft,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Play online chess',
+                    style: TextStyle(
+                      color: ColorResources.textPrimary,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Choose a clock, then we pair you with a real opponent.',
+                    style: TextStyle(
+                      color: ColorResources.textSecondary,
+                      fontSize: 13,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: times.map((t) {
+                      final selected = t.value == selectedTime;
+                      return GestureDetector(
+                        onTap: () => onSelectTime(t.value),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 160),
+                          width: 62,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? ColorResources.primary
+                                : ColorResources.elevatedSurface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: selected
+                                  ? ColorResources.primary
+                                  : ColorResources.divider,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                t.short,
+                                style: TextStyle(
+                                  color: selected
+                                      ? ColorResources.onPrimary
+                                      : ColorResources.textPrimary,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                t.pace,
+                                style: TextStyle(
+                                  color: selected
+                                      ? ColorResources.onPrimary.withOpacity(0.8)
+                                      : ColorResources.textSecondary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 52,
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: onPlay,
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.play_arrow_rounded, size: 28),
+                          SizedBox(width: 4),
+                          Text(
+                            'Find an opponent',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniBoard extends StatelessWidget {
+  final double size;
+  const _MiniBoard({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: GridView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 64,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 8,
+        ),
+        itemBuilder: (_, i) {
+          final row = i ~/ 8;
+          final col = i % 8;
+          final dark = (row + col) % 2 == 1;
+          return ColoredBox(
+            color: dark ? ColorResources.darkSquare : ColorResources.lightSquare,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _StatChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: BoxDecoration(
+        color: ColorResources.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ColorResources.divider),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 18, color: ColorResources.accentSoft),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: ColorResources.textPrimary,
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              color: ColorResources.textSecondary,
+              fontSize: 11,
+            ),
+          ),
+        ],
       ),
     );
   }

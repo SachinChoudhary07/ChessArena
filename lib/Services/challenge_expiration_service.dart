@@ -27,7 +27,11 @@ class ChallengeExpirationService {
       final twoMinutesAgo = now.subtract(const Duration(minutes: 2));
 
       // Query for pending challenges created more than 2 minutes ago
-      final expiredChallenges = await _firestore.collection('challenges').where('status', isEqualTo: 'pending').where('createdAt', isLessThan: Timestamp.fromDate(twoMinutesAgo)).get();
+      final expiredChallenges = await _firestore
+          .collection('challenges')
+          .where('status', isEqualTo: 'pending')
+          .where('createdAt', isLessThan: Timestamp.fromDate(twoMinutesAgo))
+          .get();
 
       // Update all expired challenges
       final batch = _firestore.batch();
@@ -58,19 +62,23 @@ class ChallengeExpirationService {
   }
 
   /// Send notification to challenger about expired challenge
-  static Future<void> _sendExpirationNotification(String challengerUid, String opponentUid) async {
+  static Future<void> _sendExpirationNotification(
+      String challengerUid, String opponentUid) async {
     try {
       // Get opponent name
-      final opponentDoc = await _firestore.collection('users').doc(opponentUid).get();
+      final opponentDoc =
+          await _firestore.collection('users').doc(opponentUid).get();
       final opponentName = opponentDoc.data()?['username'] ?? 'A player';
 
       // Get challenger FCM token
-      final challengerDoc = await _firestore.collection('users').doc(challengerUid).get();
+      final challengerDoc =
+          await _firestore.collection('users').doc(challengerUid).get();
       final token = challengerDoc.data()?['fcmToken'];
       if (token == null) return;
 
       // Send FCM notification (you'll need to implement this similar to the challenge notification)
-      debugPrint('📱 ChallengeExpirationService: Sending expiration notification to challenger');
+      debugPrint(
+          '📱 ChallengeExpirationService: Sending expiration notification to challenger');
       // TODO: Implement FCM notification for expiration
     } catch (e) {
       debugPrint('Error sending expiration notification: $e');
