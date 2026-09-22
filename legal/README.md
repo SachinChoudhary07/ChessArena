@@ -1,20 +1,31 @@
 # Legal pages
 
-Host these files on HTTPS before Play submission:
+Hosted on Netlify: https://chessarena-legal.netlify.app
 
+## Live links (Play Console + app)
+
+| Page | URL |
+|------|-----|
+| Privacy Policy | https://chessarena-legal.netlify.app/privacy-policy.html |
+| Account Deletion | https://chessarena-legal.netlify.app/delete-account.html |
+| Terms of Service | https://chessarena-legal.netlify.app/terms.html |
+
+App wires these via `lib/Constant/legal_urls.dart` (Profile + Register).
+
+## Local files
+
+- `index.html`
 - `privacy-policy.html`
 - `delete-account.html`
+- `terms.html`
+- `styles.css`
+- `netlify.toml`
 
-Then set the same URLs in:
+## Redeploy
 
-- Play Console → App content → Privacy policy
-- Play Console → App content → Account deletion
-- `lib/Constant/legal_urls.dart`
-
-Firebase Hosting example:
-
-```
-firebase deploy --only hosting
+```bash
+# zip the HTML/CSS/toml and upload via Netlify UI, or:
+# netlify deploy --prod --dir=. --site=chessarena-legal
 ```
 
-Also deploy `firestore.rules` and `storage.rules` from the repo root.
+After changing pages, keep `LegalUrls` and Play Console in sync.
