@@ -6,6 +6,9 @@ Play rated matches, challenge friends, join tournaments, and climb the Elo leade
 Designed as a **Play Store–ready** skill chess product with a modern dark UI, ready for freelancers and studios to white-label, customize, and ship.
 
 ---
+<img width="1672" height="940" alt="ChatGPT Image Sep 22, 2026, 08_38_36 PM (1)" src="https://github.com/user-attachments/assets/ef0e2ce3-6172-4e54-a1dd-eb5c40b30f89" />
+
+---
 
 ## Why buy / use this project?
 
