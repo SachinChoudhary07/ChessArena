@@ -33,7 +33,11 @@ service cloud.firestore {
     }
 
     match /challenges/{id} {
-      allow read, create: if signedIn();
+      allow read: if signedIn();
+      // Only create challenges as yourself; a Cloud Function pushes the
+      // notification to the opponent when one is created.
+      allow create: if signedIn()
+        && request.resource.data.challenger == request.auth.uid;
       allow update: if signedIn();
       allow delete: if false;
     }
