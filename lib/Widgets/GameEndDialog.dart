@@ -43,7 +43,7 @@ class _GameEndDialogState extends State<GameEndDialog> {
 
   Future<void> _loadGameData() async {
     try {
-      // Always load game data for prize information
+      // Load game data for the result summary
       final gameDoc = await FirebaseFirestore.instance
           .collection('games')
           .doc(widget.roomCode)

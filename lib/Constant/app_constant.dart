@@ -27,12 +27,8 @@ class AppConstants {
 
   // Dashboard Text
   static const String home = 'Home';
-  static const String addMoney = 'Add Money';
-  static const String withdraw = 'Withdraw';
   static const String playFreeMatch = 'Play Free Match';
-  static const String joinPaidContest = 'Play Match';
   static const String tournaments = 'Tournaments';
-  static const String createContest = 'Create/Join Event';
   static const String playWithFriends = 'Play With Friends';
   static const String playWithOnlineFriends = 'Play With Online Friends';
 
@@ -46,20 +42,10 @@ class AppConstants {
   static const String inviteFriends = 'Invite Friends';
   static const String deleteAccount = 'Delete Account';
 
-  //Wallet screen text
-  static const String totalBalance = 'Total Balance';
-  static const String viewTransaction = 'Transaction History';
-  static const String addCash = 'Add Cash';
-  static const String wallet = 'Wallet';
-  static const String cashExpiringSoon = 'Cash expiring soon';
-
   //Game History Text
   static const String history = 'History';
   static const String upcoming = 'Upcoming';
   static const String completed = 'Completed';
-
-  //Join Contest Text
-  static const String joinContest = 'Join Contest';
 
   // Matchmaking Text
   static const String waitingText =
@@ -99,7 +85,6 @@ class AppConstants {
   static const String gamesLostField = 'gamesLost';
   static const String gamesDrawnField = 'gamesDrawn';
   static const String rankingField = 'ranking';
-  static const String balanceField = 'Balance';
 
   // Security & Admin Control Fields
   static const String isBannedField = 'isBanned';

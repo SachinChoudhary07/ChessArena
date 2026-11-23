@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:chess_cash/Constant/app_constant.dart';
 import 'package:chess_cash/Screens/AuthScreens/loginScreen.dart';
 import 'package:chess_cash/Widgets/bottomNavBar.dart';
-import 'package:chess_cash/services/navigation.dart';
+import 'package:chess_cash/Services/navigation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -239,7 +239,6 @@ class AutProvider with ChangeNotifier {
         AppConstants.gamesLostField: 0,
         AppConstants.gamesDrawnField: 0,
         AppConstants.rankingField: 0,
-        AppConstants.balanceField: 0.0,
         AppConstants.isBannedField: false,
         AppConstants.isVerifiedField: true,
         AppConstants.banReasonField: "",
@@ -436,7 +435,6 @@ class AutProvider with ChangeNotifier {
             AppConstants.gamesLostField: 0,
             AppConstants.gamesDrawnField: 0,
             AppConstants.rankingField: 0,
-            AppConstants.balanceField: 0.0,
             AppConstants.isBannedField: false,
             AppConstants.isVerifiedField: true,
             AppConstants.banReasonField: "",

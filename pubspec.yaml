@@ -43,7 +43,6 @@ dependencies:
   google_sign_in:
   shared_preferences:
   image_picker:
-  permission_handler: ^11.0.1
   squares:
   flutter_chess_board:
   firebase_database:

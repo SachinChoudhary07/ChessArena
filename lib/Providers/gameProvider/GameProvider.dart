@@ -40,8 +40,6 @@ class ChessGameProvider with ChangeNotifier {
   int? _currentRound;
   int? _currentMatchNumber;
 
-  // Balance update tracking to prevent duplicates
-  bool _balanceUpdated = false;
   bool _statsUpdated = false;
 
   // Threefold repetition tracking
@@ -295,32 +293,11 @@ class ChessGameProvider with ChangeNotifier {
           "🎲 GameProvider: Game ended - Winner: $_winner, Reason: $_gameStatus");
 
       // Handle game end conditions that might be set from UI
-      if (_gameStatus == 'draw' && _winner == null) {
-        print("🎲 GameProvider: Draw detected from UI - handling refund");
-
-        // Check if balance has already been updated using Firestore
-        if (data['balanceUpdated'] == true) {
-          print(
-              "🎲 GameProvider: Balance already updated (from Firestore data), skipping draw refund");
-        } else {
-          _handleDrawRefund(_roomCode);
-        }
-      } else if (_winner != null && _gameStatus != 'draw') {
+      if (_winner != null && _gameStatus != 'draw') {
         // Handle win conditions (checkmate, stalemate, resignation, timeout)
         final winnerColor =
             _winner == 'white' ? PieceColor.white : PieceColor.black;
-        print(
-            "🎲 GameProvider: Win detected from UI - handling prize distribution");
-        print(
-            "🎲 GameProvider: _balanceUpdated flag in Firestore update: $_balanceUpdated");
-
-        // Check if balance has already been updated using Firestore
-        if (data['balanceUpdated'] == true) {
-          print(
-              "🎲 GameProvider: Balance already updated (from Firestore data), skipping");
-        } else {
-          _updateWinnerBalance(winnerColor, _roomCode);
-        }
+        print("🎲 GameProvider: Win detected from UI");
 
         // Also update user stats and record game history (only once)
         if (!_statsUpdated) {
@@ -938,15 +915,6 @@ class ChessGameProvider with ChangeNotifier {
         _statsUpdated = true;
       }
 
-      if (reason == 'draw') {
-        print("****************************************");
-        // Handle draw - refund both players
-        _handleDrawRefund(_roomCode);
-      } else {
-        // Handle win/loss - give prize to winner
-        _updateWinnerBalance(winnerColor, _roomCode);
-      }
-
       // Record game history for both players (only once)
       _recordGameHistory(_playerId, _playerColor == winnerColor, _opponentId!);
       _recordGameHistory(_opponentId!, _playerColor != winnerColor, _playerId);
@@ -1059,15 +1027,6 @@ class ChessGameProvider with ChangeNotifier {
     });
   }
 
-  Future<void> _updateWinnerBalance(
-      PieceColor winnerColor, String roomCode) async {
-    return;
-  }
-
-  Future<void> _handleDrawRefund(String roomCode) async {
-    return;
-  }
-
   Future<void> _recordGameHistory(
       String userId, bool isWinner, String opponentName) async {
     await _firestore
@@ -1077,10 +1036,8 @@ class ChessGameProvider with ChangeNotifier {
         .doc(_roomCode)
         .set({
       'datetime': FieldValue.serverTimestamp(),
-      'entry_fees': 0,
       'game_name': 'Chess Match',
       'opponent': opponentName,
-      'prize': 0,
       'result': isWinner ? 'win' : 'loss'
     });
   }
@@ -1173,8 +1130,6 @@ class ChessGameProvider with ChangeNotifier {
     _currentRound = null;
     _currentMatchNumber = null;
 
-    // Reset balance update flag
-    _balanceUpdated = false;
     _statsUpdated = false;
 
     isLoading = false;

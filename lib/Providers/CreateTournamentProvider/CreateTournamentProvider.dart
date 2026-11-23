@@ -11,8 +11,6 @@ class CreateTournamentProvider extends ChangeNotifier {
 
   final TextEditingController tournamentNameController =
       TextEditingController();
-  final TextEditingController entryFeeController = TextEditingController();
-  final TextEditingController prizeAmountController = TextEditingController();
   final formKey = GlobalKey<FormState>();
 
   int selectedPlayerCount = 4; // Default to 4 players
@@ -79,8 +77,6 @@ class CreateTournamentProvider extends ChangeNotifier {
       final tournamentRef =
           await _firestore.collection('user_tournaments').add({
         'name': tournamentNameController.text,
-        'entryFee': 0,
-        'prizeAmount': 0,
         'playerCount': selectedPlayerCount,
         'startDate': Timestamp.fromDate(startDate!),
         'endDate': Timestamp.fromDate(endDate!),
@@ -99,7 +95,7 @@ class CreateTournamentProvider extends ChangeNotifier {
       await _generateTournamentMatches(tournamentRef.id);
 
       // Automatically join the tournament creator
-      await joinTournament(tournamentRef.id, 0);
+      await joinTournament(tournamentRef.id);
 
       _isLoading = false;
       notifyListeners();
@@ -112,14 +108,13 @@ class CreateTournamentProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> joinTournament(String tournamentId, double entryFee) async {
+  Future<void> joinTournament(String tournamentId) async {
     try {
       final user = _auth.currentUser;
       if (user == null) {
         throw Exception('Please login to join tournament');
       }
 
-      // Free events only — skip wallet checks.
       await _firestore.runTransaction((transaction) async {
         await transaction.get(_firestore.collection('users').doc(user.uid));
 
@@ -189,7 +184,7 @@ class CreateTournamentProvider extends ChangeNotifier {
         }
 
         // ---------- WRITES SECTION ----------
-        // 1. Update user's balance and tournaments list
+        // 1. Update user's tournaments list
         transaction.update(
           _firestore.collection('users').doc(user.uid),
           {
@@ -216,8 +211,6 @@ class CreateTournamentProvider extends ChangeNotifier {
       print('Successfully joined tournament: $tournamentId');
       //want to clear the form and time
       tournamentNameController.clear();
-      entryFeeController.clear();
-      prizeAmountController.clear();
       startDate = null;
       endDate = null;
       roundTimes.clear();
@@ -270,8 +263,6 @@ class CreateTournamentProvider extends ChangeNotifier {
   @override
   void dispose() {
     tournamentNameController.dispose();
-    entryFeeController.dispose();
-    prizeAmountController.dispose();
     super.dispose();
   }
 }

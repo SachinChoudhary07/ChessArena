@@ -25,7 +25,6 @@ class _ChallengeWaitingRoomState extends State<ChallengeWaitingRoom> {
   bool _isExpired = false;
   String? _opponentName;
   String? _timeControl;
-  int? _amount;
 
   @override
   void initState() {
@@ -44,7 +43,6 @@ class _ChallengeWaitingRoomState extends State<ChallengeWaitingRoom> {
         final data = challengeDoc.data()!;
         final opponentUid = data['opponent'] as String;
         final timeControl = data['timeControl'] as String;
-        final amount = data['amount'] as int;
 
         // Fetch opponent name
         final opponentDoc = await FirebaseFirestore.instance
@@ -56,7 +54,6 @@ class _ChallengeWaitingRoomState extends State<ChallengeWaitingRoom> {
         setState(() {
           _opponentName = opponentName;
           _timeControl = timeControl;
-          _amount = amount;
         });
       }
     } catch (e) {
@@ -298,7 +295,7 @@ class _ChallengeWaitingRoomState extends State<ChallengeWaitingRoom> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  if (_timeControl != null && _amount != null)
+                  if (_timeControl != null)
                     Text(
                       _timeControl ?? 'Rated game',
                       style: const TextStyle(

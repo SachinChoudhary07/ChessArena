@@ -9,7 +9,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileProvider with ChangeNotifier {
@@ -88,19 +87,17 @@ class ProfileProvider with ChangeNotifier {
 
   Future<void> updateProfileImage() async {
     try {
-      if (await Permission.photos.request().isGranted ||
-          await Permission.storage.request().isGranted) {
-        final ImagePicker picker = ImagePicker();
-        final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      // The system photo picker needs no storage or media permission.
+      final ImagePicker picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-        if (pickedFile != null) {
-          String imageUrl = await uploadImage(pickedFile);
-          await _firestore.collection('users').doc(currentUser!.uid).update({
-            'profileImage': imageUrl,
-          });
-          profileImageUrl = imageUrl;
-          notifyListeners();
-        }
+      if (pickedFile != null) {
+        String imageUrl = await uploadImage(pickedFile);
+        await _firestore.collection('users').doc(currentUser!.uid).update({
+          'profileImage': imageUrl,
+        });
+        profileImageUrl = imageUrl;
+        notifyListeners();
       }
     } catch (e) {
       print("Error updating profile image: $e");

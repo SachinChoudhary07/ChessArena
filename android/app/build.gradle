@@ -39,21 +39,26 @@ android {
         }
     }
 
-    // Release signing values come from android/key.properties (git-ignored).
     signingConfigs {
-        release {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile file(keystoreProperties['storeFile'])
-            storePassword keystoreProperties['storePassword']
+        if (keystorePropertiesFile.exists()) {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
-            minifyEnabled false
-            shrinkResources false
+            // Without android/key.properties the build falls back to debug
+            // signing, which Play rejects, so a real upload always needs it.
+            signingConfig keystorePropertiesFile.exists()
+                    ? signingConfigs.release
+                    : signingConfigs.debug
+            minifyEnabled true
+            shrinkResources true
             debuggable false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

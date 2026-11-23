@@ -1,9 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
 
@@ -11,7 +8,7 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:label="ChessArena"
-        android:usesCleartextTraffic="true"
+        android:usesCleartextTraffic="false"
         tools:targetApi="m">
         <activity
             android:name=".MainActivity"

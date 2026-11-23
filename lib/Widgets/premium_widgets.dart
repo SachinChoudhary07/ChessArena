@@ -208,63 +208,6 @@ class PlayerInfoCard extends StatelessWidget {
   }
 }
 
-class WalletBalanceCard extends StatelessWidget {
-  final String balance;
-  final VoidCallback? onTap;
-
-  const WalletBalanceCard({
-    super.key,
-    required this.balance,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ChessCard(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: ColorResources.elevatedSurface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: ColorResources.divider),
-            ),
-            child: const Icon(Icons.account_balance_wallet_outlined,
-                color: ColorResources.accent),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Wallet',
-                  style: TextStyle(
-                    color: ColorResources.textSecondary,
-                    fontSize: 13,
-                  ),
-                ),
-                Text(
-                  '₹$balance',
-                  style: const TextStyle(
-                    color: ColorResources.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right, color: ColorResources.textSecondary),
-        ],
-      ),
-    );
-  }
-}
-
 class GameModeCard extends StatelessWidget {
   final String title;
   final String subtitle;

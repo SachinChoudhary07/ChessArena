@@ -75,23 +75,6 @@ class ChallengeService {
     }
   }
 
-  /// Check if user has sufficient balance
-  static Future<bool> _hasEnoughBalance(String userId, double amount) async {
-    try {
-      debugPrint(
-          '💰 ChallengeService: Checking balance for user $userId, amount: $amount');
-      final userDoc = await _firestore.collection('users').doc(userId).get();
-      final currentBalance = (userDoc.data()?['Balance'] ?? 0.0) as num;
-      final hasEnough = currentBalance >= amount;
-      debugPrint(
-          '💰 ChallengeService: User balance: $currentBalance, Required: $amount, Has enough: $hasEnough');
-      return hasEnough;
-    } catch (e) {
-      debugPrint('❌ ChallengeService: Error checking balance: $e');
-      return false;
-    }
-  }
-
   /// Generate room code for game
   static String _generateRoomCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -159,7 +142,6 @@ class ChallengeService {
         'createdAt': FieldValue.serverTimestamp(),
         'gameName': 'Challenge Game',
         'time': challenge.timeControl,
-        'entryFee': 0,
         'challengeId': challengeId,
       };
 

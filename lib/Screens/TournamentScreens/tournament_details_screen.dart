@@ -4,7 +4,7 @@ import 'package:chess_cash/Constant/color_resources.dart';
 import 'package:chess_cash/Screens/TournamentScreens/tornament_waiting_room.dart';
 import 'package:chess_cash/Widgets/loader.dart';
 import 'package:chess_cash/Widgets/premium_widgets.dart';
-import 'package:chess_cash/services/navigation.dart';
+import 'package:chess_cash/Services/navigation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
