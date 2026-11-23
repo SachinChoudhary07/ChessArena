@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'dart:async';
-import 'package:http/http.dart' as http;
-import '../../Firebase/get_server_key.dart';
-import 'dart:convert'; // Added for jsonEncode
 
 /// Model representing a chess challenge
 class Challenge {
@@ -281,9 +278,8 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
         'roomCode': roomCode, // Add room code to challenge
       });
 
-      // Send push notification to opponent with challenge ID
-      await _sendChallengeNotification(
-          currentUser.uid, _selectedFriend!.uid, challengeRef.id);
+      // The opponent's push notification is sent server-side by the
+      // notifyOnChallengeCreated Cloud Function (functions/index.js).
 
       _isSendingChallenge = false;
       notifyListeners();
@@ -425,72 +421,5 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
 
     _isLoadingHistory = false;
     notifyListeners();
-  }
-
-  // ---------------------------------------------------------------------------
-  // Push notification via FCM HTTP v1 legacy API
-  // ---------------------------------------------------------------------------
-
-  static const String _fcmEndpoint =
-      'https://fcm.googleapis.com/v1/projects/chess4cash-37f67/messages:send';
-
-  Future<void> _sendChallengeNotification(
-      String challengerUid, String opponentUid, String challengeId) async {
-    try {
-      // Obtain OAuth2 token via service account
-      final accessToken = await generateFcmAccessToken();
-
-      // Fetch challenger name
-      final challengerDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(challengerUid)
-          .get();
-      final challengerName = challengerDoc.data()?['username'] ?? 'A player';
-
-      // Fetch opponent FCM token
-      final opponentDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(opponentUid)
-          .get();
-      final token = opponentDoc.data()?['fcmToken'];
-      if (token == null) return;
-
-      final payload = {
-        "message": {
-          "token": token,
-          "notification": {
-            "title": "New Chess Challenge!",
-            "body":
-                "$challengerName challenged you to a $_selectedTime game."
-          },
-          "android": {
-            "notification": {
-              "icon": "ic_launcher", // ensure exists in drawable
-              "color": "#e3ac3b",
-              "tag": "challenge_$challengerUid" // collapse duplicates
-            }
-          },
-          "data": {
-            "type": "challenge",
-            "challengerUid": challengerUid,
-            "challengeId": challengeId
-          }
-        }
-      };
-
-      final response = await http.post(
-        Uri.parse(_fcmEndpoint),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-        },
-        body: jsonEncode(payload),
-      );
-
-      debugPrint(
-          'FCM response status: ${response.statusCode} ${response.body}');
-    } catch (e) {
-      debugPrint('Error sending FCM notification: $e');
-    }
   }
 }
