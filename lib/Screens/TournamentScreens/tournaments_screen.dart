@@ -48,17 +48,14 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
         final startDate = (data['startDate'] as Timestamp?)?.toDate();
         final players = List<String>.from(data['players'] ?? []);
         final maxPlayers = data['playerCount'] ?? 8;
-        final entryFee = (data['entryFee'] ?? 0.0).toDouble();
 
         if (startDate != null) {
           final timeUntilStart = startDate.difference(DateTime.now());
           if (timeUntilStart.inMinutes <= 30 &&
               timeUntilStart.inMinutes > 0 &&
               players.length < maxPlayers / 2) {
-            await _cancelTournamentAndRefund(
+            await _cancelTournament(
               tournament.id,
-              players,
-              entryFee,
               'Tournament cancelled due to insufficient players',
             );
           }
@@ -69,10 +66,8 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
     }
   }
 
-  Future<void> _cancelTournamentAndRefund(
+  Future<void> _cancelTournament(
     String tournamentId,
-    List<String> players,
-    double entryFee,
     String reason,
   ) async {
     try {
@@ -84,11 +79,6 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
           'cancelReason': reason,
           'cancelledAt': FieldValue.serverTimestamp(),
         });
-
-        for (String playerId in players) {
-          final userRef = _firestore.collection('users').doc(playerId);
-          await transaction.get(userRef);
-        }
 
         final matchesSnapshot = await _firestore
             .collection('tournaments')

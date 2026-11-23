@@ -39,31 +39,26 @@ android {
         }
     }
 
-    // REMOVE OR COMMENT OUT THIS BLOCK, AS IT'S HARDCODING THE WRONG ALIAS
-    // signingConfigs {
-    //     release {
-    //         storeFile file("my-release-key.jks")
-    //         storePassword "CHESS4CASH"
-    //         keyAlias "CHESS4CASH" // This is the problematic line!
-    //         keyPassword "CHESS4CASH"
-    //     }
-    // }
-
-
-    signingConfigs { // <-- UNCOMMENT THIS BLOCK
-        release {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile file(keystoreProperties['storeFile'])
-            storePassword keystoreProperties['storePassword']
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
-            minifyEnabled false
-            shrinkResources false
+            // Without android/key.properties the build falls back to debug
+            // signing, which Play rejects, so a real upload always needs it.
+            signingConfig keystorePropertiesFile.exists()
+                    ? signingConfigs.release
+                    : signingConfigs.debug
+            minifyEnabled true
+            shrinkResources true
             debuggable false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

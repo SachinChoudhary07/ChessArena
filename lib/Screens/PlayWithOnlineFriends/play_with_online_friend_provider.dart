@@ -13,7 +13,6 @@ class Challenge {
   final String challengerUid;
   final String opponentUid;
   final String timeControl;
-  final int amount;
   final String status; // 'pending', 'accepted', 'rejected', 'expired'
   final DateTime createdAt;
   final DateTime expiresAt;
@@ -23,7 +22,6 @@ class Challenge {
     required this.challengerUid,
     required this.opponentUid,
     required this.timeControl,
-    required this.amount,
     required this.status,
     required this.createdAt,
     required this.expiresAt,
@@ -45,7 +43,6 @@ class Challenge {
       challengerUid: map['challenger'] ?? '',
       opponentUid: map['opponent'] ?? '',
       timeControl: map['timeControl'] ?? '',
-      amount: map['amount'] ?? 0,
       status: map['status'] ?? 'pending',
       createdAt: createdAt,
       expiresAt: expiresAt,
@@ -56,7 +53,6 @@ class Challenge {
         'challenger': challengerUid,
         'opponent': opponentUid,
         'timeControl': timeControl,
-        'amount': amount,
         'status': status,
         'createdAt': createdAt,
       };
@@ -86,7 +82,6 @@ class ChallengeHistoryItem {
   final String id;
   final String opponentName;
   final String timeControl;
-  final int amount;
   final DateTime date;
   final String result; // win / loss / pending
   final String status; // 'accepted', 'rejected', 'expired'
@@ -97,7 +92,6 @@ class ChallengeHistoryItem {
     required this.id,
     required this.opponentName,
     required this.timeControl,
-    required this.amount,
     required this.date,
     required this.result,
     required this.status,
@@ -138,11 +132,9 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
   // Currently selected values
   FriendInfo? _selectedFriend;
   String _selectedTime = '5 min';
-  int _selectedAmount = 0;
 
   FriendInfo? get selectedFriend => _selectedFriend;
   String get selectedTime => _selectedTime;
-  int get selectedAmount => _selectedAmount;
 
   void setSelectedFriend(FriendInfo? friend) {
     _selectedFriend = friend;
@@ -151,11 +143,6 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
 
   void setSelectedTime(String time) {
     _selectedTime = time;
-    notifyListeners();
-  }
-
-  void setSelectedAmount(int amount) {
-    _selectedAmount = amount;
     notifyListeners();
   }
 
@@ -275,7 +262,6 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
         'challenger': currentUser.uid,
         'opponent': _selectedFriend!.uid,
         'timeControl': _selectedTime,
-        'amount': 0,
         'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
         'roomCode': roomCode, // Add room code to challenge
@@ -346,7 +332,6 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
         final opponentUid = data['opponent'] as String;
         final status = data['status'] as String;
         final timeControl = data['timeControl'] as String;
-        final amount = data['amount'] as int;
         final createdAt = data['createdAt'] as Timestamp;
         final gameRoomCode = data['gameRoomCode'] as String?;
 
@@ -405,7 +390,6 @@ class PlayWithOnlineFriendProvider with ChangeNotifier {
             id: doc.id,
             opponentName: otherUserName,
             timeControl: timeControl,
-            amount: amount,
             date: createdAt.toDate(),
             result: result,
             status: status,

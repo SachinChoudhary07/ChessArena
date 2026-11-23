@@ -166,7 +166,7 @@ class _CreateTournamentState extends State<CreateTournament>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              'Joined ${tournamentData['name'] ?? 'contest'} successfully'),
+              'Joined ${tournamentData['name'] ?? 'room'} successfully'),
         ),
       );
     } catch (e) {
@@ -234,7 +234,7 @@ class _CreateTournamentState extends State<CreateTournament>
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
           children: [
             const Text(
-              'Create a contest',
+              'Create a private room',
               style: TextStyle(
                 color: ColorResources.textPrimary,
                 fontSize: 22,
@@ -258,12 +258,12 @@ class _CreateTournamentState extends State<CreateTournament>
                   TextFormField(
                     controller: provider.tournamentNameController,
                     decoration: const InputDecoration(
-                      labelText: 'Contest name',
+                      labelText: 'Room name',
                       hintText: 'Friday Night Blitz',
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter a contest name';
+                        return 'Please enter a room name';
                       }
                       return null;
                     },
@@ -396,7 +396,7 @@ class _CreateTournamentState extends State<CreateTournament>
                   ChessPrimaryButton(
                     label: provider.isLoading
                         ? 'Creating...'
-                        : 'Create contest',
+                        : 'Create room',
                     icon: Icons.add_circle_outline,
                     onPressed: provider.isLoading
                         ? null
@@ -414,7 +414,7 @@ class _CreateTournamentState extends State<CreateTournament>
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(
-                                      'Contest created. Room code: $roomCode'),
+                                      'Room created. Room code: $roomCode'),
                                 ),
                               );
                             } catch (e) {
@@ -465,7 +465,7 @@ class _CreateTournamentState extends State<CreateTournament>
         ),
         const SizedBox(height: 14),
         ChessPrimaryButton(
-          label: _isJoining ? 'Joining...' : 'Join contest',
+          label: _isJoining ? 'Joining...' : 'Join room',
           icon: Icons.login_rounded,
           onPressed: _isJoining ? null : _joinTournamentByRoomCode,
         ),
@@ -588,7 +588,7 @@ class _CreateTournamentState extends State<CreateTournament>
                                 onPressed: () async {
                                   try {
                                     await Share.share(
-                                      "Join my ChessArena contest \"$name\" with room code: $roomCode",
+                                      "Join my ChessArena room \"$name\" with room code: $roomCode",
                                     );
                                   } catch (_) {
                                     Fluttertoast.showToast(

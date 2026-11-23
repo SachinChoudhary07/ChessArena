@@ -1,11 +1,35 @@
-# Razorpay SDK - Prevent R8 from removing or renaming important classes
--keep class com.razorpay.** { *; }
--dontwarn com.razorpay.**
+# R8 keep rules for the release build.
+# Flutter and the Firebase plugins ship their own consumer rules; these cover
+# the gaps that show up as crashes or missing-class errors in minified builds.
 
-# Preserve annotation classes used internally by Razorpay SDK
--keep class proguard.annotation.Keep
--keep class proguard.annotation.KeepClassMembers
-
-# Sometimes helpful for Flutter plugins in general
+# Flutter engine and plugin registrant.
+-keep class io.flutter.app.** { *; }
 -keep class io.flutter.plugin.** { *; }
--dontwarn io.flutter.plugin.**
+-keep class io.flutter.util.** { *; }
+-keep class io.flutter.view.** { *; }
+-keep class io.flutter.embedding.** { *; }
+-keep class io.flutter.plugins.** { *; }
+-dontwarn io.flutter.embedding.**
+
+# Flutter references Play Core for deferred components, which this app does not use.
+-dontwarn com.google.android.play.core.**
+
+# flutter_local_notifications stores scheduled notifications with Gson.
+-keep class com.dexterous.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+
+# Firebase and Play services ship their own rules; keep the metadata they rely on.
+-keepattributes EnclosingMethod
+-keepattributes InnerClasses
+-dontwarn com.google.firebase.**
+-dontwarn com.google.android.gms.**
+
+# Image cropper (uCrop).
+-dontwarn com.yalantis.ucrop.**
+-keep class com.yalantis.ucrop.** { *; }

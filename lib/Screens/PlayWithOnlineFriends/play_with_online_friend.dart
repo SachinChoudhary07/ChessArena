@@ -357,29 +357,13 @@ class _ChallengeHistoryTabState extends State<_ChallengeHistoryTab> {
                   ),
                   const Spacer(),
                   const SizedBox(width: 8),
-                  if (item.amount > 0) ...[
-                    Icon(
-                      Icons.monetization_on,
-                      size: 16,
-                      color: ColorResources.secondaryColor,
+                  const Text(
+                    'Rated',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontStyle: FontStyle.italic,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '₹${item.amount}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: ColorResources.secondaryColor,
-                      ),
-                    ),
-                  ] else ...[
-                    const Text(
-                      'Free Game',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ],
+                  ),
                 ],
               ),
             ),
